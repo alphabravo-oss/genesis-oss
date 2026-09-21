@@ -1,0 +1,4 @@
+# Generator cache. Recreate it from the pinned upstream tag.
+upstream/
+
+.DS_Store
