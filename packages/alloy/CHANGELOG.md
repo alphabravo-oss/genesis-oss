@@ -2,38 +2,6 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.3.2-bb.0] (2026-08-04)
-### Changed
-- bb-common 1.3.1 -> 1.4.0
-- registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader v0.92.1 -> v0.93.0
-- Updated k8s-monitoring and aligned Alloy subcharts
-- k8s-monitoring updated from 4.3.1 to 4.3.2
-
-
-## [4.3.1-bb.1] (2026-07-30)
-### Changed
-- bb-common updated from 1.2.0 → 1.3.1
-
-## [4.3.1-bb.0] (2026-07-27)
-### Changed
-- gluon updated from 1.1.2 -> 1.1.3
-- k8s-monitoring updated from 4.3.0 -> 4.3.1
-- ironbank/opensource/grafana/alloy-operator updated from 1.10.1 -> 1.11.0
-- alloy image updated from v1.17.1 -> v1.18.0
-
-## [4.3.0-bb.0] (2026-07-20)
-### Changed
-- bb-common updated from 1.1.0 -> 1.2.0
-- k8s-monitoring updated from 4.2.2 -> 4.3.0
-
-### Fixed
-- Removed stale `upstream.integrations.alloy.enableReporting` value override
-- Removed value overrides that duplicate upstream defaults
-
-## [4.2.2-bb.1] (2026-07-22)
-### Fixed
-- Bound Loki ingestion-test HTTP requests with a configurable timeout and filter queries by their unique test marker
-
 ## [4.2.2-bb.0] (2026-07-15)
 ### Changed
 - bb-common updated from 1.0.2 -> 1.1.0

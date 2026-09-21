@@ -9,9 +9,9 @@
   "labels": [
     "istioCRDs",
     "Big Bang Core",
+    "Package Sustainment",
     "kind::maintenance",
-    "renovate",
-    "team::Package Maintenance"
+    "renovate"
   ],
   "packageRules": [
     {
@@ -48,6 +48,7 @@
       "description": "Update big bang application versions",
       "managerFilePatterns": ["/^chart/Chart.yaml$/"],
       "matchStrings": [
+        "- Istio:\\s+(?<currentValue>.+)",
         "appVersion:\\s+(?<currentValue>.+)"
       ],
       "depNameTemplate": "base",

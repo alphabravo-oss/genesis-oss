@@ -1,10 +1,7 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- /* Used for deploying a package using a Helm chart */ -}}
-{{- $customPackages := .Values._customPackages | default dict -}}
-{{- range $pkgKey, $vals := $customPackages -}}
+{{- range $pkgKey, $vals := .Values.packages -}}
 {{- if and (dig "enabled" true $vals) (not $vals.kustomize) -}}
 {{- $pkg := include "resourceName" $pkgKey -}}
-{{- $sourceType := dig "sourceType" "git" $vals -}}
 
 {{- $fluxSettings := mergeOverwrite (deepCopy $.Values.flux) (default (dict) $vals.flux) -}}
 {{- $istioEnabled := eq (include "istioEnabled" $) "true" -}}
@@ -13,8 +10,8 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: {{ $pkg }}
-  namespace: {{ if dig "helmRelease" "namespace" nil (index $customPackages $pkgKey) }}
-               {{ dig "helmRelease" "namespace" "" (index $customPackages $pkgKey) }}
+  namespace: {{ if dig "helmRelease" "namespace" nil (index $.Values.packages $pkgKey) }}
+               {{ dig "helmRelease" "namespace" "" (index $.Values.packages $pkgKey) }}
              {{ else }}
                {{ default (dig "namespace" "name" $pkg $vals) "" }}
              {{ end }}
@@ -28,17 +25,17 @@ spec:
   targetNamespace: {{ dig "namespace" "name" $pkg $vals }}
   chart:
     spec:
-      {{- if and (eq $sourceType "git") $vals.git }}
+      {{- if $vals.git }}
       chart: {{ dig "git" "path" "chart" $vals }}
       sourceRef:
         kind: GitRepository
         name: {{ $pkg }}
-        namespace:  {{ if dig "helmRelease" "namespace" nil (index $customPackages $pkgKey) }}
-                      {{ dig "helmRelease" "namespace" "" (index $customPackages $pkgKey) }}
+        namespace:  {{ if dig "helmRelease" "namespace" nil (index $.Values.packages $pkgKey) }}
+                      {{ dig "helmRelease" "namespace" "" (index $.Values.packages $pkgKey) }}
                     {{ else }}
                       {{ default (dig "namespace" "name" $pkg $vals) "" }}
                     {{ end }}
-      {{- else if and (eq $sourceType "helmRepo") $vals.helmRepo }}
+      {{- else if $vals.helmRepo }}
       chart: {{ dig "helmRepo" "chartName" $pkg $vals }}
       version: {{ dig "helmRepo" "tag" nil $vals }}
       sourceRef:
@@ -53,7 +50,7 @@ spec:
           name: {{ printf "%s-cosign-pub" $vals.helmRepo.repoName }}
       {{- end }}
       {{- else }}
-      {{- fail (printf "Valid values for selected sourceType %q are required for package %s" $sourceType $pkg) }}
+      {{- fail (printf "Values for source (git or helmRepo) are required for package %s" $pkg) }}
       {{- end }}
       interval: {{ default "5m" $fluxSettings.interval }}
       reconcileStrategy: Revision
@@ -76,12 +73,8 @@ spec:
   {{- $includeDefaultDependsOn := dig "includeDefaultDependsOn" true $vals -}}
   {{- $gatekeeperDep := $.Values.gatekeeper.enabled -}}
   {{- $kyvernoDep := $.Values.kyvernoPolicies.enabled -}}
-  {{- /* Wait on Istio whenever Big Bang injects bb-common Istio values or sidecar injection is enabled.
-         bb-common renders Istio resources in ambient mode and when sidecar injection is disabled, and
-         those resources require istiod's validation webhook to be ready. */ -}}
-  {{- $bbCommonIstioDep := and $istioEnabled (dig "bbCommonValues" true $vals) -}}
-  {{- $sidecarIstioDep := and $istioEnabled (eq "enabled" (dig "istio" "injection" "enabled" $vals)) -}}
-  {{- $istioDep := or $bbCommonIstioDep $sidecarIstioDep -}}
+  {{- /* Wait on istio if sidecar is enabled */ -}}
+  {{- $istioDep := (and $istioEnabled (eq "enabled" (dig "istio" "injection" "enabled" $vals))) -}}
   {{- $defaultDependsOn := and $includeDefaultDependsOn (or $gatekeeperDep $kyvernoDep $istioDep) -}}
   {{- if or $defaultDependsOn $vals.dependsOn }}
   dependsOn:

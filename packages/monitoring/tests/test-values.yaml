@@ -1,27 +1,36 @@
 #########################
-# Required for package #
-########################
-grafana:
-  enabled: true
-kiali:
-  enabled: true
+# Disable Core Packages #
+#########################
+# monitoring:
+#   enabled: false
+bbctl:
+  enabled: false
   values:
     bbtests:
       enabled: false
-    networkPolicies:
-      ingress:
-        to:
-          kiali:20001:
-            from:
-              k8s:
-                monitoring/*: true
+grafana:
+  enabled: false
+kyvernoReporter:
+  enabled: false
+neuvector:
+  enabled: false
+loki:
+  enabled: false
+tempo:
+  enabled: false
+kiali:
+  enabled: false
+addons:
+  minioOperator:
+    enabled: false
+#########################
+# Required for package #
+########################
 monitoring:
   enabled: true
   values:
     bbtests:
       enabled: true
-certManager:
-  enabled: true
 kyverno:
   values:
     bbtests:
@@ -30,3 +39,5 @@ kyvernoPolicies:
   values:
     bbtests:
       enabled: false
+
+

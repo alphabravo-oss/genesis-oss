@@ -1,10 +1,10 @@
 istio:
   enabled: true
-prometheusRule:
-  IstioSidecarMemModerate: true
-  IstioSidecarMemHigh: true
-  Istio5XXResponseCode: true
-  IstioSidecarEndpointError: true
-  IstioSidecarListenerConflict: true
-  IstioAmbientReadinessProbeFailures: true
-  IstioTCPConnectionFailures: true
+  prometheusRule:
+    IstioSidecarMemModerate: true
+    IstioSidecarMemHigh: true
+    IstioConfigValidationFailed: true
+    Istio5XXResponseCode: true
+    IstioSidecarEndpointError: true
+    IstioSidecarListenerConflict: true
+    IstioAmbientReadinessProbeFailures: true

@@ -5,13 +5,13 @@ Cypress.on('uncaught:exception', (err, runnable) => {
 })
 
 before(function () {
-  cy.env(['grafana_url', 'keycloak_test_enable', 'keycloak_url', 'tnr_username', 'tnr_password']).then(({ grafana_url, keycloak_test_enable, keycloak_url, tnr_username, tnr_password }) => {
+  cy.env(['grafana_url', 'keycloak_test_enable', 'tnr_username', 'tnr_password']).then(({ grafana_url, keycloak_test_enable, tnr_username, tnr_password }) => {
     cy.visit(grafana_url);
 
     if (keycloak_test_enable) {
       cy.wait(500);
       cy.contains('SSO').click();
-      cy.performKeycloakLogin(keycloak_url, tnr_username, tnr_password)
+      cy.performKeycloakLogin(tnr_username, tnr_password)
     } else {
       cy.visit(grafana_url);
       cy.performGrafanaLogin('admin', 'prom-operator')

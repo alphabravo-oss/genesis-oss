@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if or .Values.kyverno.enabled .Values.kyvernoPolicies.enabled .Values.kyvernoReporter.enabled }}
 {{- include "values-secret" (dict 
 "root" $ 
@@ -14,16 +13,14 @@ istio:
   enabled: false
   ambient:
     enabled: false
-  sidecar:
-    enabled: false
-  authorizationPolicies:
-    enabled: false
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
   # Setting to false as Kyverno is not in the mesh
   hbonePortInjection:
     enabled: false
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       kyverno:8000:
         podSelector:
@@ -33,7 +30,7 @@ networkPolicies:
           k8s:
             monitoring/prometheus: {{ .Values.monitoring.enabled }}
   egress:
-    definitions:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
       private-registry:
         to:
           - ipBlock:

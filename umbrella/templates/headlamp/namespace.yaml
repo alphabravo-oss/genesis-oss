@@ -1,4 +1,17 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.headlamp.enabled }}
-{{- include "bigbang.namespace" (dict "root" . "name" "headlamp" "appName" "headlamp" "component" "core" "package" .Values.addons.headlamp "extraLabels" (dict "meta.helm.sh/release-namespace" "bigbang" "meta.helm.sh/release-name" "bigbang")) }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    meta.helm.sh/release-namespace: bigbang
+    meta.helm.sh/release-name: bigbang
+    app.kubernetes.io/name: headlamp
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+    {{- if eq (include "ambientEnabled" .) "true" }}
+    istio.io/dataplane-mode: ambient
+    {{- else }}
+    istio-injection: {{ ternary "enabled" "disabled" (and .Values.istiod.enabled (eq (dig "istio" "injection" "enabled" .Values.addons.headlamp) "enabled")) }}
+    {{- end }}
+  name: headlamp
 {{- end }}

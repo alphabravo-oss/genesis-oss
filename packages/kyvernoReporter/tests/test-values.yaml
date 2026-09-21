@@ -1,11 +1,22 @@
+#########################
+# Disable Core Packages #
+#########################
+neuvector:
+  enabled: false
+loki:
+  enabled: false
+tempo:
+  enabled: false
+kiali:
+  enabled: false
+bbctl:
+  enabled: false
+addons:
+  minioOperator:
+    enabled: false
 ########################
 # Required for package #
 ########################
-certManager:
-  enabled: true
-  values:
-    bbtests:
-      enabled: false
 monitoring:
   enabled: true
   values:

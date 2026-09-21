@@ -1,12 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.gitlab.enabled }}
-{{- $objectStorageValues := .Values.addons.gitlab.objectStorage -}}
-{{- range $endpointName := list "endpoint" "regionendpoint" -}}
-  {{- $endpointValue := get $objectStorageValues $endpointName -}}
-  {{- if and (not (empty $endpointValue)) (not (regexMatch "^https?://" ($endpointValue | toString))) -}}
-    {{- fail (printf "addons.gitlab.objectStorage.%s must begin with http:// or https:// when set" $endpointName) -}}
-  {{- end -}}
-{{- end -}}
 {{- $gitlabPackage := deepCopy .Values.addons.gitlab -}}
 {{- if .Values.addons.gitlab.values -}}
 {{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.gitlab.values) | fromYaml -}}
@@ -28,25 +20,11 @@ domain: {{ $domainName }}
 
 # Define variables to help with conditionals later
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.addons.gitlab) "enabled") }}
 {{- $extObjStorageIsConfigured := (or .Values.addons.gitlab.objectStorage.region .Values.addons.gitlab.objectStorage.endpoint) }}
 {{- $consolidatedObjStoreEnabled := dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values }}
 {{- $iamProfile := (and (ne .Values.addons.gitlab.objectStorage.iamProfile "") $extObjStorageIsConfigured) }}
 {{- $kasEnabled := dig "global" "kas" "enabled" false .Values.addons.gitlab.values }}
-{{- $externalRedisConfigured := eq (include "bigbang.gitlab.externalRedisConfigured" .) "true" }}
-{{- $externalPostgresConfigured := eq (include "bigbang.gitlab.externalPostgresConfigured" .) "true" }}
-{{- $gitlabGlobalValues := (get .Values.addons.gitlab.values "global") | default dict }}
-{{- $gitlabRedisValues := dict }}
-{{- $gitlabPsqlValues := dict }}
-{{- if kindIs "map" $gitlabGlobalValues }}
-  {{- $configuredRedisValues := (get $gitlabGlobalValues "redis") | default dict }}
-  {{- if kindIs "map" $configuredRedisValues }}
-    {{- $gitlabRedisValues = $configuredRedisValues }}
-  {{- end }}
-  {{- $configuredPsqlValues := (get $gitlabGlobalValues "psql") | default dict }}
-  {{- if kindIs "map" $configuredPsqlValues }}
-    {{- $gitlabPsqlValues = $configuredPsqlValues }}
-  {{- end }}
-{{- end }}
 
 openshift: {{ .Values.openshift }}
 
@@ -140,11 +118,21 @@ routes:
 
 {{- $istioHardened := dig "hardened" "enabled" false .Values.istiod.values }}
 istio:
+  enabled: {{ $istioEnabled }}
   sidecar:
     enabled: {{ and $istioHardened (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.gitlab.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.gitlab.values .) }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   ingress:
+    definitions: {{ toYaml .Values.networkPolicies.ingress.definitions | nindent 6 }}
     to:
       redis:9121: 
         from:
@@ -217,6 +205,7 @@ networkPolicies:
             alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
             monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ and .Values.monitoring.enabled }}
   egress:
+    definitions: {{ toYaml .Values.networkPolicies.egress.definitions | nindent 6 }}
     from:
       "*":
         to:
@@ -228,69 +217,27 @@ networkPolicies:
         to:
           definition:
             storage-subnets: true
-            {{- if $externalRedisConfigured }}
-            redis-subnets: true
-            {{- end }}
       webservice:
         to:
           definition:
             sso: true
             database-subnets: true
-            {{- if $externalRedisConfigured }}
-            redis-subnets: true
-            {{- end }}
       migrations:
         to:
           definition:
             database-subnets: true
-            {{- if $externalRedisConfigured }}
-            redis-subnets: true
-            {{- end }}
-      {{- if $externalRedisConfigured }}
-      toolbox:
-        to:
-          definition:
-            redis-subnets: true
-      {{- end }}
-      {{- if eq (include "metricScrapingEnabled" .) "true" }}
-      gitlab-exporter:
-        podSelector:
-          matchLabels:
-            app: gitlab-exporter
-        to:
-          definition:
-            {{- if $externalRedisConfigured }}
-            redis-subnets: true
-            {{- end }}
-      {{- end }}
-      {{- if and $externalRedisConfigured $kasEnabled }}
-      kas:
-        to:
-          definition:
-            redis-subnets: true
-      {{- end }}
-      {{- if and $externalRedisConfigured (dig "upstream" "gitlab" "mailroom" "enabled" false .Values.addons.gitlab.values) }}
-      mailroom:
-        podSelector:
-          matchLabels:
-            app: mailroom
-        to:
-          definition:
-            redis-subnets: true
-      {{- end }}
 
 bbtests:
   enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
   cypress:
     envs:
       cypress_url: {{ printf "https://gitlab.%s" $domainName | quote }}
-      {{- include "bigbang.cypressKeycloakValues" (dict "package" .Values.addons.gitlab "values" .Values) | nindent 6 }}
   scripts:
     envs:
       GITLAB_REGISTRY: registry.{{ $domainName }}
 
 upstream:
-  {{- if and (or $istioEnabled .Values.monitoring.enabled) (dig "redis" "install" true .Values.addons.gitlab.values) }}
+  {{- if and (or $istioInjection .Values.monitoring.enabled) (dig "redis" "install" true .Values.addons.gitlab.values) }}
   redis:
     {{- if eq (include "metricScrapingEnabled" .) "true" }}
     metrics:
@@ -298,7 +245,7 @@ upstream:
         enabled: true
         namespace: gitlab
     {{- end }}
-    {{- if $istioEnabled }}
+    {{- if $istioInjection }}
     master:
       podAnnotations:
         {{ include "istioAnnotation" . }}
@@ -308,12 +255,12 @@ upstream:
     {{- end }}
   {{- end }}
 
-  {{- if or .Values.addons.gitlab.database.host $istioEnabled }}
+  {{- if or .Values.addons.gitlab.database.host $istioInjection }}
   postgresql:
     {{- if .Values.addons.gitlab.database.host }}
     install: false
     {{- end }}
-    {{- if $istioEnabled }}
+    {{- if $istioInjection }}
     primary:
       podAnnotations:
         {{ include "istioAnnotation" . }}
@@ -323,19 +270,19 @@ upstream:
     {{- end }}
   {{- end }}
 
-  {{- if or $extObjStorageIsConfigured $istioEnabled }}
+  {{- if or $extObjStorageIsConfigured $istioInjection }}
   registry:
     {{- if $extObjStorageIsConfigured }}
     storage:
       secret: gitlab-object-storage
       key: registry
     {{- end }}
-    {{- if or $iamProfile $istioEnabled }}
+    {{- if or $iamProfile $istioInjection }}
     annotations: 
       {{- if $iamProfile }}
       iam.amazonaws.com/role: {{ .Values.addons.gitlab.objectStorage.iamProfile }}
       {{- end }}
-      {{- if $istioEnabled }}
+      {{- if $istioInjection }}
       {{ include "istioAnnotation" . }}
       {{- end }}
     {{- end }}
@@ -353,7 +300,7 @@ upstream:
   {{- end }}
 
   gitlab:
-    {{- if or $extObjStorageIsConfigured $istioEnabled }}
+    {{- if or $extObjStorageIsConfigured $istioInjection }}
     toolbox:
       {{- if $extObjStorageIsConfigured }}
       backups:
@@ -362,19 +309,19 @@ upstream:
             secret: gitlab-object-storage
             key: backups
       {{- end }}
-      {{- if or $iamProfile $istioEnabled }}
+      {{- if or $iamProfile $istioInjection }}
       annotations:
         {{- if $iamProfile }}
         iam.amazonaws.com/role: {{ .Values.addons.gitlab.objectStorage.iamProfile }}
         {{- end }}
-        {{- if $istioEnabled }}
+        {{- if $istioInjection }}
         {{ include "istioAnnotation" . }}
         {{- end }}
       {{- end }}
     {{- end }}
     gitlab-exporter:
       enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
-      {{- if $istioEnabled }}
+      {{- if $istioInjection }}
       metrics:
         annotations:
           {{ include "istioAnnotation" . }}
@@ -391,7 +338,7 @@ upstream:
               insecureSkipVerify: true  # Prometheus does not support Istio security naming, thus skip verifying target pod certificate
       {{- end }}
 
-    {{- if or $iamProfile $istioEnabled }}
+    {{- if or $iamProfile $istioInjection }}
     webservice:
     {{- if eq (include "metricsSidecarMtls" (list .Values.addons.gitlab .)) "true" }}
       metrics:
@@ -414,12 +361,12 @@ upstream:
                 keyFile: /etc/prom-certs/key.pem
                 insecureSkipVerify: true  # Prometheus does not support Istio security naming, thus skip verifying target pod certificate
     {{- end }}
-    {{- if or $iamProfile $istioEnabled }}
+    {{- if or $iamProfile $istioInjection }}
       annotations: 
         {{- if $iamProfile }}
         iam.amazonaws.com/role: {{ .Values.addons.gitlab.objectStorage.iamProfile }}
         {{- end }}
-        {{- if $istioEnabled }}
+        {{- if $istioInjection }}
         {{ include "istioAnnotation" . }}
         {{- end }}
     sidekiq:
@@ -427,12 +374,12 @@ upstream:
         {{- if $iamProfile }}
         iam.amazonaws.com/role: {{ .Values.addons.gitlab.objectStorage.iamProfile }}
         {{- end }}
-        {{- if $istioEnabled }}
+        {{- if $istioInjection }}
         {{ include "istioAnnotation" . }}
         {{- end }}
     {{- end }}
     {{- end }}
-  {{- if $istioEnabled }}
+  {{- if $istioInjection }}
     migrations:
       annotations:
         {{ include "istioAnnotation" . }}
@@ -601,21 +548,13 @@ global:
     {{- end }}
 
     {{- if or $extObjStorageIsConfigured $consolidatedObjStoreEnabled }}
-    {{- if and $extObjStorageIsConfigured $consolidatedObjStoreEnabled }}
-    object_store:
-      enabled: true
-      connection:
-        secret: gitlab-object-storage
-        key: rails
-    {{- end }}
-
     lfs:
       {{- if .Values.addons.gitlab.objectStorage.bucketPrefix }}
       bucket: {{ .Values.addons.gitlab.objectStorage.bucketPrefix }}-gitlab-lfs
       {{- else }}
       bucket: gitlab-lfs
       {{- end }}
-      {{- if not $consolidatedObjStoreEnabled }}
+      {{- if not (dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values)}}
       connection:
         secret: gitlab-object-storage
         key: rails
@@ -627,7 +566,7 @@ global:
       {{- else }}
       bucket: gitlab-artifacts
       {{- end }}
-      {{- if not $consolidatedObjStoreEnabled }}
+      {{- if not (dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values)}}
       connection:
         secret: gitlab-object-storage
         key: rails
@@ -639,7 +578,7 @@ global:
       {{- else }}
       bucket: gitlab-uploads
       {{- end }}
-      {{- if not $consolidatedObjStoreEnabled }}
+      {{- if not (dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values)}}
       connection:
         secret: gitlab-object-storage
         key: rails
@@ -651,7 +590,7 @@ global:
       {{- else }}
       bucket: gitlab-packages
       {{- end }}
-      {{- if not $consolidatedObjStoreEnabled }}
+      {{- if not (dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values)}}
       connection:
         secret: gitlab-object-storage
         key: rails
@@ -663,7 +602,7 @@ global:
       {{- else }}
       bucket: gitlab-mr-diffs
       {{- end }}
-      {{- if not $consolidatedObjStoreEnabled }}
+      {{- if not (dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values)}}
       connection:
         secret: gitlab-object-storage
         key: rails
@@ -675,7 +614,7 @@ global:
       {{- else }}
       bucket: gitlab-terraform-state
       {{- end }}
-      {{- if not $consolidatedObjStoreEnabled }}
+      {{- if not (dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values)}}
       connection:
         secret: gitlab-object-storage
         key: rails
@@ -688,7 +627,7 @@ global:
       {{- else }}
       bucket: gitlab-dependency-proxy
       {{- end }}
-      {{- if not $consolidatedObjStoreEnabled }}
+      {{- if not (dig "global" "appConfig" "object_store" "enabled" false .Values.addons.gitlab.values)}}
       connection:
         secret: gitlab-object-storage
         key: rails
@@ -718,11 +657,9 @@ global:
   {{- end }}
 
   {{- if and (ne .Values.addons.gitlab.redis.password "") (or .Values.addons.gitlab.enabled .Values.addons.gitlabRunner.enabled) }}
-  redis:
-    auth:
-      enabled: true
+  redis:  
+    password:
       secret: "gitlab-redis-secret-bb"
-      key: "secret"
   {{- end }}
 
   {{- if .Values.addons.gitlab.smtp.password }}

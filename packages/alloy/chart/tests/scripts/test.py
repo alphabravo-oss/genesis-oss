@@ -23,7 +23,6 @@ POD_NAME = os.getenv("HOSTNAME", "alloy-script-test")
 CONTAINER_NAME = "alloy-script-test"
 NAMESPACE = os.getenv("NAMESPACE", "alloy")
 RETRIES = int(os.getenv("RETRIES", "5"))
-REQUEST_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "30"))
 
 # Wait time between retry attempts (seconds)
 RETRY_INTERVAL = 3
@@ -44,7 +43,7 @@ def print_test_message(message: str) -> None:
 
 
 def query_loki(
-    query_expr: str, start_time: datetime, end_time: datetime, limit: int = 100
+    query_expr: str, start_time: datetime, end_time: datetime, limit: int = 5000
 ) -> Optional[Dict[str, Any]]:
     """Query Loki for logs matching the given expression"""
     url = f"{LOKI_ENDPOINT}/loki/api/v1/query_range"
@@ -64,7 +63,7 @@ def query_loki(
     full_url = f"{url}?{query_string}"
 
     try:
-        with urllib.request.urlopen(full_url, timeout=REQUEST_TIMEOUT) as response:
+        with urllib.request.urlopen(full_url) as response:
             data = json.loads(response.read().decode())
             return data
     except Exception as e:
@@ -98,7 +97,6 @@ def test_log_ingestion(test_message: str) -> bool:
     print_test_message(f"Loki endpoint: {LOKI_ENDPOINT}")
     print_test_message(f"Pod: {POD_NAME}, Namespace: {NAMESPACE}")
     print_test_message(f"Retry attempts: {RETRIES}, Interval: {RETRY_INTERVAL}s")
-    print_test_message(f"Request timeout: {REQUEST_TIMEOUT:g}s")
 
     # Generate a unique test message with timestamp
     unique_id = int(time.time() * 1000)
@@ -110,10 +108,7 @@ def test_log_ingestion(test_message: str) -> bool:
     print("---")
 
     # Build LogQL query
-    query = (
-        f'{{pod="{POD_NAME}",container="{CONTAINER_NAME}"}} '
-        f'|= "TEST_ID:{unique_id}"'
-    )
+    query = f'{{pod="{POD_NAME}",container="{CONTAINER_NAME}"}}'
 
     # Retry loop to check if log appears in Loki
     for attempt in range(1, RETRIES + 1):

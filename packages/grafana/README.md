@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # grafana
 
-![Version: 12.10.0-bb.0](https://img.shields.io/badge/Version-12.10.0--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 13.1.0](https://img.shields.io/badge/AppVersion-13.1.0-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 10.5.15-bb.4](https://img.shields.io/badge/Version-10.5.15--bb.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 13.0.1](https://img.shields.io/badge/AppVersion-13.0.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 The leading tool for querying and visualizing time series and metrics.
 
@@ -61,11 +61,13 @@ helm install grafana chart/
 | nodeExporter.operatingSystems.linux.enabled | bool | `true` |  |
 | nodeExporter.operatingSystems.aix.enabled | bool | `true` |  |
 | nodeExporter.operatingSystems.darwin.enabled | bool | `true` |  |
+| nodeExporter.operatingSystems.windows.enabled | bool | `true` |  |
 | kubelet.enabled | bool | `true` |  |
+| kubelet.namespace | string | `"kube-system"` |  |
 | windowsMonitoring.enabled | bool | `true` |  |
 | prometheusRemoteWriteDashboards | bool | `true` |  |
-| grafana.forceDeployDashboards | bool | `true` |  |
-| grafana.defaultDashboardsEnabled | bool | `true` |  |
+| grafana.forceDeployDashboards.enabled | bool | `true` |  |
+| grafana.defaultDashboardsEnabled.enabled | bool | `true` |  |
 | grafana.operator.dashboardsConfigMapRefEnabled | bool | `false` |  |
 | grafana.operator.annotations | object | `{}` |  |
 | grafana.operator.matchLabels | object | `{}` |  |

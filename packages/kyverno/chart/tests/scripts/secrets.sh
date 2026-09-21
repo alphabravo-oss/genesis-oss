@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+source ./check_cluster_policy.sh
+
 # Colors
 RED='\033[0;31m'
 GRN='\033[0;32m'
@@ -12,27 +14,14 @@ NAMESPACE="kyverno-bbtest"
 SECRET_NAME="kyverno-bbtest-secret"
 POLICY_NAME="sync-secrets"
 
-cleanup() {
-  local rc=$?
-  echo "Clean Up"
-  kubectl delete secret $SECRET_NAME -n $NAMESPACE --ignore-not-found || true
-  kubectl delete -f /yaml/$POLICY_NAME.yaml --ignore-not-found || true
-  kubectl delete secret $SECRET_NAME -n kyverno --ignore-not-found || true
-  kubectl delete namespace $NAMESPACE --ignore-not-found || true
-  if [ $rc -eq 0 ]; then
-    echo -e "TEST: ${GRN}PASS${NC}"
-  else
-    echo -e "TEST: ${RED}FAIL${NC}"
-  fi
-}
-trap cleanup EXIT
 
 #ensure namespace does not already exist
-kubectl delete namespace $NAMESPACE --ignore-not-found
+kubectl get namespace $NAMESPACE -n kyverno 2> /dev/null && kubectl delete namespace $NAMESPACE 2> /dev/null
 
 echo "Test: Copy secret to new namespace"
 echo "Step 1: Create secret to be copied"
 
+# kubectl create secret generic $SECRET_NAME -n kyverno
 kubectl get secret $SECRET_NAME -n kyverno 2> /dev/null || kubectl create secret generic -n kyverno $SECRET_NAME \
     --from-literal=username='username' \
     --from-literal=password='password'
@@ -41,20 +30,34 @@ kubectl get secret $SECRET_NAME -n kyverno 2> /dev/null || kubectl create secret
 kubectl get secret $SECRET_NAME -n kyverno
 
 echo "Step 2: Apply kyverno policy"
-kubectl apply -f /yaml/$POLICY_NAME.yaml
+kubectl apply -n kyverno -f /yaml/$POLICY_NAME.yaml && sleep 5 #wait for policy to be ready
 
 # if run locally in kyverno/chart/tests/scripts directory run:
-# kubectl apply -f ../manifests/sync-secrets.yaml
+# kubectl apply -n kyverno -f ../manifests/sync-secrets.yaml && sleep 5
+# for local cleanup: 
+# kubectl delete -n kyverno -f ../manifests/sync-secrets.yaml
 
-kubectl wait --timeout=60s --for='jsonpath={.status.conditionStatus.ready}=true' GeneratingPolicy/$POLICY_NAME
-echo "$POLICY_NAME is ready"
-# wait 5 seconds for the webhook to pick up the policy
-sleep 5
+# Check for ClusterPolicy secret-sync prior to creating the namespace
+check_cluster_policy "$POLICY_NAME"
+kubectl wait --timeout=30s --for='jsonpath={.status.conditions[?(@.type=="Ready")].status}=True' ClusterPolicy/$POLICY_NAME -n $NAMESPACE
+if [ $? -eq 0 ]; then echo "$POLICY_NAME is ready"; fi
+
 
 echo "Step 3: Check if the secret was created in new namespace"
 
-kubectl create namespace $NAMESPACE
-kubectl wait --timeout=30s --for='jsonpath={.status.phase}=Active' Namespace/$NAMESPACE
+kubectl create namespace $NAMESPACE && sleep 5 
+kubectl wait --timeout=30s --for='jsonpath={.status.phase}="Active"' Namespace/$NAMESPACE
 
-timeout 120s /bin/sh -c "until kubectl get secret $SECRET_NAME -n $NAMESPACE 2> /dev/null; do sleep 5; done"
-echo "$SECRET_NAME succesfully created in $NAMESPACE"
+#wait 120s for secret
+kubectl wait --timeout=120s --for='jsonpath={.kind}="Secret"' secret/$SECRET_NAME -n $NAMESPACE
+
+# Timeout of 2 minutes in case we fail
+timeout 120s /bin/sh -c "until kubectl get secret $SECRET_NAME -n $NAMESPACE; do sleep 5; done"
+if [ $? -eq 0 ]; then echo "$SECRET_NAME succesfully created in $NAMESPACE"; fi
+
+echo "Clean Up"
+kubectl delete secret $SECRET_NAME -n $NAMESPACE 
+kubectl delete -n kyverno -f /yaml/$POLICY_NAME.yaml
+kubectl delete secret $SECRET_NAME -n kyverno
+kubectl delete namespace $NAMESPACE --wait=false
+echo -e "TEST: ${GRN}PASS${NC}"

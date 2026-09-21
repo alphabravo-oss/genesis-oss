@@ -4,15 +4,14 @@ BigBang makes modifications to the upstream helm chart. The full list of changes
 
 1. Renovate should have made a `renovate/ironbank` branch with all necessary version updates. Checkout this branch locally.
 1. Verify the updated image tag with the latest version tag from the [upstream repo](https://github.com/neuvector/neuvector-helm) that has matching image versions. 
-1. Update `chart/Chart.yaml` to the appropriate versions. Ensure `appVersion` matches the upstream application version. If upgrading to a new chart version, reset the `bb.X` version to `bb.0`. Verify that the `helm.sh/images` annotation includes every deployable image and that all image tags are current.
+1. Update `chart/Chart.yaml` to the appropriate versions. Ensure `appVersion` and the `bigbang.dev/applicationVersions` annotation match the upstream application version. If upgrading to a new chart version, reset the `bb.X` version to `bb.0`.
 
    ```yaml
    version: X.X.X-bb.X
    appVersion: X.X.X
    annotations:
-     helm.sh/images: |
-      - name: controller
-        image: registry1.dso.mil/ironbank/neuvector/neuvector/controller:X.X.X
+     bigbang.dev/applicationVersions: |
+       - NeuVector: X.X.X
    ```
 
 1. Update gluon to a new version (if necessary) and run `helm dependency update chart` to package up new gluon as a `.tgz`.

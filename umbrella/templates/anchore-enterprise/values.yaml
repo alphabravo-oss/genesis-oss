@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.anchoreEnterprise.enabled }}
 {{- /* Create a cleaned copy of anchore config and merge deprecated paths into current paths */ -}}
 {{- $anchorePackage := deepCopy .Values.addons.anchoreEnterprise -}}
@@ -93,11 +92,27 @@ routes:
       - 'docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com' # https://docs.docker.com/desktop/setup/allow-list/
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
     enabled: {{ $istioHardenedEnabled }}
 
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.anchoreEnterprise.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.anchoreEnterprise.values .) }}
+
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   ingress:
+    definitions: 
+      {{ toYaml .Values.networkPolicies.ingress.definitions | nindent 6 }}
     to:
       catalog:8082:
         podSelector:
@@ -161,6 +176,8 @@ networkPolicies:
             alloy-alloy-metrics@alloy/alloy-metrics: {{ and (dig "alloyMetrics" "enabled" false .Values.alloy) (not $externalRedisEnabled) }}
             monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ and .Values.monitoring.enabled (not $externalRedisEnabled) }}
   egress:
+    definitions:
+      {{ toYaml .Values.networkPolicies.egress.definitions | nindent 6 }}
     from:
       "*":
         to:
@@ -205,7 +222,6 @@ bbtests:
   cypress:
     envs:
       cypress_url: {{ printf "https://anchore.%s" $domainName | quote }}
-      {{- include "bigbang.cypressKeycloakValues" (dict "package" .Values.addons.anchoreEnterprise "values" .Values) | nindent 6 }}
 
 sso:
   enabled: {{ .Values.addons.anchoreEnterprise.sso.enabled }}
@@ -233,10 +249,10 @@ postgresql:
     enablePostgresUser: true
   {{- if $istioEnabled }}
   primary:
-    podAnnotations:
+    annotations:
       {{- include "istioAnnotation" . | nindent 6 }}
   readReplicas:
-    podAnnotations:
+    annotations:
       {{- include "istioAnnotation" . | nindent 6 }}
   {{- end }}
   {{- end }}
@@ -283,9 +299,6 @@ upstream:
     {{- with dig "upstream" "reports" "annotations" dict .Values.addons.anchoreEnterprise.values }}
       {{ toYaml . | nindent 6}}
     {{- end }}
-    {{- if $istioEnabled }}
-      {{ include "istioAnnotation" . }}
-    {{- end }}
     {{- if eq (include "ambientEnabled" .) "false" }}
       traffic.sidecar.istio.io/excludeInboundPorts: "8558"
     {{- end }}
@@ -296,9 +309,6 @@ upstream:
     annotations:
     {{- with dig "upstream" "api" "annotations" dict .Values.addons.anchoreEnterprise.values }}
       {{ toYaml . | nindent 6}}
-    {{- end }}
-    {{- if $istioEnabled }}
-      {{ include "istioAnnotation" . }}
     {{- end }}
     {{- if eq (include "ambientEnabled" .) "false" }}
       traffic.sidecar.istio.io/excludeOutboundPorts: "8558"
@@ -311,34 +321,6 @@ upstream:
     {{- else }}
     imagePullSecretName: ""
     {{- end }}
-    {{- if $istioEnabled }}
-    annotations:
-      {{ include "istioAnnotation" . }}
-    {{- end }}
-
-  {{- if $istioEnabled }}
-  analyzer:
-    annotations:
-      {{ include "istioAnnotation" . }}
-  catalog:
-    annotations:
-      {{ include "istioAnnotation" . }}
-  dataSyncer:
-    annotations:
-      {{ include "istioAnnotation" . }}
-  notifications:
-    annotations:
-      {{ include "istioAnnotation" . }}
-  policyEngine:
-    annotations:
-      {{ include "istioAnnotation" . }}
-  reportsWorker:
-    annotations:
-      {{ include "istioAnnotation" . }}
-  simpleQueue:
-    annotations:
-      {{ include "istioAnnotation" . }}
-  {{- end }}
 
 ui-redis:
   {{- if $externalRedisEnabled }}

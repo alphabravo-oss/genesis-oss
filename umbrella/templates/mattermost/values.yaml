@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- /* Create a cleaned copy of package config and merge deprecated paths into current paths */ -}}
 {{- $mattermostPackage := deepCopy .Values.addons.mattermost -}}
 {{- if .Values.addons.mattermost.values -}}
@@ -11,7 +10,7 @@
 
 {{- define "bigbang.defaults.mattermost" -}}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
-{{- $sentryEnabled := dig "mattermostEnvs" "MM_LOGSETTINGS_ENABLESENTRY" true .Values.addons.mattermost.values }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.mattermost.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
 {{- /* External postgres is enabled when all database connection fields are provided */ -}}
 {{- $externalPostgresEnabled := and
     (ne .Values.addons.mattermost.database.username "")
@@ -33,9 +32,17 @@ image:
 {{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.addons.mattermost) "enabled") }}
 
 istio:
+  enabled: {{ $istioEnabled }}
   injection: {{ ternary "enabled" "disabled" $istioInjection }}
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.mattermost.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.mattermost.values .) }}
 
-{{- if $istioEnabled }}
+{{- if $istioInjection }}
 podAnnotations:
   {{ include "istioAnnotation" . }}
 updateJob:
@@ -70,7 +77,11 @@ sso:
 {{- end }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       mattermost:
         to:
@@ -83,7 +94,6 @@ networkPolicies:
             kubeAPI: true
             database-subnets: {{ $externalPostgresEnabled }}
             sso: {{ .Values.addons.mattermost.sso.enabled }}
-            sentry-subnets: {{ $sentryEnabled }}
       {{- if dig "waitJob" "enabled" true .Values.addons.mattermost.values }}
       wait-job:
         to:
@@ -91,6 +101,7 @@ networkPolicies:
             kubeAPI: true
       {{- end }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       mattermost:8067:
         from:
@@ -107,8 +118,6 @@ routes:
       gateways:
         - {{ include "getGatewayName" (dict "gateway" .Values.addons.mattermost.ingress.gateway "root" .) }}
   outbound:
-    mattermost-sentry:
-      enabled: {{ $sentryEnabled }}
     sso:
       enabled: {{ .Values.addons.mattermost.sso.enabled }}
       {{- if $ssoHost }}
@@ -164,7 +173,7 @@ postgresql:
   {{- end }}
   install: true
   primary:
-    {{- if $istioEnabled }}
+    {{- if $istioInjection }}
     podAnnotations:
       {{ include "istioAnnotation" $ }}
     {{- end }}
@@ -186,7 +195,7 @@ postgresql:
         capabilities:
           drop:
             - ALL
-  {{- if $istioEnabled }}
+  {{- if $istioInjection }}
   readReplicas:
     podAnnotations:
       {{ include "istioAnnotation" $ }}
@@ -212,7 +221,7 @@ minio:
       configSecret:
         accessKey: {{ .accessKey | default "minio" }}
         secretKey: {{ .secretKey | default "BigBangDEVONLY" }}
-    {{- if $istioEnabled }}
+    {{- if $istioInjection }}
     annotations:
       {{ include "istioAnnotation" $ }}
   {{- end }}

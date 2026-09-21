@@ -30,12 +30,6 @@ Configure the fundamentals of Prometheus like versions, persistence, retention p
 
 Automatically generate monitoring target configurations based on familiar Kubernetes label queries; no need to learn a Prometheus specific configuration language.
 
-### Admission Webhook Certificates
-
-The Prometheus Operator admission webhooks are enabled to validate PrometheusRule and related resources. Monitoring uses cert-manager to issue and inject the admission webhook certificates by default. This avoids the upstream create/patch webhook certificate jobs and the kube-webhook-certgen image in the default deployment path.
-
-If an environment needs the upstream patch job temporarily, disable cert-manager mode, provide a supported `upstream.prometheusOperator.admissionWebhooks.patch.image`, and re-enable the patch job with `upstream.prometheusOperator.admissionWebhooks.certManager.enabled=false` and `upstream.prometheusOperator.admissionWebhooks.patch.enabled=true`.
-
 ## Prometheus Operator Stack Components
 
 ### Prometheus Server
@@ -52,7 +46,7 @@ Prometheus Server is the core component which performs monitoring. It scrapes an
 
 The Prometheus custom resource definition (CRD) declaratively defines a desired Prometheus setup to run in a Kubernetes cluster. It provides options to configure replication, persistent storage, and Alertmanagers to which the deployed Prometheus instances send alerts to.
 
-[Refer to operator design document for interaction between the custom resource definitions](https://prometheus-operator.dev/docs/getting-started/design/)
+[Refer to operator design document for interaction between the custom resource definitions](https://prometheus-operator.dev/docs/operator/design/)
 
 #### Alertmanager
 
@@ -106,11 +100,11 @@ AlertManager manages alerts received from the Prometheus server then routes them
 
 This guide explains, how Kubernetes Ingress can be setup, in order to expose the Prometheus, Alertmanager and Grafana UIs, that are included in the kube-prometheus project.
 
-[UI Setup](https://prometheus-operator.dev/docs/platform/exposing-prometheus-and-alertmanager/)
+[UI Setup](https://prometheus-operator.dev/docs/exposing-prometheus-alertmanager-grafana-ingress/)
 
-kube-prometheus ships with a set of default Prometheus rules. At some point one might like to extend them, the purpose of this document is to explain how to do this.
+kube-prometheus ships with a set of default Prometheus rules and Grafana dashboards. At some point one might like to extend them, the purpose of this document is to explain how to do this.
 
-[Prometheus Rules](https://prometheus-operator.dev/docs/developer/alerting/#deploying-prometheus-rules)
+[Prometheus Rules and Grafana Dashboards](https://prometheus-operator.dev/docs/developing-prometheus-rules-and-grafana-dashboards/)
 
 ## Prometheus with Thanos
 
@@ -124,7 +118,7 @@ The **Prometheus Operator** operates Prometheus and optionally ThanosRuler compo
 
 The below links provide more resources to get to know the Prometheus Operator design and stack components:
 
-- [Operator Design](https://prometheus-operator.dev/docs/getting-started/design/)
-- [Prometheus Quickstart](https://prometheus-operator.dev/docs/platform/platform-guide/)
+- [Operator Design](https://prometheus-operator.dev/docs/operator/design/)
+- [Prometheus Quickstart](https://prometheus-operator.dev/docs/prologue/quick-start/)
 - [First Steps with Prometheus](https://prometheus.io/docs/introduction/first_steps/)
 - [Alert Manager Configuration](https://prometheus.io/docs/alerting/latest/configuration/)

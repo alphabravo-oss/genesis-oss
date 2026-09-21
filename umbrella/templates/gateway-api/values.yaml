@@ -1,8 +1,7 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "gatewayAPI" }}
 
 {{- /* Create secret */ -}}
-{{- if or .Values.gatewayAPI.enabled (eq (include "ambientEnabled" .) "true") }}
+{{- if or .Values.gatewayAPI.enabled .Values.istio.ambient.enabled }}
 {{- include "values-secret" (dict "root" $ "package" (get .Values $pkg) "name" "gateway-api" "defaults" (include "bigbang.defaults.gateway-api" .)) }}
 {{- end }}
 

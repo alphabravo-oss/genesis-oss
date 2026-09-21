@@ -83,6 +83,8 @@ Checking Prometheus for Kyverno dashboards
 - [Login](https://docs-bigbang.dso.mil/latest/docs/configuration/default-credentials/#packages-with-no-built-in-authentication) to Prometheus, validate under `Status` -> `Targets` that all kyverno controller targets are showing as up
 - [Login](https://docs-bigbang.dso.mil/latest/docs/configuration/default-credentials/#packages-with-built-in-authentication) to Grafana, then navigate to the Kyverno daskboard ( Dashboards > Browse > Kyverno Metrics ) and validate that the dashboard displays data
 
+> 📌 __NOTE__: if using MacOS make sure that you have gnu sed installed and add it to your PATH variable [GNU SED Instructions](https://gist.github.com/andre3k1/e3a1a7133fded5de5a9ee99c87c6fa0d)
+
 - [ ] Test secret sync in new namespace
 
     ```Shell
@@ -96,10 +98,10 @@ Checking Prometheus for Kyverno dashboards
     kubectl apply -f https://repo1.dso.mil/big-bang/product/packages/kyverno/-/raw/main/chart/tests/manifests/sync-secrets.yaml
 
     # Wait until the policy shows as ready before proceeding
-    kubectl wait --for='jsonpath={.status.conditionStatus.ready}=true' gpol/sync-secrets
+    kubectl get clusterpolicy sync-secrets
 
-    # Create the namespace the policy matches on
-    kubectl create namespace kyverno-bbtest
+    # Create a namespace with the correct label (essentially we are dry-running a namespace creation to get the yaml, adding the label, then applying)
+    kubectl create namespace kyverno-bbtest --dry-run=client -o yaml | sed '/^metadata:/a\ \ labels: {"kubernetes.io/metadata.name": "kyverno-bbtest"}' | kubectl apply -f -
 
     # Check for the secret that should be synced - if it exists this test is successful
     kubectl get secrets kyverno-bbtest-secret -n kyverno-bbtest
@@ -121,6 +123,7 @@ Checking Prometheus for Kyverno dashboards
 ### chart/Chart.yaml
 
 - Added `-bb` to chart `version`
+- Added `bigbang.dev/applicationVersions` and `helm.sh/images` to `annotations`
 - Added `gluon` to `dependencies`
 
 ### chart/values.yaml

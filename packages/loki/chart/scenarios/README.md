@@ -1,6 +1,6 @@
 # Loki Helm Scenarios
 
-These scenarios are used by Github Workflow: Publish Rendered Helm Chart Diff.
+These scenarios are used by Github Workflow: [Publish Rendered Helm Chart Diff](../../../../.github/workflows/helm-diff-ci.yml).
 
 Each scenario is used in a different job execution that will be used to deploy loki inside a K3D cluster in our github action workflow.
 

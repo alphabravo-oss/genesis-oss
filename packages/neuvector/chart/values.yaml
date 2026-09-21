@@ -26,9 +26,9 @@ routes:
     neuvector:
       enabled: true
       gateways:
-      - istio-system/public
+        - istio-system/public
       hosts:
-      - neuvector.{{ .Values.domain }}
+        - neuvector.{{ .Values.domain }}
       service: neuvector-service-webui
       port: 8443
       selector:
@@ -119,8 +119,6 @@ bbtests:
     artifacts: true
     envs:
       cypress_url: "http://neuvector-service-webui.{{ .Release.Namespace }}.svc.cluster.local:8443"
-      cypress_prometheus_url: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
-      cypress_prometheus_targets_url: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/targets?pool=serviceMonitor%2Fneuvector%2Fneuvector-prometheus-exporter%2F0"
     resources:
       requests:
         cpu: "2"
@@ -129,14 +127,29 @@ bbtests:
         cpu: "2"
         memory: "4Gi"
   scripts:
-    enabled: false
-    #Use a script-test image that explicitly includes `jq`, because `check-prometheus.sh` invokes it.
-    image: registry1.dso.mil/ironbank/big-bang/base:2.1.0
     envs:
-      cypress_prometheus_targets_url: "http://monitoring-monitoring-kube-prometheus.monitoring.svc.cluster.local:9090/targets?pool=serviceMonitor%2Fneuvector%2Fneuvector-prometheus-exporter%2F0"
-      cypress_prometheus_url: "http://monitoring-monitoring-kube-prometheus.monitoring.svc.cluster.local:9090"
       URL: "http://neuvector-service-webui.{{ .Release.Namespace }}.svc.cluster.local:8443"
 
+global: # required for rancher authentication (https://<Rancher_URL>/)
+    imagePullSecrets:
+    images:
+      neuvector_csp_pod:
+        tag: latest
+        image: neuvector-billing-azure-by-suse-llc
+        registry: registry.suse.de/suse/sle-15-sp5/update/pubclouds/images
+        imagePullPolicy: Always
+      controller:
+        tag: 5.5.3
+        image: controller
+        registry: registry1.dso.mil/ironbank/neuvector/neuvector
+      manager:
+        tag: 5.5.3
+        image: manager
+        registry: registry1.dso.mil/ironbank/neuvector/neuvector
+      enforcer:
+        tag: 5.5.3
+        image: enforcer
+        registry: registry1.dso.mil/ironbank/neuvector/neuvector
 
 # -- Values to pass to [the upstream NeuVector core subchart](https://github.com/neuvector/neuvector-helm/blob/master/charts/core/values.yaml)
 # @default -- Upstream chart values for Neuvector core
@@ -146,9 +159,10 @@ upstream:
   fullnameOverride: neuvector-neuvector
   bootstrapPassword: changeme$! # neuvector enforces a mandatory password change on first login
 
+  openshift: false
   registry: registry1.dso.mil
+  tag: 5.5.3
   imagePullSecrets: private-registry
-  tag: 5.6.1
   crdwebhook:
     enabled: false
 
@@ -166,7 +180,7 @@ upstream:
       runAsNonRoot: true
       capabilities:
         drop:
-        - ALL
+          - ALL
     certupgrader:
       imagePullPolicy: Always
       podAnnotations:
@@ -183,14 +197,19 @@ upstream:
         runAsNonRoot: true
         capabilities:
           drop:
-          - ALL
+            - ALL
     apisvc:
       type: ClusterIP
+      annotations: {}
+      nodePort: null
     prime:
+      enabled: false
       image:
+        repository: neuvector/compliance-config
         tag: 5.4.8
 
   enforcer:
+    enabled: true
     image:
       repository: ironbank/neuvector/neuvector/enforcer
       imagePullPolicy: Always
@@ -201,9 +220,10 @@ upstream:
       runAsGroup: 1000
       capabilities:
         drop:
-        - ALL
+          - ALL
 
   manager:
+    enabled: true
     image:
       repository: ironbank/neuvector/neuvector/manager
       imagePullPolicy: Always
@@ -217,17 +237,19 @@ upstream:
       runAsNonRoot: true
       capabilities:
         drop:
-        - ALL
+          - ALL
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
       runAsGroup: 1000
       fsGroup: 1000
+
   cve:
     adapter:
+      enabled: false
       image:
         repository: ironbank/opensource/neuvector/registry-adapter
-        tag: v0.2.10
+        tag: v0.2.8
       podAnnotations:
         traffic.sidecar.istio.io/excludeInboundPorts: "18500"
       securityContext:
@@ -236,6 +258,9 @@ upstream:
         fsGroup: 1000
         runAsNonRoot: true
     updater:
+      enabled: true
+      secure: false
+      cacert: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
       image:
         registry: "registry1.dso.mil"
         repository: ironbank/big-bang/base
@@ -254,24 +279,28 @@ upstream:
         runAsNonRoot: true
         capabilities:
           drop:
-          - ALL
+            - ALL
     scanner:
+      enabled: true
       image:
         repository: ironbank/neuvector/neuvector/scanner
+        tag: "6"
+        imagePullPolicy: Always
       podAnnotations:
         traffic.sidecar.istio.io/excludeInboundPorts: "18500"
+      runAsUser:
       securityContext:
-        runAsUser: 1000  # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
-        runAsGroup: 1000 # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
-        fsGroup: 1000  # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
-        runAsNonRoot: true # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
       containerSecurityContext:
-        runAsUser: 1000  # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
-        runAsGroup: 1000  # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
-        runAsNonRoot: true # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
         capabilities:
-          drop:  # VALIDATE: not found in core (no default, no template reference) — confirm, then remove
-          - ALL
+          drop:
+            - ALL
 
 # Monitor subchart:
 # From https://github.com/neuvector/neuvector-helm/blob/master/charts/monitor/values.yaml
@@ -296,4 +325,4 @@ monitor:
       runAsGroup: 1001
       capabilities:
         drop:
-        - ALL
+          - ALL

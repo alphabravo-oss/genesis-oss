@@ -80,6 +80,13 @@ monitoring:
   # network policies
   enabled: true
 
+authservice:
+  enabled: false
+
+mtls:
+  # -- Set the mTLS mode for the istio-system namespace
+  mode: STRICT
+
 defaultSecurityHeaders:
   # -- Enable or disable the default security headers
   enabled: true
@@ -115,4 +122,4 @@ upstream:
 
   global:
     hub: registry1.dso.mil/ironbank/opensource/istio
-    tag: 1.30.4
+    tag: 1.30.2

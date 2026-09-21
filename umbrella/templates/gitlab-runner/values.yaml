@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "gitlab-runner" }}
 
 {{- if .Values.addons.gitlabRunner.enabled }}
@@ -14,7 +13,19 @@
 {{- define "bigbang.defaults.gitlab-runner" -}}
 {{- $domainName := .Values.domain }}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.addons.gitlabRunner) "enabled") }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.gitlabRunner.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
 {{- $autoRegisterEnabled := and .Values.kyverno.enabled .Values.addons.gitlab.enabled (dig "autoRegister" "enabled" true .Values.addons.gitlabRunner) }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.gitlabRunner.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.gitlabRunner.values .) }}
 
 routes:
   outbound:
@@ -25,6 +36,9 @@ routes:
       - gitlab.{{ $domainName }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   egress:
     from:
       gitlab-runner:
@@ -92,7 +106,7 @@ upstream:
   {{- end }}
 
   # When istio injected, add an annotation with the istio version to the manager pods only
-  {{- if $istioEnabled }}
+  {{- if $istioInjection }}
   podAnnotations:
     {{ include "istioAnnotation" . }}
   {{- end }}

@@ -2,7 +2,7 @@
 
 ## Motivation
 
-[Policy Reporter](https://github.com/kyverno/policy-reporter) makes the results of your Kyverno validation policies visible and observable. By default, Kyverno provides the option to create your validation policies in audit or enforce mode. While enforce will block applying a manifest that violate the given policy, audit will create a report that provides information about resources that pass or fail your policies. Note that for requests that are denied by admissions control because of policy violations in enforce mode, Kubernetes resources are not created, so no result is recorded for them. Enforce policies are still reported on in two other ways: resources that satisfy an enforce rule are admitted and recorded as `pass`, and policies with `background: true` are re-evaluated against resources that already exist in the cluster, which records `fail` entries for pre-existing violations. Because Policy Reports are Custom Resources you can access them with `kubectl get/describe`.
+[Policy Reporter](https://github.com/kyverno/policy-reporter) makes the results of your Kyverno validation policies visible and observable. By default, Kyverno provides the option to create your validation policies in audit or enforce mode. While enforce will block applying a manifest that violate the given policy, audit will create a report that provides information about resources that pass or fail your policies. Note that for requests that are denied by admissions control because of policy violations in enforce mode, Kubernetes resources are not created.  As such, Policy Reporter only captures the information for policies in audit mode. Because Policy Reports are Custom Resources you can access them with `kubectl get/describe`.
 
 Policy Reporter provides also a standalone [Dashboard](https://github.com/kyverno/policy-reporter-ui) to get a graphical overview of all results with filter and an optional [Kyverno Plugin](https://github.com/kyverno/policy-reporter-kyverno-plugin) to get also information about your Kyverno policies.
 
@@ -39,7 +39,7 @@ If you have already installed Big Bang with Kyverno, Kyverno Policies, and Monit
 
 ```
 # Clone this repo
-git clone https://repo1.dso.mil/big-bang/product/packages/kyverno-reporter.git
+git clone https://repo1.dso.mil/platform-one/big-bang/apps/sandbox/kyverno-reporter.git
 cd kyverno-reporter
 
 # Create namespace
@@ -49,14 +49,14 @@ kubectl create namespace kyverno-reporter
 kubectl get secret private-registry --namespace=kyverno -o yaml | sed 's/namespace: .*/namespace: kyverno-reporter/' | kubectl apply -f -
 
 # Deploy Reporter
-helm upgrade --install --namespace kyverno-reporter kyverno-reporter ./chart
+helm upgrade --install --namespace kyverno-reporter bigbang-kyverno-reporter ./bigbang
 ```
 
 ## Reporting
 
-Kyverno policy reports are Kubernetes resources that provide information about policy results, including violations. Kyverno creates one report per resource matched by a policy rule.
+Kyverno policy reports are Kubernetes resources that provide information about policy results, including violations. Kyverno creates policy reports for each Namespace and a single cluster-level report for cluster resources.
 
-Result entries are added to reports when a resource is admitted, and when a policy with `background: true` is evaluated against resources that already exist in the cluster. A resource that violates an enforce rule at admission is blocked, so no entry is created for it, but background scans still record violations by pre-existing resources regardless of whether the rule is audit or enforce. If the resource violates multiple rules, there will be multiple entries in the report for that resource. Likewise, if a resource is deleted, its report is removed along with it.
+Result entries are added to reports during the audit when policies with validationFailureAction=audit are applied to resources. Otherwise, when in enforce mode, the resource is blocked immediately upon creation and therefore no entry is created since no offending resource exists. If the created resource violates multiple rules, there will be multiple entries in the reports for the same resource. Likewise, if a resource is deleted, it will be expunged from the report simultaneously.
 
 There are two types of reports that get created and updated by Kyverno: a ClusterPolicyReport (for cluster-scoped resources) and a PolicyReport (for Namespaced resources). The contents of these reports are determined by the violating resources and not where the rule is stored. For example, if a rule is written which validates Ingress resources, because Ingress is a Namespaced resource, any violations will show up in a PolicyReport co-located in the same Namespace as the offending resource itself, regardless if that rule was written in a Policy or a ClusterPolicy.
 
@@ -76,17 +76,16 @@ metadata:
     policies.kyverno.io/category: Best Practices
     policies.kyverno.io/severity: medium
     policies.kyverno.io/subject: Pod
-spec:
+ spec:
+  validationFailureAction: audit
   background: true
   rules:
   - name: validate-resources
     match:
-      any:
-      - resources:
-          kinds:
-          - Pod
+      resources:
+        kinds:
+        - Pod
     validate:
-      failureAction: Audit
       message: "CPU and memory resource requests and limits are required."
       pattern:
         spec:
@@ -99,65 +98,57 @@ spec:
                 memory: "?*"
 ```
 
-The policy sets `background: true`, so Kyverno evaluates the resources already running in the cluster and populates the reports without any new workload. To trigger a result with a new Pod instead, note that in a Big Bang cluster the `kyvernoPolicies` package applies its own policies to anything you create: the Pod must use a tagged image from `registry1.dso.mil` or `registry.dso.mil`.
+### Create a Pod
+
+```
+kubectl run nginx --image nginx
+```
 
 ### Get Policy Report
 
 ```
-kubectl get polr -n alloy
+kubectl get polr
 
-NAME                                   KIND             NAME                                     PASS   FAIL   WARN   ERROR   SKIP   AGE
-06b94b5d-485c-46f8-be3f-f1af647aacf3   Pod              alloy-alloy-operator-689999d796-kwhh8    29     2      0      0       1      88m
-0726c429-f5c3-4d27-905c-cbfb36e0a88b   ReplicaSet       alloy-alloy-operator-689999d796          0      1      0      0       0      21s
-09a72f5f-e4a4-4e72-a53e-4216b187c085   Lease            alloy-alloy-operator                     0      0      0      0       1      105m
-0df91ce9-f2f3-4bca-a79b-3549465af2c6   ServiceAccount   alloy-alloy-operator                     1      0      0      0       0      88m
+NAME              PASS   FAIL   WARN   ERROR   SKIP   AGE
+polr-ns-default   1      1      0      0       0      4d10h
 ```
-
-The `KIND` and `NAME` columns identify the resource each report describes; the report's own name is the resource UID.
 
 ### View Policy Report
 
 ```
 
-kubectl get polr 0726c429-f5c3-4d27-905c-cbfb36e0a88b -n alloy -o=yaml
+kubectl get polr polr-ns-default -o=yaml
 
 apiVersion: wgpolicyk8s.io/v1alpha2
 kind: PolicyReport
 metadata:
   labels:
-    app.kubernetes.io/managed-by: kyverno
-  name: 0726c429-f5c3-4d27-905c-cbfb36e0a88b
-  namespace: alloy
-  ownerReferences:
-  - apiVersion: apps/v1
-    kind: ReplicaSet
-    name: alloy-alloy-operator-689999d796
-    uid: 0726c429-f5c3-4d27-905c-cbfb36e0a88b
-scope:
-  apiVersion: apps/v1
-  kind: ReplicaSet
-  name: alloy-alloy-operator-689999d796
-  namespace: alloy
-  uid: 0726c429-f5c3-4d27-905c-cbfb36e0a88b
-results:
+    managed-by: kyverno
+  name: polr-ns-default
+  namespace: default
+ results:
 - category: Best Practices
   message: 'validation error: CPU and memory resource requests and limits are required.
-    rule autogen-validate-resources failed at path /spec/template/spec/containers/0/resources/limits/'
+    Rule validate-resources failed at path /spec/containers/0/resources/requests/'
   policy: require-requests-limits
-  properties:
-    process: background scan
+  resources:
+  - apiVersion: v1
+    kind: Pod
+    name: nginx
+    namespace: default
+    uid: fc8447fd-0078-48f2-9d49-4764369357b1
   result: fail
-  rule: autogen-validate-resources
+  rule: validate-resources
   scored: true
   severity: medium
-  source: kyverno
+  source: Kyverno
   timestamp:
     nanos: 0
-    seconds: 1785947855
+    seconds: 1650335041
 summary:
   error: 0
   fail: 1
-  pass: 0
+  pass: 1
   skip: 0
   warn: 0
 ```
@@ -176,6 +167,7 @@ kind: ClusterPolicy
 metadata:
   name: require-ns-labels
 spec:
+  validationFailureAction: audit
   background: true
   rules:
   - name: check-for-labels-on-namespace
@@ -185,7 +177,6 @@ spec:
           kinds:
           - Namespace
     validate:
-      failureAction: Audit
       message: "The label `maintainer` is required."
       pattern:
         metadata:
@@ -197,23 +188,16 @@ spec:
 
 ```
 kubectl get cpolr
-
-NAME                                   KIND        NAME          PASS   FAIL   WARN   ERROR   SKIP   AGE
-9b9bf80f-14e7-419a-8e80-89291766b90b   Namespace   alloy         1      1      0      0       0      88m
-2ca5b814-2b0f-4df7-bff7-9f4b0fb3e59f   Namespace   bbctl         1      1      0      0       0      88m
-f89d970c-ecf6-4ee0-8c1b-2f0adae00cc3   Namespace   bigbang       0      1      0      0       0      88m
-176cb69c-dbad-43ef-9d06-9514b6db2804   Namespace   default       0      1      0      0       0      88m
-b4a70b06-7c30-4209-9c8b-4efc62009d2d   Namespace   flux-system   0      1      0      0       0      88m
+NAME                  PASS   FAIL   WARN   ERROR   SKIP   AGE
+clusterpolicyreport   0      2      0      0       0      10s
 ```
-
-Each Namespace gets its own report, so the listing also includes reports for every other cluster-scoped resource in the cluster.
 
 ## Policy Reporter UI
 
 Access Policy Reporter at http://localhost:8080 via port forwarding:
 
 ```
-kubectl -n kyverno-reporter port-forward service/policy-reporter-ui 8080:8080 
+kubectl -n policy-reporter port-forward service/policy-reporter-ui 8080:8080 
 ```
 
-![Image](https://raw.githubusercontent.com/kyverno/policy-reporter/main/docs/images/screen.png)
+![Image](https://kyverno.github.io/policy-reporter/images/screenshots/basic-ui-light.png)

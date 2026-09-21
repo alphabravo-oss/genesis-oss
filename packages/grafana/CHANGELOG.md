@@ -3,35 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [12.10.0-bb.0] (2026-09-09)
-### Changed
-- bb-common updated from 1.0.2 to 1.4.0
-- gluon updated from 1.1.2 to 1.1.6
-- grafana wrapper chart updated from 12.7.2 to 12.10.0
-- https://repo1.dso.mil/dsop/opensource/bats/bats 1.13.0 -> 1.14.0
-- registry1.dso.mil/ironbank/big-bang/grafana/grafana-plugins 13.0.1 -> 13.1.0
-- registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar 2.8.1 -> 2.10.1
-- registry1.dso.mil/ironbank/opensource/grafana/grafana-image-renderer v5.9.1 -> v5.12.1
-- registry1.dso.mil/ironbank/big-bang/cypress from 15.17.0 to 15.20.1
-- Updated sync_grafana_dashboards.py and dashboards based on upstream
-
-## [12.7.2-bb.0] (2026-09-08)
-### Fixed
-- Fixed BB chart version tag from `10.5.15-bb.7` to `12.7.2-bb.0` to properly reflect the upstream Grafana Helm chart version (`12.7.2`) introduced in `10.5.15-bb.4`
-- Disabled the bbtests for monitoring and cert-manager
-
-## [10.5.15-bb.7] (2026-08-28)
-### Changed
-- updated Cypress test to pass the Keycloak URL to performKeycloakLogin
-
-## [10.5.15-bb.6] (2026-07-28)
-### Changed
-- Updated test framework tag to match chart.yml
-
-## [10.5.15-bb.5] (2026-07-27)
-### Changed
-- Removed duplicate and unused values from package values file
-
 ## [10.5.15-bb.4] (2026-07-07)
 ### Changed
 - grafana updated from 10.5.15 -> 12.7.2

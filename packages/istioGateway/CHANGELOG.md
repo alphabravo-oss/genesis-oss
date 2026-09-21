@@ -4,22 +4,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
-## [1.30.4-bb.0] (2026-09-01)
-### Changed
-- bb-common 1.2.0 -> 1.5.0
-- gateway 1.30.3 -> 1.30.4
-- gluon 1.1.3 -> 1.1.6
-- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.3 -> 1.30.4
-
-## [1.30.3-bb.0] (2026-07-24)
-### Changed
-- bb-common 1.0.2 -> 1.2.0
-- gateway 1.30.2 -> 1.30.3
-- gluon 1.1.1 -> 1.1.3
-- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.2 -> 1.30.3
-- removed deprecated `bigbang.dev/applicationVersions` annotation from Chart.yaml
-- fixed the wait job failing package CI when the istiod and istio-gateway package versions differ; it now converges gateway pods on istiod's proxy version instead of the chart's appVersion
-
 ## [1.30.2-bb.2] (2026-07-10)
 
 ### Changed

@@ -55,7 +55,7 @@ kiali:
             strategy: "openid"
   git:
     tag: null
-    branch: "renovate/kiali"
+    branch: "renovate/ironbank"
 
 addons:
   authservice:
