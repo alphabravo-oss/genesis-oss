@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "istiod" }}
 
 {{- /* Create secret */ -}}
@@ -18,14 +17,24 @@
 istio:
   sidecar:
     enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.istiod.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.istiod.values .) }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   egress:
     {{- if eq (include "ambientEnabled" .) "true" }}
     defaults:
       allowInNamespace:
         enabled: true
     {{- end }}
+    definitions: {{.Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       istiod:
         to:
@@ -37,6 +46,7 @@ networkPolicies:
       allowInNamespace:
         enabled: true
     {{- end }}
+    definitions: {{.Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       istiod:15014:
         from:

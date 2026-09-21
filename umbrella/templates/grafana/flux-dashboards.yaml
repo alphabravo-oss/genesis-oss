@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if and .Values.monitoring.enabled .Values.grafana.enabled }}
 apiVersion: v1
 kind: ConfigMap

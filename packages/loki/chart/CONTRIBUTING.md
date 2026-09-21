@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to the Loki Helm Chart! This document provides guidelines for contributing to ensure the chart remains maintainable, broadly useful, and accessible to the community.
 
-For general Loki project contributions, please also see the main [Contributing Guide](../CONTRIBUTING.md).
+For general Loki project contributions, please also see the main [Contributing Guide](../../../CONTRIBUTING.md).
 
 ## Contribution Guidelines
 

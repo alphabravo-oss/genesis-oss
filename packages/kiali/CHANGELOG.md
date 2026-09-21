@@ -3,20 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [2.31.0-bb.0] (2026-08-28)
-### Changed
-- bb-common 1.4.0 -> 1.5.0
-- gluon 1.1.5 -> 1.1.6
-- kiali-operator 2.30.0 -> 2.31.0
-- registry1.dso.mil/ironbank/opensource/kiali/kiali v2.30.0 -> v2.31.0
-- registry1.dso.mil/ironbank/opensource/kiali/kiali-operator v2.30.0 -> v2.31.0
-- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.35.7 -> v1.35.8
-- Add in SSO testing
-
-## [2.30.0-bb.1] (2026-08-27)
-### Changed
- - updated Cypress test to pass the Keycloak URL to performKeycloakLogin 
-
 ## [2.30.0-bb.0] (2026-08-08)
 ### Changed
 - gluon 1.1.3 -> 1.1.5

@@ -47,101 +47,6 @@
 {{- end -}}
 {{- end }}
 
-{{/*
-When packageConfiguration.version is v1, normalize the backwards-compatible
-packages.<name> configuration for built-ins onto the legacy values paths
-consumed by the existing templates. Without that explicit opt-in, every entry
-under packages retains the Big Bang 3.x custom-package meaning.
-
-Explicitly supplied built-ins remain under .Values.packages as resolved values
-so templates can use the canonical path. Unknown entries are copied into the
-internal .Values._customPackages map consumed by generic package renderers.
-New-path values take precedence over legacy-path values. Legacy-only built-ins
-are not populated under .Values.packages.
-
-This compatibility layer is temporary. Its package identities and legacy paths
-come from the package metadata catalog and can be removed with the legacy paths
-in Big Bang 4.x.
-*/}}
-{{- define "bigbang.normalizePackageAliases" -}}
-{{- $packages := .Values.packages | default dict -}}
-{{- $metadata := .Files.Get "package-metadata.yaml" | fromYaml -}}
-{{- $catalog := get $metadata "packages" | default dict -}}
-{{- if not $catalog -}}
-  {{- fail "chart/package-metadata.yaml must define built-in packages" -}}
-{{- end -}}
-{{- $migrations := .Values._packageAliasMigrations | default list -}}
-{{- $customPackages := dict -}}
-{{- $canonicalPackagesEnabled := eq (dig "version" "" (.Values.packageConfiguration | default dict)) "v1" -}}
-
-{{- if $canonicalPackagesEnabled -}}
-{{- /* Reserve canonical identities and rendered resource names. */ -}}
-{{- $reservedNames := dict -}}
-{{- range $name, $package := $catalog -}}
-  {{- $identities := uniq (list (lower $name) (include "resourceName" $name) (lower $package.templateDirectory)) -}}
-  {{- range $identity := $identities -}}
-    {{- if and (hasKey $reservedNames $identity) (ne (get $reservedNames $identity) $name) -}}
-      {{- fail (printf "built-in packages %s and %s share reserved identity %s" (get $reservedNames $identity) $name $identity) -}}
-    {{- end -}}
-    {{- $_ := set $reservedNames $identity $name -}}
-  {{- end -}}
-{{- end -}}
-
-{{- /* Unknown entries remain custom packages, but cannot masquerade as a built-in
-      or normalize to the same resource identity as another custom package. */ -}}
-{{- $customResourceNames := dict -}}
-{{- range $name := keys $packages | sortAlpha -}}
-  {{- if not (hasKey $catalog $name) -}}
-    {{- $identities := uniq (list (lower $name) (include "resourceName" $name)) -}}
-    {{- range $identity := $identities -}}
-      {{- if hasKey $reservedNames $identity -}}
-        {{- $owner := get $reservedNames $identity -}}
-        {{- if hasKey $catalog $owner -}}
-          {{- fail (printf "packages.%s conflicts with built-in package packages.%s; use the canonical name packages.%s" $name $owner $owner) -}}
-        {{- end -}}
-      {{- end -}}
-    {{- end -}}
-    {{- $resourceName := include "resourceName" $name -}}
-    {{- if hasKey $customResourceNames $resourceName -}}
-      {{- fail (printf "packages.%s and packages.%s normalize to the same package identity" (get $customResourceNames $resourceName) $name) -}}
-    {{- end -}}
-    {{- $_ := set $customResourceNames $resourceName $name -}}
-    {{- $_ := set $customPackages $name (get $packages $name) -}}
-  {{- end -}}
-{{- end -}}
-
-{{- range $name, $package := $catalog -}}
-  {{- if hasKey $packages $name -}}
-    {{- $alias := get $packages $name | default dict -}}
-    {{- $legacyPath := splitList "." $package.legacyPath -}}
-    {{- if eq (len $legacyPath) 1 -}}
-      {{- $legacy := get $.Values $name | default dict -}}
-      {{- $resolved := mustMergeOverwrite (deepCopy $legacy) (deepCopy $alias) -}}
-      {{- $_ := set $.Values $name (deepCopy $resolved) -}}
-      {{- $_ := set $packages $name $resolved -}}
-    {{- else if and (eq (len $legacyPath) 2) (eq (first $legacyPath) "addons") -}}
-      {{- $legacy := get $.Values.addons $name | default dict -}}
-      {{- $resolved := mustMergeOverwrite (deepCopy $legacy) (deepCopy $alias) -}}
-      {{- $_ := set $.Values.addons $name (deepCopy $resolved) -}}
-      {{- $_ := set $packages $name $resolved -}}
-    {{- else -}}
-      {{- fail (printf "unsupported legacyPath %s for package %s" $package.legacyPath $name) -}}
-    {{- end -}}
-    {{- $migrations = append $migrations (printf "packages.%s replaces %s" $name $package.legacyPath) -}}
-  {{- end -}}
-{{- end -}}
-{{- else -}}
-  {{- /* Preserve the pre-existing 3.x contract unless canonical package names
-        have been explicitly enabled. */ -}}
-  {{- range $name, $package := $packages -}}
-    {{- $_ := set $customPackages $name $package -}}
-  {{- end -}}
-{{- end -}}
-
-{{- $_ := set .Values "_packageAliasMigrations" (uniq $migrations) -}}
-{{- $_ := set .Values "_customPackages" $customPackages -}}
-{{- end -}}
-
 {{- define "imagePullSecret" }}
   {{- if .Values.registryCredentials -}}
     {{- $credType := typeOf .Values.registryCredentials -}}
@@ -172,7 +77,6 @@ Args (dict):
   - component: app.kubernetes.io/component label value (optional)
   - package: package values containing istio.injection (string; defaults to "enabled")
   - extraLabels: additional labels to render (optional)
-  - annotations: additional annotations to render (optional)
   - meshMode: "auto" (default) or "none"
 */}}
 {{- define "bigbang.namespace" -}}
@@ -211,10 +115,6 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ $name }}
-  {{- with .annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
   labels:
     {{- toYaml $labels | nindent 4 }}
 {{- end }}
@@ -431,15 +331,8 @@ Returns cleaned values with hardened key removed.
 {{- $_ := set $cleanedIstio "authorizationPolicies" (dict "custom" $mergedAuthzPolicies) }}
 {{- end }}
 
-{{- /* Drop only the two sub-fields that were migrated above; anything else under
-       hardened (notably hardened.enabled, still read by commonPackageDefaults and
-       authorizationPoliciesEnabled) must survive. */ -}}
-{{- $hardenedRemaining := omit (dig "hardened" dict $values.istio) "customServiceEntries" "customAuthorizationPolicies" -}}
-{{- if $hardenedRemaining -}}
-{{- $_ := set $cleanedIstio "hardened" $hardenedRemaining -}}
-{{- else -}}
+{{- /* Remove deprecated hardened key */ -}}
 {{- $cleanedIstio = unset $cleanedIstio "hardened" -}}
-{{- end -}}
 
 {{- $values = set $values "istio" $cleanedIstio -}}
 {{- end -}}
@@ -510,64 +403,10 @@ app.kubernetes.io/part-of: "bigbang"
 helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- end -}}
 
-{{- /*
-values-secret builds the <package>-values Secret consumed by a package's HelmRelease.
-Args (dict):
-  root:                 root context ($)
-  package:               the package's resolved values (e.g. .Values.kiali)
-  name:                  the rendered resource name (e.g. "kiali")
-  defaults:              rendered YAML text of the package's own bigbang.defaults.<name> template
-  injectCommonDefaults:  optional, default true. When true, the istio/networkPolicies bb-common
-                         scaffolding (see bigbang.commonPackageDefaults) is deep-merged in
-                         underneath `defaults`, so packages don't need to declare it themselves.
-                         Set to false for packages with no running workload that shouldn't get
-                         istio/networkPolicies values at all (e.g. CRD-only packages like
-                         istio-crds, prometheus-operator-crds).
-  bbCommonSubchart:      optional, default false. bb-common is currently consumed as a library
-                         chart, which reads its istio/networkPolicies/routes values from the top
-                         level of the values passed to the HelmRelease. Once a package's bb-common
-                         dependency moves to being a regular subchart, those same values need to
-                         be nested under a `bb-common` key instead (Helm's normal subchart value
-                         scoping). Set to true for a package that has made that switch. Note routes
-                         is picked only when present, since not every package declares one. Once
-                         every package has migrated, this condition should be made unconditional
-                         and the parameter removed from every values-secret call site.
-*/ -}}
 {{- define "values-secret" -}}
+{{- $defaults := default (dict) (fromYaml .defaults) | toYaml }}
 {{- $packageValues := default dict .package.values -}}
-{{- $explicitDefaults := default (dict) (fromYaml .defaults) -}}
-{{- /* A package's own defaults may declare istio/networkPolicies/routes either flat or nested 
-       under bb-common when used as a sub-chart. Normalize to flat here so everything below 
-       only has to handle one shape, regardless of usage or use of the bbCommonSubchart flag. */ -}}
-{{- if hasKey $explicitDefaults "bb-common" }}
-{{- $explicitDefaults = mustMergeOverwrite (omit $explicitDefaults "bb-common") (deepCopy (index $explicitDefaults "bb-common")) -}}
-{{- end }}
-{{- $defaults := $explicitDefaults | toYaml -}}
-{{- if dig "injectCommonDefaults" true . }}
-{{- $sharedDefaults := include "bigbang.commonPackageDefaults" (list $packageValues .package .root) | fromYaml -}}
-{{- $defaults = mustMergeOverwrite (deepCopy $sharedDefaults) (deepCopy $explicitDefaults) | toYaml -}}
-{{- end }}
-{{- $commonValues := mustMergeOverwrite (deepCopy ($defaults | fromYaml)) (deepCopy $packageValues) }}
-{{- $commonBlock := pick $commonValues "istio" "networkPolicies" }}
-{{- $remainingDefaults := $defaults }}
-{{- /* TODO(bb-common-subchart-migration): once every package's bb-common dependency is a
-       regular subchart, drop this condition (always nest under bb-common, always omit
-       injection, always strip istio/networkPolicies from defaults) and remove the
-       "bbCommonSubchart" arg from every values-secret call site. */ -}}
-{{- if dig "bbCommonSubchart" false . }}
-{{- /* routes is a top-level bb-common key too, but not every package declares one. */ -}}
-{{- $commonBlock = merge $commonBlock (pick $commonValues "routes") }}
-{{- if hasKey $commonBlock "istio" }}
-{{- /* injection is a library-chart-era concept; drop it once bb-common is a real subchart. */ -}}
-{{- $commonBlock = set $commonBlock "istio" (omit $commonBlock.istio "injection") }}
-{{- end }}
-{{- $commonBlock = dict "bb-common" $commonBlock }}
-{{- /* istio/networkPolicies/routes are fully captured above (common already reflects
-       overlay+defaults merged), so strip them out of defaults to avoid re-flattening them
-       there. Left untouched in library-chart mode, since defaults is relied on there as the
-       full effective picture (e.g. by unittests asserting against stringData.defaults). */ -}}
-{{- $remainingDefaults = omit ($defaults | fromYaml) "istio" "networkPolicies" "routes" | toYaml }}
-{{- end }}
+{{- $commonValues := mustMergeOverwrite (deepCopy $packageValues) (deepCopy ($defaults | fromYaml)) }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -576,8 +415,8 @@ metadata:
 type: generic
 stringData:
   common: |
-    {{- toYaml $commonBlock | nindent 4 }}
-  defaults: {{- toYaml $remainingDefaults | nindent 4 }}
+    {{- toYaml (pick $commonValues "bbtests" "istio" "networkPolicies" "sso" "waitJob") | nindent 4 }}
+  defaults: {{- toYaml $defaults | nindent 4 }}
   overlays: |
     {{- toYaml .package.values | nindent 4 }}
 {{- end -}}
@@ -742,7 +581,7 @@ bigbang.dev/istioVersion: {{ $helmRepo.tag }}
 {{- /* To use: $ns := compact (splitList " " (include "uniqueNamespaces" (merge (dict "constraint" "some.boolean" "default" true) .))) */ -}}
 {{- define "uniqueNamespaces" -}}
   {{- $namespaces := list -}}
-  {{- range $pkg, $vals := (.Values._customPackages | default dict) -}}
+  {{- range $pkg, $vals := .Values.packages -}}
     {{- if (dig "enabled" true $vals) -}}
       {{- $constraint := $vals -}}
       {{- range $key := split "." (default "" $.constraint) -}}
@@ -1047,22 +886,6 @@ mode; sidecar-mode SSO keeps the legacy pod-label ext_authz path.
 -}}
 {{- end -}}
 
-{{- /*
-Returns "true" when Thanos's query-frontend should be protected by authservice via
-the thanos package's own ambient waypoint (the bb-common per-route authservice
-model). This replaces the legacy model that enrolled the Service onto the shared
-authservice-namespace waypoint. Only applies in ambient mode; sidecar-mode SSO
-keeps the legacy pod-label ext_authz path.
-*/ -}}
-{{- define "thanos.authservice.waypointEnabled" -}}
-{{- and
-  (eq (include "ambientEnabled" .) "true")
-  (eq (include "authserviceEnabled" .) "true")
-  .Values.addons.thanos.enabled
-  .Values.addons.thanos.sso.enabled
--}}
-{{- end -}}
-
 {{- /* Returns "true" if networkPolicies should be enabled for a package.
        True when .Values.networkPolicies.enabled is true OR ambient mode is enabled.
        Ambient mode requires bb-common's network-policies render to run because the
@@ -1086,50 +909,6 @@ keeps the legacy pod-label ext_authz path.
 {{- $hardened := or (dig "istio" "hardened" "enabled" false $pkg) (dig "hardened" "enabled" false $root.Values.istiod.values) -}}
 {{- $ambient  := eq (include "ambientEnabled" $root) "true" -}}
 {{ or $hardened $ambient }}
-{{- end -}}
-
-{{- /* Returns the `istio` and `networkPolicies` bb-common scaffolding shared by nearly
-       every package (istio.enabled/sidecar/ambient/authorizationPolicies,
-       networkPolicies.enabled/hbonePortInjection, and the ingress/egress definitions
-       passthrough of the globally-configured network-policy definitions). Called from
-       `values-secret`, which deep-merges this baseline underneath each package's own
-       `defaults`, so a package only needs to declare the fields that diverge from the
-       baseline (e.g. gatekeeper and kyverno hardcode hbonePortInjection.enabled: false
-       to opt out of ambient's HBONE injection) or that extend it (e.g. vault adds an
-       extra entry alongside the global ingress definitions; kiali/grafana add
-       ingress/egress `defaults`, `from`, `to` siblings). Because values-secret merges
-       maps key-by-key rather than replacing them wholesale, a package adding one extra
-       definitions entry doesn't need to restate the global ones.
-       Args (positional list):
-         0 - pkg:    the package's values dict (e.g. .Values.loki.values, .Values.addons.argocd.values)
-         1 - pkgTop: the package's top-level dict (e.g. .Values.loki, .Values.addons.argocd) — used
-                     only for istio.injection, which is a top-level user knob, unlike the rest of
-                     this block which reads from `.values`
-         2 - root:   the root context (.)
-    */ -}}
-{{- define "bigbang.commonPackageDefaults" -}}
-{{- $pkg    := index . 0 -}}
-{{- $pkgTop := index . 1 -}}
-{{- $root   := index . 2 -}}
-{{- $hardened := or (dig "istio" "hardened" "enabled" false $pkg) (dig "hardened" "enabled" false $root.Values.istiod.values) -}}
-istio:
-  enabled: {{ eq (include "istioEnabled" $root) "true" }}
-  sidecar:
-    enabled: {{ and $hardened (ne (include "ambientEnabled" $root) "true") }}
-  ambient:
-    enabled: {{ include "ambientEnabled" $root }}
-  injection: {{ ternary "disabled" (dig "istio" "injection" "enabled" $pkgTop) (eq (include "ambientEnabled" $root) "true") }}
-  authorizationPolicies:
-    enabled: {{ include "authorizationPoliciesEnabled" (list $pkg $root) }}
-    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list $pkg $root) }}
-networkPolicies:
-  enabled: {{ include "networkPoliciesEnabled" $root }}
-  hbonePortInjection:
-    enabled: {{ include "ambientEnabled" $root }}
-  ingress:
-    definitions: {{ $root.Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
-  egress:
-    definitions: {{ $root.Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
 {{- end -}}
 
 {{- /*
@@ -1164,8 +943,6 @@ Usage: {{- if eq (include "metricsSidecarMtls" (list .Values.loki .)) "true" }}
 {{- end }}
 {{- if eq (include "ambientEnabled" .) "true" }}
 - name: ztunnel
-  namespace: {{ .Release.Namespace }}
-- name: gateway-api
   namespace: {{ .Release.Namespace }}
 {{- end }}
 {{- end -}}

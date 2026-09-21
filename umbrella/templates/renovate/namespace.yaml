@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.renovate.enabled }}
 {{- include "bigbang.namespace" (dict "root" . "name" "renovate" "appName" "renovate" "component" "core" "package" .Values.renovate) }}
 {{- end }}

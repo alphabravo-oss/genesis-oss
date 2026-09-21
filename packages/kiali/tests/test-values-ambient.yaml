@@ -1,4 +1,9 @@
-certManager:
+#########################
+# Disable Core Packages #
+#########################
+bbctl:
+  enabled: false
+networkPolicies:
   enabled: true
 monitoring:
   enabled: true
@@ -10,6 +15,24 @@ grafana:
   values:
     bbtests:
       enabled: false
+neuvector:
+  enabled: false
+tempo:
+  enabled: false
+  values:
+    bbtests:
+      enabled: false
+kyvernoReporter:
+  enabled: false
+addons:
+  minioOperator:
+    enabled: true
+    values:
+      bbtests:
+        enabled: false
+########################
+# Required for package #
+########################
 kyvernoPolicies:
   values:
     bbtests:
@@ -24,9 +47,3 @@ kiali:
 istio:
   ambient:
     enabled: true
-addons:
-  minioOperator:
-    enabled: true
-    values:
-      bbtests:
-        enabled: false

@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "harbor" }}
 
 {{- /* Create secret */ -}}
@@ -18,11 +17,26 @@
 {{- end }}
 
 {{- define "bigbang.defaults.harbor" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.harbor.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
 {{- $postgresEnabled := dig "postgresql" "enabled" true .Values.addons.harbor.values }}
 
 externalURL: https://harbor.{{ .Values.domain }}
 
 domain: {{ .Values.domain }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.harbor.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.harbor.values .) }}
 
 routes:
   inbound:
@@ -42,7 +56,12 @@ routes:
       - 'ib-prod-harbor-storage.s3.us-gov-east-1.amazonaws.com'
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       harbor:
         to:
@@ -51,6 +70,7 @@ networkPolicies:
           k8s:
             tempo/tempo:9411: {{ .Values.tempo.enabled }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       harbor:8001:
         from:

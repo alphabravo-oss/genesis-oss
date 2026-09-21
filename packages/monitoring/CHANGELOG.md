@@ -3,36 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [88.6.2-bb.0] (2026-09-02)
-### Changed
-- bb-common 1.4.0 -> 1.5.0
-- gluon 1.1.5 -> 1.1.7
-- kube-prometheus-stack 88.3.0 -> 88.6.2
-- prometheus-blackbox-exporter 11.17.2 -> 11.18.0
-- registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar 2.10.1 -> 2.10.3
-- registry1.dso.mil/ironbank/opensource/kubernetes/kube-state-metrics v2.19.1 -> v2.20.0
-- registry1.dso.mil/ironbank/opensource/prometheus/alertmanager v0.33.1 -> v0.34.0
-- registry1.dso.mil/ironbank/opensource/prometheus/prometheus v3.13.2 -> v3.14.0
-
-### Added
-- Cypress test for Alertmanager active alerts via Watchdog alert API assertion
-- Script test for Kiali that validates monitoring namespace visibility and Prometheus app presence via Kiali internal API
-- Script test for Grafana that validates Prometheus datasource is configured and healthy via Grafana API
-- Enabled standalone Grafana package and Kiali in test-values.yaml for integration test coverage; Grafana UI browser testing delegated to the standalone Grafana package bbtests
-
-## [88.3.0-bb.3] (2026-09-01)
-### Changed
-- Updated Cypress test for SSO testing integration
-- Added SSO test file
-
-## [88.3.0-bb.2] (2026-08-27)
-### Changed
-- Explicitly nulled the disabled Prometheus Operator admission webhook patch job image fields and added `watch` permission for the cert-manager admission webhook smoke test.
-
-## [88.3.0-bb.1] (2026-08-21)
-### Changed
-- Switched Prometheus Operator admission webhook certificate management to cert-manager by default, disabled the upstream patch job by default, nulled default admission webhook patch images that are not available from Iron Bank, and relaxed admission webhook failures only during first install to avoid bootstrap deadlock before the operator webhook service has endpoints.
-
 ## [88.3.0-bb.0] (2026-08-12)
 ### Changed
 - kube-prometheus-stack 88.2.0 -> 88.3.0

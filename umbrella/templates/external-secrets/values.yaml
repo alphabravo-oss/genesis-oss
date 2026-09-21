@@ -1,46 +1,50 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.externalSecrets.enabled }}
 {{- include "values-secret" (dict "root" $ "package" .Values.addons.externalSecrets "name" "external-secrets" "defaults" (include "bigbang.defaults.external-secrets" .)) }}
 {{- end }}
 
 {{- define "bigbang.defaults.external-secrets" -}}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
-{{- $externalSecretsValues := .Values.addons.externalSecrets.values | default dict }}
-{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false $externalSecretsValues) (dig "hardened" "enabled" false .Values.istiod.values) }}
-{{- $webhookEnabled := dig "upstream" "webhook" "create" false $externalSecretsValues }}
-{{- $certControllerEnabled := dig "upstream" "certController" "create" false $externalSecretsValues }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.externalSecrets.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $webhookEnabled := dig "upstream" "webhook" "create" false .Values.addons.externalSecrets.values }}
+{{- $certControllerEnabled := dig "upstream" "certController" "create" false .Values.addons.externalSecrets.values }}
 
 upstream:
   image:
     pullPolicy: {{ .Values.imagePullPolicy }}
-
+    
   {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
-  {{- if $istioEnabled }}
-  podAnnotations:
-    {{ include "istioAnnotation" . }}
-  webhook:
-    podAnnotations:
-      {{ include "istioAnnotation" . }}
-  certController:
-    podAnnotations:
-      {{ include "istioAnnotation" . }}
-  {{- end }}
 
 monitoring:
   enabled: {{ .Values.monitoring.enabled }}
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
     enabled: {{ $istioHardenedEnabled }}
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.externalSecrets.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.externalSecrets.values .) }}
+    additionalPolicies:
+      allow-ingress-to-external-secrets-webhook-tcp-port-10250-from-kube-api:
+        enabled: {{ $webhookEnabled }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6}}
     to:
       external-secrets-webhook:10250:
         from:
           definition:
             kubeAPI: {{ $webhookEnabled }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6}}
     from:
       external-secrets:
         to:
@@ -54,6 +58,11 @@ networkPolicies:
         to:
           definition:
             kubeAPI: {{ $certControllerEnabled }}
+
+{{- if $istioEnabled }}
+annotations:
+  {{ include "istioAnnotation" . }}
+{{- end }}
 
 openshift: {{ .Values.openshift }}
 {{- end -}}

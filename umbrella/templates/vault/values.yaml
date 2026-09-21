@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.vault.enabled }}
 {{- /* Create a cleaned copy of vault config and merge deprecated paths into current paths */ -}}
 {{- $vaultPackage := deepCopy .Values.addons.vault -}}
@@ -50,16 +49,31 @@ routes:
       - repo1.dso.mil
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
     enabled: {{ $istioHardenedEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.vault.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.vault.values .) }}
 
 tls:
   cert: {{ .Values.addons.vault.ingress.cert | quote }}
   key: {{ .Values.addons.vault.ingress.key | quote }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   ingress:
-    definitions:
+    definitions: 
+      {{ toYaml .Values.networkPolicies.ingress.definitions | nindent 6 }}
       custom-app-ingress:
         from:
           - namespaceSelector: {}
@@ -80,6 +94,7 @@ networkPolicies:
             0.0.0.0/0: true
   egress:
     definitions:
+      {{ toYaml .Values.networkPolicies.egress.definitions | nindent 6 }}
       kms:
         to:
           - ipBlock:

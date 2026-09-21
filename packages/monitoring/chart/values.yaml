@@ -22,16 +22,9 @@ upstream:
     upgradeJob:
       enabled: false
       forceConflicts: false
-      image:
-        kubectl:
-          registry: registry1.dso.mil
-          repository: ironbank/opensource/kubernetes/kubectl
-          tag: v1.35
-          sha: ""
-          pullPolicy: IfNotPresent
 
     imagePullSecrets:
-      - name: private-registry
+    - name: private-registry
   alertmanager:
     enabled: true
 
@@ -40,7 +33,7 @@ upstream:
       image:
         registry: registry1.dso.mil
         repository: ironbank/opensource/prometheus/alertmanager
-        tag: v0.34.0
+        tag: v0.33.1
         sha: ""
         imagePullSecrets:
           - name: private-registry
@@ -68,7 +61,7 @@ upstream:
       repository: ironbank/big-bang/grafana/grafana-plugins
       tag: 13.1.0
       pullSecrets:
-        - private-registry
+      - private-registry
     containerSecurityContext:
       capabilities:
         drop:
@@ -85,7 +78,7 @@ upstream:
       repository: ironbank/opensource/bats/bats
       tag: 1.14.0
       pullSecrets:
-        - private-registry
+      - private-registry
       imagePullPolicy: IfNotPresent
       securityContext:
         capabilites:
@@ -97,13 +90,13 @@ upstream:
     grafana.ini:
       # Required if enabling SSO
       #server:
-      #root_url: https://grafana.{{ .Values.domain }}/
-      #Block is auto-set when using Umbrella
+        #root_url: https://grafana.{{ .Values.domain }}/
+        #Block is auto-set when using Umbrella
       auth.generic_oauth:
         enabled: false
-        client_id: grafana #this is a sample client_id, review docs/KEYCLOAK.md
+        client_id: grafana    #this is a sample client_id, review docs/KEYCLOAK.md
         client_secret: secret #this is a sample secret, review docs/KEYCLOAK.md
-        scopes: Grafana #this is a sample client scope, review docs/KEYCLOAK.md
+        scopes: Grafana       #this is a sample client scope, review docs/KEYCLOAK.md
         auth_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/auth
         token_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/token
         api_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/userinfo
@@ -126,7 +119,7 @@ upstream:
       image:
         registry: registry1.dso.mil
         repository: ironbank/kiwigrid/k8s-sidecar
-        tag: 2.10.3
+        tag: 2.10.1
         imagePullSecrets:
           - name: private-registry
       resources:
@@ -196,7 +189,7 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/kubernetes/kube-state-metrics
-      tag: v2.20.0
+      tag: v2.19.1
       imagePullSecrets:
         - name: private-registry
     resources:
@@ -261,25 +254,28 @@ upstream:
     ## Admission webhook support for PrometheusRules resources added in Prometheus Operator 0.30 can be enabled to prevent incorrectly formatted
     ## rules from making their way into prometheus and potentially preventing the container from starting
     admissionWebhooks:
-      # Use Ignore only on first install so PrometheusRule creation does not deadlock before the operator webhook service has endpoints.
-      # Upgrades fail closed once the operator should already be available.
-      failurePolicy: IgnoreOnInstallOnly
-      certManager:
-        enabled: true
       containerSecurityContext:
         capabilities:
           drop:
             - ALL
-      image: null # We don't use the prometheus-operator image for the webhook
-      patch:
-        enabled: false
-        # Legacy patch mode is disabled by default. Set all image fields when enabling it.
+        ## Change once added to IB
+        ## Prometheus-operator webhook image
         image:
-          registry: null
-          repository: null
-          tag: null
-          sha: null
-          pullPolicy: null
+          registry: quay.io
+          repository: prometheus-operator/admission-webhook
+          tag: ""
+          sha: ""
+          pullPolicy: IfNotPresent
+      patch:
+        enabled: true
+        image:
+          registry: registry1.dso.mil
+          repository: ironbank/opensource/ingress-nginx/kube-webhook-certgen
+          tag: v1.6.9
+          sha: ""
+          pullPolicy: IfNotPresent
+          imagePullSecrets:
+            - name: private-registry
         resources:
           limits:
             cpu: 50m
@@ -356,7 +352,7 @@ upstream:
       image:
         registry: registry1.dso.mil
         repository: ironbank/opensource/prometheus/prometheus
-        tag: v3.14.0
+        tag: v3.13.2
         sha: ""
         imagePullSecrets:
           - name: private-registry
@@ -476,17 +472,17 @@ networkPolicies:
             # it to true if you need this connectivity
             0.0.0.0/0: false
       metrics-upgrade-job:
-        podSelector:
-          matchLabels:
-            app.kubernetes.io/name: bigbang-metrics-upgrade-job
-        metadata:
-          annotations:
-            "helm.sh/hook": pre-upgrade
-            "helm.sh/hook-weight": "-10"
-            "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
-        to:
-          definition:
-            kubeAPI: true
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bigbang-metrics-upgrade-job
+          metadata:
+            annotations:
+              "helm.sh/hook": pre-upgrade
+              "helm.sh/hook-weight": "-10"
+              "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
+          to:
+            definition:
+              kubeAPI: true
   ingress:
     to:
       kube-prometheus-stack-prometheus-operator:10250:
@@ -518,43 +514,9 @@ bbtests:
   enabled: false
   cypress:
     artifacts: true
-    exports: false
-    additionalVolumeMounts:
-      - name: cypress-exports
-        mountPath: /test/exports
-    additionalVolumes:
-      - name: cypress-exports
-        emptyDir: {}
     envs:
-      cypress_prometheus_url: "http://monitoring-kube-prometheus-prometheus:9090"
-      cypress_alertmanager_url: "http://monitoring-kube-prometheus-alertmanager:9093"
-
-  scripts:
-    image: registry1.dso.mil/ironbank/big-bang/base:2.1.0
-    envs:
-      MONITORING_NAMESPACE: "{{ .Release.Namespace }}"
-      ADMISSION_CERTIFICATE_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-admission'
-      ADMISSION_WEBHOOK_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-admission'
-      ADMISSION_SERVICE_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-operator'
-      PROMETHEUS_RULE_NAME: "{{ .Release.Name }}-cert-manager-webhook-smoke"
-      KIALI_URL: "http://kiali.kiali:20001"
-      GRAFANA_URL: "http://monitoring-grafana:80"
-      GRAFANA_PASSWORD: "prom-operator"
-    permissions:
-      apiGroups:
-        - cert-manager.io
-        - monitoring.coreos.com
-      resources:
-        - certificates
-        - prometheusrules
-      verbs:
-        - create
-        - delete
-        - get
-        - list
-        - patch
-        - update
-        - watch
+      cypress_prometheus_url: 'http://monitoring-kube-prometheus-prometheus:9090'
+      cypress_alertmanager_url: 'http://monitoring-kube-prometheus-alertmanager:9093'
 
 istio:
   enabled: false
@@ -598,7 +560,7 @@ routes:
         - istio-gateway/public-ingressgateway
       hosts:
         - prometheus.{{ .Values.domain }}
-      service: '{{ printf "%s-%s" (include "kube-prometheus-stack.fullname" .) "kube-prometheus" }}.{{ .Release.Namespace }}.svc.cluster.local'
+      service: "{{ printf \"%s-%s\" (include \"kube-prometheus-stack.fullname\" .) \"kube-prometheus\" }}.{{ .Release.Namespace }}.svc.cluster.local"
       port: "{{ .Values.upstream.prometheus.service.port }}"
       containerPort: 9090
       selector:
@@ -612,7 +574,7 @@ routes:
         - istio-gateway/public-ingressgateway
       hosts:
         - alertmanager.{{ .Values.domain }}
-      service: '{{ printf "%s-%s" (include "kube-prometheus-stack.fullname" .) "kube-alertmanager" }}.{{ .Release.Namespace }}.svc.cluster.local'
+      service: "{{ printf \"%s-%s\" (include \"kube-prometheus-stack.fullname\" .) \"kube-alertmanager\" }}.{{ .Release.Namespace }}.svc.cluster.local"
       port: "{{ .Values.upstream.alertmanager.service.port }}"
       containerPort: 9093
       selector:
@@ -659,7 +621,7 @@ cleanUpgrade:
     readOnlyRootFilesystem: true
     capabilities:
       drop:
-        - ALL
+      - ALL
 
 ## Configuration for Prometheus Blackbox exporter subchart
 blackboxExporter:

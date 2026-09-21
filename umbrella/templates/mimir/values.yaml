@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- /* Create secret */ -}}
 {{- if .Values.addons.mimir.enabled }}
 {{- /* Create a cleaned copy of mimir config and merge deprecated paths into current paths */ -}}
@@ -22,6 +21,7 @@
 {{- $minioEnabled := (.Values.addons.mimir.minioObjectStorage.enabled) }}
 {{- $s3Enabled := (.Values.addons.mimir.s3ObjectStorage.enabled) }}
 {{- $mimirEnterpriseEnabled := (.Values.addons.mimir.enterprise.enabled) }}
+{{- $istioInjection := (and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.addons.mimir) "enabled"))  }}
 {{- $kafkaEnabled := (.Values.addons.mimir.kafkaIngestStorage.enabled) }}
 {{- $kafkaBrokerHost := (.Values.addons.mimir.kafkaIngestStorage.brokerHost) }}
 {{- $kafkaBrokerPort := (.Values.addons.mimir.kafkaIngestStorage.brokerPort) }}
@@ -38,8 +38,19 @@ monitoring:
   enabled: {{ .Values.monitoring.enabled }}
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
     enabled: {{ $istioHardenedEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.mimir.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.mimir.values .) }}
 
 routes:
   inbound:
@@ -84,19 +95,19 @@ routes:
           protocol: TCP
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
   controlPlaneCidr: {{ .Values.networkPolicies.controlPlaneCidr }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   egress:
-    {{- if and $kafkaEnabled $kafkaBrokerNetworkCIDR }}
     definitions:
+      {{- $egressDefs := .Values.networkPolicies.egress.definitions | deepCopy }}
+      {{- if and $kafkaEnabled $kafkaBrokerNetworkCIDR }}
       {{- /* Override kafka-subnets with the specific broker CIDR and only the configured port */}}
-      kafka-subnets:
-        to:
-          - ipBlock:
-              cidr: {{ $kafkaBrokerNetworkCIDR }}
-        ports:
-          - port: {{ $kafkaBrokerPort }}
-            protocol: TCP
-    {{- end }}
+      {{- $kafkaDef := dict "to" (list (dict "ipBlock" (dict "cidr" $kafkaBrokerNetworkCIDR))) "ports" (list (dict "port" $kafkaBrokerPort "protocol" "TCP")) }}
+      {{- $_ := set $egressDefs "kafka-subnets" $kafkaDef }}
+      {{- end }}
+      {{ $egressDefs | toYaml | nindent 6 }}
     from:
       mimir:
         to:
@@ -136,6 +147,7 @@ networkPolicies:
             kubeAPI: {{ $minioEnabled }}
 
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       mimir:[15020]:
         from:
@@ -217,10 +229,9 @@ upstream:
         name: mimir-objstore-secret
     {{- end }}
 {{- end }}
+{{- if or $minioEnabled $s3Enabled $kafkaEnabled }}
   mimir:
     structuredConfig:
-      limits:
-        name_validation_scheme: utf8
       {{- if or $minioEnabled $s3Enabled }}
       {{- if $mimirEnterpriseEnabled }}
       admin_client:
@@ -264,6 +275,7 @@ upstream:
       ingester:
         push_grpc_method_enabled: false
       {{- end }}
+{{- end }}
   {{- if and (or $minioEnabled $s3Enabled $kafkaEnabled) .Values.addons.mimir.serviceAccountAnnotations }}
   serviceAccount:
     annotations:
