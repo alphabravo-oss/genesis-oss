@@ -1,0 +1,392 @@
+#########################
+# Disable Core Packages #
+#########################
+alloy:
+  enabled: false
+monitoring:
+  enabled: false
+grafana:
+  enabled: false
+kyvernoReporter:
+  enabled: false
+neuvector:
+  enabled: false
+loki:
+  enabled: false
+tempo:
+  enabled: false
+kiali:
+  enabled: false
+addons:
+  minioOperator:
+    enabled: false
+########################
+# Required for package #
+########################
+kyverno:
+  values:
+    bbtests:
+      enabled: true
+kyvernoPolicies:
+  values:
+    bbtests:
+      enabled: true
+      chainsawEnabled: false
+      kyvernoCliEnabled: false
+      legacyEnabled: true
+    # Test fixtures use these container names to test excludeContainers behavior
+    excludeContainers:
+      - not-me
+      - or-me
+    # CPol test parameters — layered under the BB umbrella's test-values in CI.
+    # These override the chart's empty defaults with values that match the
+    # test fixture expectations (allowed IPs, paths, labels, etc.).
+    policies:
+      # Kyverno 1.17 rejects null preconditions rendered by these CPol
+      # templates (require-image-signature, require-non-root-user,
+      # require-non-root-group). Not worth fixing — these CPols will be
+      # deleted when their VPol replacements land.
+      require-image-signature:
+        enabled: false
+      require-non-root-user:
+        enabled: false
+      require-non-root-group:
+        enabled: false
+      # Without this exclusion, add-default-capability-drop mutates
+      # require-drop-all-capabilities test fixtures and those tests
+      # fail on unexpected securityContext.
+      add-default-capability-drop:
+        exclude:
+          any:
+            - resources:
+                namespaces:
+                  - default
+                names:
+                  - require-drop-all-capabilities*
+      # --- CPol test parameters -----------------------------------------------
+      # Each entry below feeds a CPol's allow/disallow/require list so test
+      # fixtures get the expected admission result. Remove each entry when
+      # its CPol is replaced by a VPol (VPol tests carry their own fixtures).
+      disallow-annotations:
+        parameters:
+          disallow:
+            - 'kyverno-policies-bbtest/test: disallowed'
+            - kyverno-policies-bbtest/disallowed
+      disallow-labels:
+        parameters:
+          disallow:
+            - 'kyverno-policies-bbtest/test: disallowed'
+            - kyverno-policies-bbtest/disallowed
+      require-annotations:
+        parameters:
+          require:
+            - 'kyverno-policies-bbtest/test: required'
+            - kyverno-policies-bbtest/required
+      require-labels:
+        parameters:
+          require:
+            - 'kyverno-policies-bbtest/test: required'
+            - kyverno-policies-bbtest/required
+      restrict-external-ips:
+        parameters:
+          allow:
+            - 192.168.0.1
+      restrict-external-names:
+        parameters:
+          allow:
+            - allowed
+      restrict-host-path-mount:
+        parameters:
+          allow:
+            - /tmp/allowed
+      restrict-host-path-mount-pv:
+        parameters:
+          allow:
+            - /tmp/allowed
+            - /var/lib/rancher/k3s/storage/pvc-*
+      restrict-host-path-write:
+        parameters:
+          allow:
+            - /tmp/allowed
+      restrict-host-ports:
+        parameters:
+          allow:
+            - '63999'
+            - '>= 64000 & < 65000'
+            - '> 65000'
+      # gitlab namespace uses non-registry1 images in CI
+      restrict-image-registries:
+        exclude:
+          any:
+            - resources:
+                namespaces:
+                  - gitlab
+    # Keep default package tests focused on the legacy CPol harness.
+    # CEL-only coverage lives in tests/test-cel-values.yaml.
+    celPoliciesBeta:
+      add-default-capability-drop-cel:
+        enabled: false
+      add-default-securitycontext-cel:
+        enabled: false
+      block-ephemeral-containers-cel:
+        enabled: false
+        validationFailureAction: Audit
+      clone-configs-cel:
+        enabled: false
+        parameters:
+          clone:
+            - name: clone-source
+              kind: ConfigMap
+              namespace: default
+      disallow-annotations-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          disallow:
+            - key: "kyverno-policies-bbtest/disallowed"
+            - key: "kyverno-policies-bbtest/test"
+              value: disallowed
+      disallow-auto-mount-service-account-token-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-deprecated-apis-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-host-namespaces-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-image-tags-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          disallow:
+            - latest
+      disallow-istio-injection-bypass-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-labels-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          disallow:
+            - key: "kyverno-policies-bbtest/disallowed"
+            - key: "kyverno-policies-bbtest/test"
+              value: disallowed
+      disallow-namespaces-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          disallow:
+            - bigbang
+            - default
+      disallow-nodeport-services-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-pod-exec-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-privilege-escalation-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-privileged-containers-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-rbac-on-default-serviceaccounts-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-selinux-options-cel:
+        enabled: false
+        validationFailureAction: Audit
+      disallow-tolerations-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          disallow:
+            - key: 'node-role\.kubernetes\.io/master'
+            - key: 'taint-with-value'
+              value: 'forbidden-value'
+            - key: 'taint-with-effect'
+              effect: 'PreferNoSchedule'
+      require-annotations-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          require:
+            - key: "app\\.kubernetes\\.io/name"
+            - key: "app\\.kubernetes\\.io/version"
+              value: v1
+            - key: "app\\.kubernetes\\.io/component"
+              value: "frontend|backend"
+      require-cpu-limit-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-drop-all-capabilities-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-image-signature-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-istio-on-namespaces-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-labels-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          require:
+            - key: "app\\.kubernetes\\.io/name"
+            - key: "app\\.kubernetes\\.io/version"
+              value: v1
+            - key: "app\\.kubernetes\\.io/component"
+              value: "frontend|backend"
+      require-memory-limit-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-non-root-group-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-non-root-user-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-probes-cel:
+        enabled: false
+        validationFailureAction: Audit
+      restrict-apparmor-cel:
+        enabled: false
+        validationFailureAction: Audit
+      restrict-capabilities-cel:
+        enabled: false
+        validationFailureAction: Audit
+      restrict-proc-mount-cel:
+        enabled: false
+        validationFailureAction: Audit
+      restrict-seccomp-cel:
+        enabled: false
+        validationFailureAction: Audit
+      restrict-selinux-type-cel:
+        enabled: false
+        validationFailureAction: Audit
+      restrict-sysctls-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-requests-equal-limits-cel:
+        enabled: false
+        validationFailureAction: Audit
+      require-ro-rootfs-cel:
+        enabled: false
+        validationFailureAction: Audit
+      restrict-external-ips-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - '192\.168\.0\.1'
+      restrict-external-names-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - '.*\.allowed\.internal'
+      restrict-group-id-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - min: 1000
+          deny:
+            - min: 1500
+              max: 1599
+      restrict-host-path-mount-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - /tmp/allowed
+            - /var/log/.*
+      restrict-host-path-mount-pv-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - /tmp/allowed
+            - /var/lib/rancher/k3s/storage/pvc-*
+      restrict-host-path-write-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - /tmp/allowed
+            - /var/log/.*
+      restrict-host-ports-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - min: 63999
+              max: 63999
+            - min: 64000
+              max: 64999
+            - min: 65001
+      restrict-image-registries-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - registry1.dso.mil/
+      restrict-user-id-cel:
+        enabled: false
+        validationFailureAction: Audit
+        parameters:
+          allow:
+            - min: 1000
+          deny:
+            - min: 1500
+              max: 1599
+      restrict-volume-types-cel:
+        enabled: false
+        validationFailureAction: Audit
+      update-automountserviceaccounttokens-cel:
+        enabled: false
+        autogenControllers: "Deployment,StatefulSet"
+        namespaces:
+          - namespace: update-automountserviceaccounttokens-2
+            serviceAccounts:
+              - update-token-automount-2
+              - update-token-automount-wild-.*
+            pods:
+              allow:
+                - api-access-allowed-.*
+                - api-access-overlap-.*
+              deny:
+                - api-access-denied-.*
+                - api-access-overlap-.*
+      update-automountserviceaccounttokens-default-cel:
+        enabled: false
+        namespaces:
+          - update-automountserviceaccounttokens-default-2
+      update-image-pull-policy-cel:
+        enabled: false
+        parameters:
+          # Chained config so the live/offline suites exercise the from filter
+          # and last-wins ordering, not just an unconditional set. Entry 1
+          # forces every tagged image to Never; entry 2 rewrites Never to
+          # Always. A tagged image ending at Always proves entry 2's from
+          # matched entry 1's output (chaining). Net result still matches the
+          # simple fixtures: tagged -> Always, digest -> IfNotPresent.
+          update:
+            - to: Never
+            - from: Never
+              to: Always
+      update-image-registry-cel:
+        enabled: false
+        parameters:
+          # `from` is an RE2 regex (anchored, escaped dots here). Chained so the
+          # suite exercises multi-entry ordering: entry 1 rewrites
+          # replace.image.registry -> intermediate.registry, entry 2 rewrites
+          # that to registry1.dso.mil. An image ending at registry1.dso.mil
+          # proves entry 2's from matched entry 1's output (chaining).
+          update:
+            - from: '^replace\.image\.registry'
+              to: intermediate.registry
+            - from: '^intermediate\.registry'
+              to: registry1.dso.mil

@@ -1,0 +1,158 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: update-automountserviceaccounttokens-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01-policy-ready
+    try:
+    - apply:
+        file: namespace.yaml
+    # template: false so chainsaw doesn't try to evaluate the PolicyException's
+    # CEL matchCondition (which starts with "(") as a JMESPath template.
+    - apply:
+        file: ../policy.yaml
+        template: false
+    - assert:
+        file: policy-ready.yaml
+    - assert:
+        file: policy-ready-serviceaccounts.yaml
+
+  - name: step-02-sa-configured-regex-match
+    try:
+    - apply:
+        file: sa-target.yaml
+    - assert:
+        file: sa-target-mutated.yaml
+
+  - name: step-03-sa-default-excluded
+    try:
+    - apply:
+        file: sa-default.yaml
+    - assert:
+        file: sa-default-unchanged.yaml
+
+  - name: step-04-sa-not-in-regex
+    try:
+    - apply:
+        file: sa-unmatched.yaml
+    - assert:
+        file: sa-unmatched-unchanged.yaml
+
+  - name: step-05-sa-regex-match-in-unconfigured-ns
+    try:
+    - apply:
+        file: sa-other-ns.yaml
+    - assert:
+        file: sa-other-ns-unchanged.yaml
+
+  - name: step-06-pod-deny
+    try:
+    - apply:
+        file: pod-denied.yaml
+    - assert:
+        file: pod-denied-mutated.yaml
+
+  - name: step-07-pod-allow
+    try:
+    - apply:
+        file: pod-allowed.yaml
+    - assert:
+        file: pod-allowed-mutated.yaml
+
+  - name: step-08-pod-overlap-deny-wins
+    try:
+    - apply:
+        file: pod-overlap.yaml
+    - assert:
+        file: pod-overlap-mutated.yaml
+
+  - name: step-09-pod-unmatched-in-configured-ns
+    try:
+    - apply:
+        file: pod-unmatched.yaml
+    - assert:
+        file: pod-unmatched-unchanged.yaml
+
+  - name: step-10-pod-in-unconfigured-ns
+    try:
+    - apply:
+        file: pod-other-ns.yaml
+    - assert:
+        file: pod-other-ns-unchanged.yaml
+
+  - name: step-11-deployment-allow
+    try:
+    - apply:
+        file: deployment-allowed.yaml
+    - assert:
+        file: deployment-allowed-mutated.yaml
+
+  - name: step-12-deployment-deny
+    try:
+    - apply:
+        file: deployment-denied.yaml
+    - assert:
+        file: deployment-denied-mutated.yaml
+
+  - name: step-13-statefulset-allow
+    try:
+    - apply:
+        file: statefulset-allowed.yaml
+    - assert:
+        file: statefulset-allowed-mutated.yaml
+
+  - name: step-14-statefulset-deny
+    try:
+    - apply:
+        file: statefulset-denied.yaml
+    - assert:
+        file: statefulset-denied-mutated.yaml
+
+  - name: step-15-daemonset-not-in-autogen-scope
+    try:
+    - apply:
+        file: daemonset-allowed.yaml
+    - assert:
+        file: daemonset-allowed-unchanged.yaml
+
+  - name: step-16-daemonset-pod-generatename-deny
+    try:
+    - apply:
+        file: daemonset-denied.yaml
+    - assert:
+        file: daemonset-denied-pod-mutated.yaml
+
+  - name: step-17-enforce-disallow-vpol
+    try:
+    - apply:
+        file: disallow-vpol-enforce.yaml
+    - assert:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: ValidatingPolicy
+          metadata:
+            name: disallow-auto-mount-service-account-token-cel
+          status:
+            conditionStatus:
+              ready: true
+
+  - name: step-18-allowlisted-pod-exempted
+    try:
+    - apply:
+        file: pod-exempt.yaml
+    - assert:
+        file: pod-exempt-mutated.yaml
+
+  - name: step-19-unlisted-token-pod-denied
+    try:
+    - apply:
+        file: pod-token-unlisted.yaml
+        expect:
+        - check:
+            ($error != null): true
+            (contains($error, 'disallow-auto-mount-service-account-token-cel')): true

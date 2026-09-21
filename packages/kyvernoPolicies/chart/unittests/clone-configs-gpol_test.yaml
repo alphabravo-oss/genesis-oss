@@ -1,0 +1,244 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: clone-configs-cel GeneratingPolicy
+templates:
+  - templates/other-gpol/clone-configs-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails fast when enabled but clone list is empty
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "clone-configs-cel.enabled is true but clone-configs-cel.parameters.clone is empty"
+
+  - it: should render a GeneratingPolicy with one clone item
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: my-config
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - isKind:
+          of: GeneratingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: clone-configs-cel
+      - lengthEqual:
+          path: spec.variables
+          count: 2
+      - equal:
+          path: spec.variables[1].name
+          value: clone0
+      - equal:
+          path: spec.variables[1].expression
+          value: "resource.Get('v1', 'configmaps', 'default', 'my-config')"
+      - lengthEqual:
+          path: spec.generate
+          count: 1
+      - equal:
+          path: spec.generate[0].expression
+          value: "generator.Apply(variables.targetNs, [variables.clone0])"
+
+  - it: should render multiple clone items with correct resource types
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: my-config
+                kind: ConfigMap
+                namespace: default
+              - name: registry-creds
+                kind: Secret
+                namespace: kyverno
+    asserts:
+      - lengthEqual:
+          path: spec.variables
+          count: 3
+      - equal:
+          path: spec.variables[1].expression
+          value: "resource.Get('v1', 'configmaps', 'default', 'my-config')"
+      - equal:
+          path: spec.variables[2].expression
+          value: "resource.Get('v1', 'secrets', 'kyverno', 'registry-creds')"
+      - lengthEqual:
+          path: spec.generate
+          count: 2
+
+  - it: fails fast on unsupported clone kinds
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: my-config
+                kind: Service
+                namespace: default
+    asserts:
+      - failedTemplate:
+          errorMessage: 'clone-configs-cel.parameters.clone[0].kind must be ConfigMap or Secret, got "Service"'
+
+  - it: "severity: defaults to low"
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - equal:
+          path: metadata.annotations["policies.kyverno.io/severity"]
+          value: "low"
+
+  - it: has no failurePolicy (GPol CRD does not support it)
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - notExists:
+          path: spec.failurePolicy
+
+  - it: has no validationActions (GPol does not validate)
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - notExists:
+          path: spec.validationActions
+
+  - it: has no autogen (GPol does not target pods)
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - notExists:
+          path: spec.autogen
+
+  - it: synchronize defaults to true
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - equal:
+          path: spec.evaluation.synchronize.enabled
+          value: true
+
+  - it: synchronize can be disabled
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          synchronize: false
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - equal:
+          path: spec.evaluation.synchronize.enabled
+          value: false
+
+  - it: generateExisting renders when true
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          generateExisting: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - equal:
+          path: spec.evaluation.generateExisting.enabled
+          value: true
+
+  - it: generateExisting absent when false (default)
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - notExists:
+          path: spec.evaluation.generateExisting
+
+  - it: has no background field (GPol CRD does not support it)
+    set:
+      celPoliciesBeta:
+        clone-configs-cel:
+          enabled: true
+          parameters:
+            clone:
+              - name: test
+                kind: ConfigMap
+                namespace: default
+    asserts:
+      - notExists:
+          path: spec.evaluation.background

@@ -1,0 +1,75 @@
+<!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
+# istiod
+
+![Version: 1.30.4-bb.0](https://img.shields.io/badge/Version-1.30.4--bb.0-informational?style=flat-square) ![AppVersion: 1.30.4](https://img.shields.io/badge/AppVersion-1.30.4-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+
+Helm chart for istio control plane
+
+## Upstream References
+
+- <https://github.com/istio/istio>
+
+## Upstream Release Notes
+
+- [Find upstream chart's release notes and CHANGELOG here](https://istio.io/latest/news/releases)
+
+## Learn More
+
+- [Application Overview](docs/overview.md)
+- [Other Documentation](docs/)
+
+## Pre-Requisites
+
+- Kubernetes Cluster deployed
+- Kubernetes config installed in `~/.kube/config`
+- Helm installed
+
+Install Helm
+
+https://helm.sh/docs/intro/install/
+
+## Deployment
+
+- Clone down the repository
+- cd into directory
+
+```bash
+helm install istiod chart/
+```
+
+## Values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| networkPolicies.enabled | bool | `false` | Enable or disable the bundled network policies |
+| networkPolicies.prependReleaseName | bool | `true` |  |
+| networkPolicies.controlPlaneCIDRs | list | `[]` | Configure which CIDRs istiod will be allowed to connect to when accessing the kube-apiserver; if none are specified, the chart will look up the default kubernetes EndpointSlice and use the addresses found there |
+| networkPolicies.egress | object | `{"defaults":{"allowInNamespace":{"enabled":false},"allowIstiod":{"enabled":false}},"from":{"istiod":{"to":{"definition":{"kubeAPI":true}}}}}` | A list of additional network policies to create in the release namespace |
+| networkPolicies.ingress.defaults.allowInNamespace.enabled | bool | `false` |  |
+| networkPolicies.ingress.to.istiod:15014.from.k8s.kiali/kiali | bool | `true` |  |
+| networkPolicies.ingress.to.istiod:15014.from.k8s.monitoring/prometheus | bool | `true` |  |
+| networkPolicies.ingress.to.istiod:[443,15017].from.cidr."0.0.0.0/0" | bool | `true` |  |
+| networkPolicies.ingress.to.istiod:[15010,15012].from.k8s.* | bool | `true` |  |
+| networkPolicies.additionalPolicies | list | `[]` |  |
+| additionalEnvoyFilters | list | `[]` | A list of additional EnvoyFilters to create in the release namespace. Gateway-scoped classification banner configuration is managed by the istio-gateway package. |
+| monitoring.enabled | bool | `true` | Enable or disable the bundled monitoring components and network policies |
+| defaultSecurityHeaders.enabled | bool | `true` | Enable or disable the default security headers |
+| istio.enabled | bool | `true` |  |
+| istio.prependReleaseName | bool | `true` |  |
+| istio.sidecar.enabled | bool | `true` |  |
+| istio.sidecar.outboundTrafficPolicyMode | string | `"REGISTRY_ONLY"` |  |
+| istio.mtls.mode | string | `"STRICT"` |  |
+| istio.serviceEntries.custom | list | `[]` |  |
+| istio.authorizationPolicies.enabled | bool | `true` |  |
+| istio.authorizationPolicies.generateFromNetpol | bool | `true` |  |
+| istio.authorizationPolicies.custom | list | `[]` |  |
+| upstream | object | Upstream chart values | Values to pass to [the upstream istiod chart](https://github.com/istio/istio/blob/master/manifests/charts/istio-control/istio-discovery/values.yaml) |
+
+## Contributing
+
+Please see the [contributing guide](./CONTRIBUTING.md) if you are interested in contributing.
+
+---
+
+_This file is programatically generated using `helm-docs` and some BigBang-specific templates. The `gluon` repository has [instructions for regenerating package READMEs](https://repo1.dso.mil/big-bang/product/packages/gluon/-/blob/master/docs/bb-package-readme.md)._
+

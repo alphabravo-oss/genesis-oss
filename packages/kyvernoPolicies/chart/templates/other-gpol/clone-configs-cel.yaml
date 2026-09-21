@@ -1,0 +1,70 @@
+{{- $name := "clone-configs-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $cloneItems := dig $name "parameters" "clone" (list) .Values.celPoliciesBeta }}
+{{- if not $cloneItems }}
+{{- fail (printf "%s.enabled is true but %s.parameters.clone is empty" $name $name) }}
+{{- end }}
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Clone ConfigMaps and Secrets
+    policies.kyverno.io/category: Helper
+    policies.kyverno.io/severity: {{ default "low" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: ConfigMap,Secret
+    policies.kyverno.io/minversion: 1.17.0
+    policies.kyverno.io/description: >-
+      Configuration held in ConfigMaps or Secrets, like registry credentials,
+      often need to exist in multiple Namespaces so Pods there have access.
+      This policy will copy each listed ConfigMap or Secret into new Namespaces
+      when they are created. With synchronize enabled, updates to the source
+      are pushed to every copy.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: Big Bang custom policy
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    {{- if dig $name "generateExisting" false .Values.celPoliciesBeta }}
+    generateExisting:
+      enabled: true
+    {{- end }}
+    synchronize:
+      enabled: {{ dig $name "synchronize" true .Values.celPoliciesBeta }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE"]
+        resources:   ["namespaces"]
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespacesBy" (merge (dict "name" $name "field" "object.metadata.name") .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+    - name: targetNs
+      expression: "object.metadata.name"
+    {{- range $i, $v := $cloneItems }}
+    {{- $kind := default "ConfigMap" $v.kind }}
+    {{- if not (or (eq $kind "ConfigMap") (eq $kind "Secret")) }}
+    {{- fail (printf "%s.parameters.clone[%d].kind must be ConfigMap or Secret, got %q" $name $i $kind) }}
+    {{- end }}
+    {{- /* Allow templated source namespaces so callers can point at release-
+          specific namespaces. Keep names literal to avoid hidden lookup
+          indirection in the generated resource.Get() keys. */}}
+    - name: {{ printf "clone%d" $i }}
+      expression: {{ printf "resource.Get('v1', '%s', '%s', '%s')" (ternary "configmaps" "secrets" (eq $kind "ConfigMap")) (tpl $v.namespace $) $v.name | quote }}
+    {{- end }}
+  generate:
+    {{- range $i, $v := $cloneItems }}
+    - expression: {{ printf "generator.Apply(variables.targetNs, [variables.clone%d])" $i | quote }}
+    {{- end }}
+{{- end -}}

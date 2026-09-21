@@ -1,0 +1,15 @@
+{{- if (index .Values "bb-common").istio.enabled }}
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: cert-manager-webhook-permissive
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
+  portLevelMtls:
+    "10250":
+      mode: PERMISSIVE
+{{- end }}

@@ -1,0 +1,40 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-selinux-options-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-selinux-options-cel
+  resources:
+  - badpod-user-pod-level
+  - badpod-role-container
+  - badpod-user-initcontainer
+  - badpod-role-pod-and-container
+  - badpod-role-ephemeral
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-selinux-options-cel
+  resources:
+  - baddeployment-user
+  - baddeployment-role-container
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-selinux-options-cel
+  resources:
+  - goodpod-no-selinux
+  - goodpod-allowed-fields-only
+  - goodpod-type-and-level-on-containers
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-selinux-options-cel
+  resources:
+  - gooddeployment-no-selinux
+  result: pass

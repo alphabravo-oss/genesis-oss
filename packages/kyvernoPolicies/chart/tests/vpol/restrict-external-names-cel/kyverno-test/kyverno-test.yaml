@@ -1,0 +1,22 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-external-names-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Service
+  policy: restrict-external-names-cel
+  resources:
+  - bad-disallowed-name
+  result: fail
+- isValidatingPolicy: true
+  kind: Service
+  policy: restrict-external-names-cel
+  resources:
+  - good-allowed-name
+  - good-clusterip-service
+  result: pass

@@ -1,0 +1,64 @@
+{{- $name := "disallow-image-tags-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $disallow := dig $name "parameters" "disallow" (list) .Values.celPoliciesBeta -}}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Disallow Image Tags
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Mutable tags, like 'latest', can lead to unexpected errors if the
+      image changes. A best practice is to use an immutable tag that maps to
+      a specific version of an application Pod. This policy validates that the image
+      specifies a tag and that it is not in the list of disallowed tags.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+  - name: disallowedTags
+    expression: {{ $disallow | toJson | quote }}
+  - name: allContainers
+    expression: >-
+      {{ include "bb-kyverno-policies.vpol-allContainers" (merge (dict "name" $name) .) }}
+  validations:
+    - expression: >-
+        variables.allContainers.all(c, c.image.contains(':'))
+      message: "Images without tags are mutable and not allowed."
+    - expression: >-
+        variables.allContainers.all(c, variables.disallowedTags.all(t, !c.image.endsWith(':' + t)))
+      message: "Using a mutable image tag e.g. 'latest' is not allowed."
+{{- end -}}

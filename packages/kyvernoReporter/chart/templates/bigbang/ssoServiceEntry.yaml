@@ -1,0 +1,18 @@
+{{- /* Render Istio ServiceEntry for SSO */ -}}
+{{- if .Values.upstream.ui.openIDConnect.enabled -}}
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: {{ include "kyvernoReporter.hostnameFromUri" (index .Values.upstream.ui "openIDConnect" "discoveryUrl" ) | replace "." "-" }}-service-entry
+  namespace: {{ $.Release.Namespace }}
+spec:
+  exportTo:
+    - "."
+  hosts:
+    - {{ include "kyvernoReporter.hostnameFromUri" (index .Values.upstream.ui "openIDConnect" "discoveryUrl" ) }}
+  location: MESH_EXTERNAL
+  ports:
+    - number: 443
+      protocol: TLS
+      name: https
+{{- end -}}

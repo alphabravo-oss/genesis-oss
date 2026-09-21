@@ -1,0 +1,57 @@
+suite: Istio Gateway Classification Banner EnvoyFilter
+templates:
+  - templates/bigbang/istio/envoy-filters/classification-banner.yaml
+release:
+  name: public-ingressgateway
+  namespace: istio-gateway
+tests:
+  - it: should not create a classification banner by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not create a classification banner when enabled hosts are empty
+    set:
+      classificationBanner:
+        enabled: true
+        classificationLevel: secret
+        text: SECRET
+        addFooter: true
+        enabledHosts: []
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create a gateway classification banner for configured hosts
+    set:
+      classificationBanner:
+        enabled: true
+        classificationLevel: secret
+        text: SECRET
+        addFooter: true
+        enabledHosts:
+          - app.example.mil
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: classification-banner-public-ingressgateway
+      - equal:
+          path: metadata.namespace
+          value: istio-gateway
+      - equal:
+          path: spec.workloadSelector.labels.app
+          value: public-ingressgateway
+      - equal:
+          path: spec.configPatches[0].match.context
+          value: GATEWAY
+      - equal:
+          path: spec.configPatches[0].patch.value.name
+          value: envoy.lua.classification-banner-gateway
+      - matchRegex:
+          path: spec.configPatches[0].patch.value.typed_config.inlineCode
+          pattern: app\.example\.mil
+      - matchRegex:
+          path: spec.configPatches[0].patch.value.typed_config.inlineCode
+          pattern: SECRET

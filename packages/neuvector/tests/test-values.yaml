@@ -1,0 +1,119 @@
+# exporter:
+#   enabled: true
+
+addons:
+  minioOperator:
+    enabled: false
+########################
+# Required for package #
+########################
+networkPolicies:
+  enabled: true
+certManager:
+  enabled: true
+# To check prometheus service monitor connectivity, we need to enable monitoring
+monitoring:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+    networkPolicies:
+      ingress:
+        to:
+          prometheus:9090:
+            from:
+              k8s:
+                neuvector-neuvector-script-sa@neuvector/script-test:
+                  enabled: true
+                  podSelector:
+                    matchLabels:
+                      helm-test: enabled
+neuvector:
+  enabled: true
+  values:
+    networkPolicies:
+      enabled: true
+      egress:
+        from:
+          script-tests-to-prometheus:
+            podSelector:
+              matchLabels:
+                helm-test: enabled
+            to:
+              k8s:
+                monitoring/prometheus:9090: true
+          script-tests-to-kube-api:
+            podSelector:
+              matchLabels:
+                helm-test: enabled
+            to:
+              definition:
+                kubeAPI: true
+      ingress:
+        to:
+          exporter:8068:
+            podSelector:
+              matchLabels:
+                app: neuvector-prometheus-exporter-pod
+            from:
+              k8s:
+                monitoring/prometheus: true
+    bbtests:
+      enabled: true
+      scripts:
+        enabled: true
+      updater:
+        enabled: true
+    upstream:
+      monitor:
+        install: true
+        exporter:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+          svc:
+            enabled: true
+kyvernoPolicies:
+  values:
+    bbtests:
+      enabled: true
+    additionalPolicyExceptions:
+      neuvector-disallow-auto-mount-service-account-token:
+        enabled: true
+        kind: PolicyException
+        namespace: kyverno
+        annotations:
+          policies.kyverno.io/title: Neuvector Policy Exception
+          policies.kyverno.io/category: Neuvector
+          policies.kyverno.io/subject: Pod
+          policies.kyverno.io/description: >-
+            Automount Service Account Token for Neuvector script test.
+        spec:
+          exceptions:
+          - policyName: disallow-auto-mount-service-account-token
+            ruleNames:
+            - automount-pods
+          - policyName: update-automountserviceaccounttokens-default
+            ruleNames:
+            - mutate-default-serviceaccount-tokens
+          - policyName: update-automountserviceaccounttokens
+            ruleNames:
+            - disables-serviceaccounts
+            - disable-pods
+            - enable-pods
+            - enable-statefulset-and-deployments
+            - disable-statefulsets-and-deployments
+
+          match:
+            any:
+            - resources:
+                kinds:
+                - Pod
+                namespaces:
+                - neuvector
+                names:
+                - "neuvector-neuvector-script-test"
+kyverno:
+  values:
+    bbtests:
+      enabled: false

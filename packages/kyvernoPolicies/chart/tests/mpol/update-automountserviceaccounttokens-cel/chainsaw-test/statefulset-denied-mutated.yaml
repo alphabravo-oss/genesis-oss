@@ -1,0 +1,9 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: api-access-denied-stateful
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: false

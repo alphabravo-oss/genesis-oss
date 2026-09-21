@@ -1,0 +1,91 @@
+# Pod explicitly allowed to mount the token.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-access-allowed-pod
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+# Pod explicitly denied token automount.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-access-denied-pod
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  automountServiceAccountToken: true
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+# Pod outside allow/deny lists should remain untouched.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-access-ignored-pod
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-access-allowed-deployment
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-access-allowed-deployment
+  template:
+    metadata:
+      labels:
+        app: api-access-allowed-deployment
+    spec:
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: api-access-denied-statefulset
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  serviceName: api-access-denied-statefulset
+  selector:
+    matchLabels:
+      app: api-access-denied-statefulset
+  template:
+    metadata:
+      labels:
+        app: api-access-denied-statefulset
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-access-ignored-deployment
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-access-ignored-deployment
+  template:
+    metadata:
+      labels:
+        app: api-access-ignored-deployment
+    spec:
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7

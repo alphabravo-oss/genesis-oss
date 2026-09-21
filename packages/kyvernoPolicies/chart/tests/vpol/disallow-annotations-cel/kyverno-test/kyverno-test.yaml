@@ -1,0 +1,36 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-annotations-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-annotations-cel
+  resources:
+  - badpod-disallowed-key
+  - badpod-key-value-match
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-annotations-cel
+  resources:
+  - baddeployment-disallowed-key
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-annotations-cel
+  resources:
+  - goodpod-no-annotations
+  - goodpod-unrelated-annotation
+  - goodpod-key-value-mismatch
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-annotations-cel
+  resources:
+  - gooddeployment-no-annotations
+  result: pass

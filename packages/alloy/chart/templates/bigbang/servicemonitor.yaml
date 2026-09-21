@@ -1,0 +1,40 @@
+{{- if .Values.serviceMonitors -}}
+  {{- range .Values.serviceMonitors }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: metrics
+    {{- with .additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  endpoints:
+  - port: http-metrics
+    scheme: {{ .scheme | default "http" | lower }}
+    honorLabels: true
+    {{- if .interval }}
+    interval: {{ .interval }}
+    {{- end }}
+    {{- if .metricRelabelings }}
+    metricRelabelings:
+    {{ tpl (toYaml .metricRelabelings | nindent 6) . }}
+    {{- end }}
+    {{- if .relabelings }}
+    relabelings:
+    {{ tpl (toYaml .relabelings | nindent 6) . }}
+    {{- end }}
+    {{- with .tlsConfig }}
+    tlsConfig:
+    {{- toYaml . | nindent 6 }}
+    {{- end }}
+  selector:
+    matchLabels:
+      {{- with .selectorLabels }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+---
+  {{- end }}
+{{- end }}

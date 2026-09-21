@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tagged-pod
+spec:
+  restartPolicy: Never
+  terminationGracePeriodSeconds: 0
+  initContainers:
+    - name: init
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+      command: ["true"]
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+      command: ["true"]

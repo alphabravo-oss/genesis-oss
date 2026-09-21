@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: container01
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+          readinessProbe:
+            exec:
+              command: ["true"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["true"]
+            periodSeconds: 10

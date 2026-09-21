@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-access-allowed-exempt
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  automountServiceAccountToken: true

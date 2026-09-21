@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-hostpath-volume
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+    volumeMounts:
+    - name: host
+      mountPath: /data
+  volumes:
+  - name: host
+    hostPath:
+      path: /tmp

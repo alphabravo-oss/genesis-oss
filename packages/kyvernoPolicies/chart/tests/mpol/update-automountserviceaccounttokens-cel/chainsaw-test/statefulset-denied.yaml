@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: api-access-denied-stateful
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  serviceName: api-access-denied-stateful
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-access-denied-stateful
+  template:
+    metadata:
+      labels:
+        app: api-access-denied-stateful
+    spec:
+      automountServiceAccountToken: true
+      terminationGracePeriodSeconds: 0
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+          command: ["true"]
+          securityContext:
+            capabilities:
+              drop:
+                - ALL

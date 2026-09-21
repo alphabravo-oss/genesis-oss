@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+#
+# BB policy: require-istio-on-namespaces-cel
+# Verifies that Namespace resources missing either the istio-injection label
+# or the istio.io/dataplane-mode ambient label are rejected by live admission.
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-istio-on-namespaces-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: ../policy.yaml
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: ValidatingPolicy
+          metadata:
+            name: require-istio-on-namespaces-cel
+          spec:
+            validationActions:
+             - Deny
+            matchConditions:
+              - name: scope-to-test-ns
+                expression: object.metadata.name.startsWith('require-istio-on-namespaces-')
+    - assert:
+        file: policy-ready.yaml
+  - name: step-02
+    try:
+    - apply:
+        dryRun: true
+        expect:
+        - check:
+            ($error != null): true
+            (contains($error, 'validate.kyverno.svc')): true
+            (contains($error, 'require-istio-on-namespaces-cel')): true
+        file: namespace-bad.yaml
+    - apply:
+        dryRun: true
+        file: namespace-good.yaml

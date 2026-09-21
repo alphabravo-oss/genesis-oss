@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "issuers": {
+      "type": "object",
+      "required": ["selfSigned", "letsEncrypt"],
+      "properties": {
+        "selfSigned": {
+          "type": "object",
+          "required": ["enabled", "createOnInstall", "scope", "name", "labels", "annotations"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "createOnInstall": { "type": "boolean" },
+            "scope": { "type": "string" },
+            "name": { "$ref": "#/definitions/resourceName" },
+            "labels": { "$ref": "#/definitions/stringMap" },
+            "annotations": { "$ref": "#/definitions/stringMap" }
+          }
+        },
+        "letsEncrypt": {
+          "type": "object",
+          "required": [
+            "enabled",
+            "createOnInstall",
+            "scope",
+            "name",
+            "labels",
+            "annotations",
+            "environment",
+            "email",
+            "server",
+            "privateKeySecretName",
+            "solvers",
+            "networking"
+          ],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "createOnInstall": { "type": "boolean" },
+            "scope": { "type": "string" },
+            "name": { "$ref": "#/definitions/resourceName" },
+            "labels": { "$ref": "#/definitions/stringMap" },
+            "annotations": { "$ref": "#/definitions/stringMap" },
+            "environment": { "type": "string" },
+            "email": { "type": "string" },
+            "server": { "type": "string" },
+            "privateKeySecretName": { "$ref": "#/definitions/resourceName" },
+            "solvers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "http01": { "type": "object" },
+                  "dns01": { "type": "object" },
+                  "selector": { "type": "object" }
+                }
+              }
+            },
+            "networking": {
+              "type": "object",
+              "required": ["controllerEgress", "serviceEntry"],
+              "properties": {
+                "controllerEgress": {
+                  "type": "object",
+                  "required": ["enabled", "cidrs"],
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "cidrs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["cidr"],
+                        "properties": {
+                          "cidr": { "type": "string", "minLength": 1 },
+                          "except": {
+                            "type": "array",
+                            "items": { "type": "string", "minLength": 1 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "serviceEntry": {
+                  "type": "object",
+                  "required": ["enabled"],
+                  "properties": {
+                    "enabled": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["issuers"],
+  "definitions": {
+    "resourceName": {
+      "type": "string",
+      "maxLength": 253,
+      "pattern": "^$|^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\\.[a-z0-9](?:[-a-z0-9]*[a-z0-9])?)*$"
+    },
+    "namespaceName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$"
+    },
+    "stringMap": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

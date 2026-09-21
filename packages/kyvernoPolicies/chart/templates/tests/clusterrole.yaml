@@ -1,0 +1,99 @@
+{{- if dig "bbtests" "enabled" false (merge .Values dict) }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ template "kyverno-policies.name" . }}-bbtest-clusterrole
+  labels:
+    {{- include "kyverno-policies.test-labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+rules:
+- apiGroups:
+  - "kyverno.io"
+  resources:
+  - clusterpolicies
+  - policies
+  verbs:
+  - get
+  - list
+  - patch
+- apiGroups:
+  - "policies.kyverno.io"
+  resources:
+  - validatingpolicies
+  - mutatingpolicies
+  - generatingpolicies
+  - imagevalidatingpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+# Kyverno VPols create native K8s bindings asynchronously. Without
+# polling these, quiet_vpols can't confirm the action change took
+# effect before CPol tests start — risking false denials.
+- apiGroups:
+  - "admissionregistration.k8s.io"
+  resources:
+  - validatingadmissionpolicybindings
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - "*"
+  - ""
+  resources:
+  - configmaps
+  - cronjobs
+  - daemonsets
+  - deployments
+  - ingresses
+  - leases
+  - namespaces
+  - pods
+  - pods/attach
+  - pods/ephemeralcontainers
+  - pods/exec
+  - persistentvolumes
+  - secrets
+  - serviceaccounts
+  - services
+  - statefulsets
+  - flowschemas
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - "rbac.authorization.k8s.io"
+  resources:
+  - clusterroles
+  - clusterrolebindings
+  - rolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+- apiGroups:
+  - "node.k8s.io"
+  resources:
+  - runtimeclasses
+  verbs:
+  - create
+  - delete
+  - get
+- apiGroups:
+  - storage.k8s.io
+  resources:
+  - csistoragecapacities
+  verbs:
+  - watch
+  - list
+  - get
+  - create
+{{- end }}

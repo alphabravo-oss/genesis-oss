@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: disallow-selinux-options-cel ValidatingPolicy
+templates:
+  - templates/pod-security-vpol/baseline/disallow-selinux-options-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-selinux-options-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: disallow-selinux-options-cel
+
+  - it: should not render when disabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-selinux-options-cel:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        disallow-selinux-options-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: "defaults to two validations (user, role)"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-selinux-options-cel:
+          enabled: true
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 2
+
+  - it: "fails when disallow list is empty"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-selinux-options-cel:
+          enabled: true
+          parameters:
+            disallow: []
+    asserts:
+      - failedTemplate:
+          errorMessage: "disallow-selinux-options-cel is enabled but celPoliciesBeta.disallow-selinux-options-cel.parameters.disallow is empty — disable the policy or provide a list of SELinux fields to disallow"
+
+  - it: "generates one validation per disallow entry"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-selinux-options-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - user
+              - role
+              - type
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 3

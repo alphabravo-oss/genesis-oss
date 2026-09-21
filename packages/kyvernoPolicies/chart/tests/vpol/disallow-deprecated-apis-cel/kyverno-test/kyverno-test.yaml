@@ -1,0 +1,33 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-deprecated-apis-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Ingress
+  policy: disallow-deprecated-apis-cel
+  resources:
+  - good-ingress-v1
+  result: pass
+- isValidatingPolicy: true
+  kind: FlowSchema
+  policy: disallow-deprecated-apis-cel
+  resources:
+  - good-flowschema-v1
+  result: pass
+- isValidatingPolicy: true
+  kind: StorageClass
+  policy: disallow-deprecated-apis-cel
+  resources:
+  - good-storageclass-v1
+  result: pass
+- isValidatingPolicy: true
+  kind: HorizontalPodAutoscaler
+  policy: disallow-deprecated-apis-cel
+  resources:
+  - good-hpa-v2
+  result: pass

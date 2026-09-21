@@ -1,0 +1,41 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-tolerations-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-tolerations-cel
+  resources:
+  - pod-bad-by-key
+  - pod-bad-by-value
+  - pod-bad-by-effect
+  - pod-bad-keyless-exists
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-tolerations-cel
+  resources:
+  - pod-good-toleration
+  - pod-no-tolerations
+  result: pass
+- isValidatingPolicy: true
+  kind: RuntimeClass
+  policy: disallow-tolerations-cel-runtimeclass
+  resources:
+  - runtimeclass-bad-by-key
+  - runtimeclass-bad-by-value
+  - runtimeclass-bad-by-effect
+  - runtimeclass-bad-keyless-exists
+  result: fail
+- isValidatingPolicy: true
+  kind: RuntimeClass
+  policy: disallow-tolerations-cel-runtimeclass
+  resources:
+  - runtimeclass-good-toleration
+  - runtimeclass-no-tolerations
+  result: pass

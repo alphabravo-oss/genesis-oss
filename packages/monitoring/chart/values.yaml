@@ -1,0 +1,850 @@
+# Default values for kube-prometheus-stack.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+# Upstream values.yaml found here:
+# -- Values to pass to [the upstream kube-prometheus-stack chart](https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/values.yaml)
+# @default -- Upstream chart values
+upstream:
+  # These values are for the BigBang overrides
+  domain: dev.bigbang.mil
+
+  ## Provide a name in place of monitoring for `app:` labels
+  fullnameOverride: ""
+  nameOverride: "kube-prometheus-stack"
+
+  ## Install Prometheus Operator CRDs
+  crds:
+    enabled: false
+    ## The CRD upgrade job mitigates the limitation of helm not being able to upgrade CRDs.
+    ## The job will apply the CRDs to the cluster before the operator is deployed, using helm hooks.
+    ## It deploy a corresponding clusterrole, clusterrolebinding and serviceaccount to apply the CRDs.
+    ## This feature is in preview, off by default and may change in the future.
+    upgradeJob:
+      enabled: false
+      forceConflicts: false
+      image:
+        kubectl:
+          registry: registry1.dso.mil
+          repository: ironbank/opensource/kubernetes/kubectl
+          tag: v1.35
+          sha: ""
+          pullPolicy: IfNotPresent
+
+    imagePullSecrets:
+      - name: private-registry
+  alertmanager:
+    enabled: true
+
+    alertmanagerSpec:
+      # use IronBank image
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/opensource/prometheus/alertmanager
+        tag: v0.34.0
+        sha: ""
+        imagePullSecrets:
+          - name: private-registry
+      ## Define resources requests and limits for single Pods.
+      ## ref: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+        requests:
+          cpu: 100m
+          memory: 100Mi
+      externalUrl: "https://alertmanager.{{ .Values.domain }}"
+      tlsConfig: {}
+    serviceMonitor:
+      tlsConfig: {}
+
+  ## Using default values from https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml
+  grafana:
+    enabled: false
+    namespaceOverride: ""
+    # use IronBank image
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/big-bang/grafana/grafana-plugins
+      tag: 13.1.0
+      pullSecrets:
+        - private-registry
+    containerSecurityContext:
+      capabilities:
+        drop:
+          - ALL
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    testFramework:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/bats/bats
+      tag: 1.14.0
+      pullSecrets:
+        - private-registry
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        capabilites:
+          drop:
+            - ALL
+    ## Use the Big Bang Grafana values.yaml to set adminPassword for Grafana- https://repo1.dso.mil/big-bang/product/packages/grafana/-/blob/main/chart/values.yaml
+    adminUser: admin
+    adminPassword: prom-operator
+    grafana.ini:
+      # Required if enabling SSO
+      #server:
+      #root_url: https://grafana.{{ .Values.domain }}/
+      #Block is auto-set when using Umbrella
+      auth.generic_oauth:
+        enabled: false
+        client_id: grafana #this is a sample client_id, review docs/KEYCLOAK.md
+        client_secret: secret #this is a sample secret, review docs/KEYCLOAK.md
+        scopes: Grafana #this is a sample client scope, review docs/KEYCLOAK.md
+        auth_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/auth
+        token_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/token
+        api_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/userinfo
+        allow_sign_up: true
+        role_attribute_path: Viewer
+        # tls_skip_verify_insecure: false
+        # tls_client_cert: ""
+        # tls_client_key: ""
+        # tls_client_ca : /etc/oidc/ca.pem
+        # allowed_domains: mycompany.com mycompany.org
+        # empty_scopes: false
+      plugin.grafana-piechart-panel:
+        path: /var/lib/bb-plugins/piechart-panel
+      plugin.grafana-polystat-panel:
+        path: /var/lib/bb-plugins/polystat-panel
+      plugin.redis-datasource:
+        path: /var/lib/bb-plugins/redis-datasource
+    sidecar:
+      # use IronBank image
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/kiwigrid/k8s-sidecar
+        tag: 2.10.3
+        imagePullSecrets:
+          - name: private-registry
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+        requests:
+          cpu: 100m
+          memory: 100Mi
+      securityContext:
+        capabilities:
+          drop:
+            - ALL
+    downloadDashboardsImage:
+      registry: registry1.dso.mil
+      repository: ironbank/big-bang/base
+      tag: 2.1.0
+    ## Resource settings for above DownloadDashboards container
+    downloadDashboards:
+      resources:
+        limits:
+          cpu: 20m
+          memory: 20Mi
+        requests:
+          cpu: 20m
+          memory: 20Mi
+    ## Enable persistence using Persistent Volume Claims
+    ## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+    persistence:
+      type: pvc
+      enabled: false
+      # storageClassName: default
+      accessModes:
+        - ReadWriteOnce
+      size: 10Gi
+      # annotations: {}
+    initChownData:
+      ## If false, data ownership will not be reset at startup
+      ## This allows the prometheus-server to be run with an arbitrary user
+      ## Is not required for BigBang monitoring installations since permission/owership is fully stated
+      enabled: false
+      ## initChownData container image
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/redhat/ubi/ubi9-minimal
+        tag: "9.8"
+        sha: ""
+        pullPolicy: IfNotPresent
+        imagePullSecrets:
+          - name: private-registry
+      ## initChownData resource requests and limits
+      ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+      resources:
+        limits:
+          cpu: 100m
+          memory: 128Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+    serviceMonitor:
+      tlsConfig: {}
+
+  ## Configuration for kube-state-metrics sub-chart
+  ##
+  kube-state-metrics:
+    # use IronBank image
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/kubernetes/kube-state-metrics
+      tag: v2.20.0
+      imagePullSecrets:
+        - name: private-registry
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    rbac:
+      create: true
+    podSecurityPolicy:
+      enabled: false
+    securityContext:
+      runAsGroup: 65532
+      runAsUser: 65532
+      fsGroup: 65532
+    containerSecurityContext:
+      capabilities:
+        drop:
+          - ALL
+  ## Deploy node exporter as a daemonset to all nodes
+  nodeExporter:
+    enabled: true
+    serviceMonitor:
+      interval: ""
+    jobLabel: jobLabel
+
+  ## Configuration for prometheus-node-exporter subchart
+  prometheus-node-exporter:
+    ## Service Monitor attach metadata
+    serviceMonitor:
+      attachMetadata: {}
+    # set container SecurityContext
+    containerSecurityContext:
+      capabilities:
+        drop:
+          - ALL
+    # use IronBank image
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/prometheus/node-exporter
+      tag: v1.12.1
+      imagePullSecrets:
+        - name: private-registry
+      distroless: false
+    resources:
+      limits:
+        cpu: 200m
+        memory: 250Mi
+      requests:
+        cpu: 200m
+        memory: 250Mi
+    ## Disable the hostNetwork in order to resolve no-host-namespace violations. If not set, the prometheus-node-exporter default (hostNetwork: true) is used.
+    hostNetwork: false
+    ## Big Bang modification to resolve OPA violations (not available in upstream chart)
+    hostPID: false
+
+  ## Manages Prometheus and Alertmanager components
+  prometheusOperator:
+    enabled: true
+    ## Admission webhook support for PrometheusRules resources added in Prometheus Operator 0.30 can be enabled to prevent incorrectly formatted
+    ## rules from making their way into prometheus and potentially preventing the container from starting
+    admissionWebhooks:
+      # Use Ignore only on first install so PrometheusRule creation does not deadlock before the operator webhook service has endpoints.
+      # Upgrades fail closed once the operator should already be available.
+      failurePolicy: IgnoreOnInstallOnly
+      certManager:
+        enabled: true
+      containerSecurityContext:
+        capabilities:
+          drop:
+            - ALL
+      image: null # We don't use the prometheus-operator image for the webhook
+      patch:
+        enabled: false
+        # Legacy patch mode is disabled by default. Set all image fields when enabling it.
+        image:
+          registry: null
+          repository: null
+          tag: null
+          sha: null
+          pullPolicy: null
+        resources:
+          limits:
+            cpu: 50m
+            memory: 50Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+        containerSecurityContext:
+          capabilities:
+            drop:
+              - ALL
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+        serviceAccount:
+          create: true
+          automountServiceAccountToken: true
+      cleanupProxy:
+        image:
+          registry: registry1.dso.mil
+          repository: ironbank/big-bang/base
+          tag: 2.1.0
+          sha: ""
+          pullPolicy: IfNotPresent
+          imagePullSecrets:
+            - name: private-registry
+        resources:
+          limits:
+            cpu: 50m
+            memory: 50Mi
+          requests:
+            cpu: 50m
+            memory: 50Mi
+    resources:
+      limits:
+        cpu: 200m
+        memory: 512Mi
+      requests:
+        cpu: 200m
+        memory: 512Mi
+    ## Prometheus-operator image
+    # get image from ironbank
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/prometheus-operator/prometheus-operator
+      tag: v0.93.1
+      sha: ""
+      pullPolicy: IfNotPresent
+      imagePullSecrets:
+        - name: private-registry
+    ## Prometheus-config-reloader image to use for config and rule reloading
+    prometheusConfigReloader:
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/opensource/prometheus-operator/prometheus-config-reloader
+        tag: v0.93.1
+        sha: ""
+        imagePullSecrets:
+          - name: private-registry
+    ## Thanos side-car image when configured
+    thanosImage:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/thanos/thanos
+      tag: v0.42.4
+      sha: ""
+  ## Deploy a Prometheus instance
+  prometheus:
+    enabled: true
+    serviceAccount:
+      create: true
+    prometheusSpec:
+      ## Image of Prometheus.
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/opensource/prometheus/prometheus
+        tag: v3.14.0
+        sha: ""
+        imagePullSecrets:
+          - name: private-registry
+      ## External URL at which Prometheus will be reachable.
+      externalUrl: "https://prometheus.{{ .Values.domain }}"
+      ## If true, a nil or {} value for prometheus.prometheusSpec.ruleSelector will cause the
+      ## prometheus resource to be created with selectors based on values in the helm deployment,
+      ## which will also match the PrometheusRule resources created
+      ruleSelectorNilUsesHelmValues: false
+      ## If true, a nil or {} value for prometheus.prometheusSpec.serviceMonitorSelector will cause the
+      ## prometheus resource to be created with selectors based on values in the helm deployment,
+      ## which will also match the servicemonitors created
+      serviceMonitorSelectorNilUsesHelmValues: false
+      ## If true, a nil or {} value for prometheus.prometheusSpec.podMonitorSelector will cause the
+      ## prometheus resource to be created with selectors based on values in the helm deployment,
+      ## which will also match the podmonitors created
+      podMonitorSelectorNilUsesHelmValues: false
+      ## If true, a nil or {} value for prometheus.prometheusSpec.probeSelector will cause the
+      ## prometheus resource to be created with selectors based on values in the helm deployment,
+      ## which will also match the probes created
+      probeSelectorNilUsesHelmValues: false
+      serviceDiscoveryRole: "EndpointSlice"
+      ## Standard object's metadata. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
+      ## Metadata Labels and Annotations gets propagated to the prometheus pods.
+      podMetadata:
+        labels:
+          app: prometheus
+      ## Resource limits & requests
+      resources:
+        limits:
+          cpu: 300m
+          memory: 5Gi
+        requests:
+          cpu: 300m
+          memory: 5Gi
+
+    # Service for thanos service discovery on sidecar
+    # Enable this can make Thanos Query can use
+    # `--store=dnssrv+_grpc._tcp.${kube-prometheus-stack.fullname}-thanos-discovery.${namespace}.svc.cluster.local` to discovery
+    # Thanos sidecar on prometheus nodes
+    # (Please remember to change ${kube-prometheus-stack.fullname} and ${namespace}. Not just copy and paste!)
+    thanosService:
+      enabled: false
+      annotations: {}
+      labels: {}
+    thanosServiceMonitor:
+      enabled: false
+      tlsConfig: {}
+      additionalLabels: {}
+
+  ## Configuration for thanosRuler
+  ## ref: https://thanos.io/tip/components/rule.md/
+  thanosRuler:
+    thanosRulerSpec:
+      ## Image of ThanosRuler
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/opensource/thanos/thanos
+        tag: v0.42.4
+        sha: ""
+    serviceMonitor:
+      tlsConfig: {}
+
+### NON UPSTREAM
+
+flux:
+  enabled: false
+  namespace: flux-system
+
+# -- [bb-common Network Policies configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/network-policies/README.md?ref_type=heads)
+# @default -- NetworkPolicy configuration for this package
+networkPolicies:
+  enabled: false
+  defaultsAsHooks:
+    enabled: true
+  additionalPolicies: []
+  egress:
+    from:
+      kube-prometheus-stack-prometheus-operator:
+        to:
+          definition:
+            # -- The operator must be able to read Prometheus/Alertmanager CRs from
+            # the k8s API
+            kubeAPI: true
+      kube-state-metrics:
+        to:
+          definition:
+            # -- Kube-state-metrics derives its metrics from the k8s API
+            kubeAPI: true
+      prometheus:
+        to:
+          definition:
+            # -- Prometheus must be able to read ServiceMonitor and PodMonitor resources
+            # from the k8s API
+            kubeAPI: true
+          k8s:
+            # -- Prometheus must be able to scrape any workload in the cluster
+            "*": true
+      admission-create-job:
+        podSelector:
+          matchLabels:
+            app: kube-prometheus-stack-admission-create
+        metadata:
+          annotations:
+            helm.sh/hook: pre-install,pre-upgrade
+            helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+        to:
+          definition:
+            # -- This pre-install/pre-upgrade job creates webhook resources and
+            # must reach the kubeAPI before normal release netpols exist.
+            kubeAPI: true
+      alertmanager:
+        to:
+          cidr:
+            # -- Alertmanager can be configured to integrate with many external
+            # alerting systems, so we define this policy but set it to false; set
+            # it to true if you need this connectivity
+            0.0.0.0/0: false
+      metrics-upgrade-job:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: bigbang-metrics-upgrade-job
+        metadata:
+          annotations:
+            "helm.sh/hook": pre-upgrade
+            "helm.sh/hook-weight": "-10"
+            "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
+        to:
+          definition:
+            kubeAPI: true
+  ingress:
+    to:
+      kube-prometheus-stack-prometheus-operator:10250:
+        from:
+          cidr:
+            # -- Required for kube API admission webhook traffic and Prometheus scrape access.
+            # Override this CIDR from the umbrella when your control-plane range is known.
+            0.0.0.0/0: true
+      prometheus:10901:
+        from:
+          k8s:
+            # -- Thanos store API access to Prometheus sidecar.
+            # Set true when Thanos is deployed.
+            thanos/thanos: false
+      prometheus:9090:
+        from:
+          k8s:
+            # -- Tempo Prometheus remote-write/read access. Set true when Tempo is deployed.
+            # Use service-account identity format for SPIFFE principal generation.
+            tempo-tempo@tempo/tempo: false
+            # -- Kiali Prometheus access. Set true when Kiali is deployed.
+            # Use service-account identity format for SPIFFE principal generation.
+            kiali-service-account@kiali/kiali: false
+
+# Toggles networkpolicy needed for openshift
+openshift: false
+
+bbtests:
+  enabled: false
+  cypress:
+    artifacts: true
+    exports: false
+    additionalVolumeMounts:
+      - name: cypress-exports
+        mountPath: /test/exports
+    additionalVolumes:
+      - name: cypress-exports
+        emptyDir: {}
+    envs:
+      cypress_prometheus_url: "http://monitoring-kube-prometheus-prometheus:9090"
+      cypress_alertmanager_url: "http://monitoring-kube-prometheus-alertmanager:9093"
+
+  scripts:
+    image: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+    envs:
+      MONITORING_NAMESPACE: "{{ .Release.Namespace }}"
+      ADMISSION_CERTIFICATE_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-admission'
+      ADMISSION_WEBHOOK_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-admission'
+      ADMISSION_SERVICE_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-operator'
+      PROMETHEUS_RULE_NAME: "{{ .Release.Name }}-cert-manager-webhook-smoke"
+      KIALI_URL: "http://kiali.kiali:20001"
+      GRAFANA_URL: "http://monitoring-grafana:80"
+      GRAFANA_PASSWORD: "prom-operator"
+    permissions:
+      apiGroups:
+        - cert-manager.io
+        - monitoring.coreos.com
+      resources:
+        - certificates
+        - prometheusrules
+      verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+
+istio:
+  enabled: false
+  mtls:
+    # Note that setting this to STRICT requires additional configuration for Prometheus and monitors.
+    # Review `./docs/istio-mtls-metrics.md` for additional information.
+    mode: STRICT
+  sidecar:
+    enabled: false
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+  serviceEntries:
+    custom: []
+      # - name: "allow-google"
+      #   labels:
+      #     app: monitoring
+      #   annotations:
+      #     owner: platform
+      #   spec:
+      #     hosts:
+      #       - google.com
+      #     location: MESH_EXTERNAL
+      #     ports:
+      #       - number: 443
+      #         protocol: TLS
+      #         name: https
+      #     resolution: DNS
+  authorizationPolicies:
+    enabled: true
+    generateFromNetpol: true
+    custom: []
+
+# -- [bb-common Routes configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/routes/README.md?ref_type=heads)
+routes:
+  inbound:
+    monitoring-prometheus:
+      enabled: true
+      metadata:
+        labels: {}
+        annotations: {}
+      gateways:
+        - istio-gateway/public-ingressgateway
+      hosts:
+        - prometheus.{{ .Values.domain }}
+      service: '{{ printf "%s-%s" (include "kube-prometheus-stack.fullname" .) "kube-prometheus" }}.{{ .Release.Namespace }}.svc.cluster.local'
+      port: "{{ .Values.upstream.prometheus.service.port }}"
+      containerPort: 9090
+      selector:
+        app.kubernetes.io/name: prometheus
+    monitoring-alertmanager:
+      enabled: true
+      metadata:
+        labels: {}
+        annotations: {}
+      gateways:
+        - istio-gateway/public-ingressgateway
+      hosts:
+        - alertmanager.{{ .Values.domain }}
+      service: '{{ printf "%s-%s" (include "kube-prometheus-stack.fullname" .) "kube-alertmanager" }}.{{ .Release.Namespace }}.svc.cluster.local'
+      port: "{{ .Values.upstream.alertmanager.service.port }}"
+      containerPort: 9093
+      selector:
+        app.kubernetes.io/name: alertmanager
+  outbound: {}
+
+kiali:
+  enabled: false
+
+sso:
+  enabled: false
+  selector:
+    key: protect
+    value: keycloak
+
+tempo:
+  # Toggle tempo AuthorizationPolicy creation
+  enabled: false
+
+# Deletes previous kube-state-metrics deployment/statefulset before attempting an upgrade
+# May be required on some monitoring chart updates due to upstream breaking changes
+# REQUIRED for Chart v23.x upgrade
+cleanUpgrade:
+  enabled: false
+  image:
+    registry: registry1.dso.mil
+    repository: ironbank/big-bang/base
+    tag: 2.1.0
+    sha: ""
+    imagePullSecrets:
+      - name: private-registry
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 100m
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+## Configuration for Prometheus Blackbox exporter subchart
+blackboxExporter:
+  enabled: false
+  nameOverride: "prometheus-blackbox-exporter"
+  global:
+    ## Global image registry to use if it needs to be overriden for some specific use cases (e.g local registries, custom images, ...)
+    imageRegistry: "registry1.dso.mil"
+  restartPolicy: Always
+  kind: Deployment
+  ## Allow automount the serviceaccount token for sidecar container (eg: oauthproxy)
+  automountServiceAccountToken: false
+  revisionHistoryLimit: 10
+  hostNetwork: false
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  image:
+    registry: registry1.dso.mil
+    repository: ironbank/opensource/prometheus/blackbox_exporter
+    # Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }}
+    tag: v0.28.0
+    pullSecrets:
+      - private-registry
+  ## User and Group to run blackbox-exporter container as
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+  # Add NET_RAW to enable ICMP
+  #    add: ["NET_RAW"]
+  livenessProbe:
+    httpGet:
+      path: /-/healthy
+      port: http
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /-/healthy
+      port: http
+  # if the configuration is managed as secret outside the chart, using SealedSecret for example,
+  # provide the name of the secret here. If secretConfig is set to true, configExistingSecretName will be ignored
+  # in favor of the config value.
+  configExistingSecretName: ""
+  # Store the configuration as a `Secret` instead of a `ConfigMap`, useful in case it contains sensitive data
+  secretConfig: false
+  config:
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 5s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          follow_redirects: true
+          preferred_ip_protocol: "ip4"
+  service:
+    annotations: {}
+    labels: {}
+    type: ClusterIP
+    port: 9115
+    ipDualStack:
+      enabled: false
+      ipFamilies: ["IPv6", "IPv4"]
+      ipFamilyPolicy: "PreferDualStack"
+  # Only changes container port. Application port can be changed with extraArgs (--web.listen-address=:9115)
+  # https://github.com/prometheus/blackbox_exporter/blob/998037b5b40c1de5fee348ffdea8820509d85171/main.go#L55
+  containerPort: 9115
+  replicas: 1
+  serviceMonitor:
+    ## If true, a ServiceMonitor CRD is created for a prometheus operator
+    ## https://github.com/coreos/prometheus-operator for blackbox-exporter itself
+    ##
+    selfMonitor:
+      enabled: false
+      additionalMetricsRelabels: {}
+      additionalRelabeling: []
+      labels: {}
+      path: /metrics
+      scheme: http
+      tlsConfig: {}
+      interval: 30s
+      scrapeTimeout: 30s
+      ## Port can be defined by assigning a value for the port key below
+      ## port:
+    ## If true, a ServiceMonitor CRD is created for a prometheus operator
+    ## https://github.com/coreos/prometheus-operator for each target
+    ##
+    enabled: false
+  configReloader:
+    enabled: false
+    containerPort: 8080
+    config:
+      logFormat: logfmt
+      logLevel: info
+      watchInterval: 1m
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/prometheus-operator/prometheus-config-reloader
+      tag: v0.93.1
+      pullPolicy: IfNotPresent
+      digest: ""
+      imagePullSecrets:
+        - name: private-registry
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+    resources:
+      limits:
+        memory: 50Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    service:
+      port: 8080
+    serviceMonitor:
+      selfMonitor:
+        additionalMetricsRelabels: {}
+        additionalRelabeling: []
+        path: /metrics
+        scheme: http
+        tlsConfig: {}
+        interval: 30s
+        scrapeTimeout: 30s
+
+## Deploy SNMP exporter as a deployment to all nodes
+snmpExporter:
+  enabled: false
+  ## Configuration for prometheus-snmp-exporter subchart
+  nameOverride: prometheus-snmp-exporter
+  image:
+    repository: registry1.dso.mil/ironbank/opensource/prometheus/snmp_exporter
+    tag: v0.30.1
+    imagePullSecrets:
+      - name: private-registry
+  configmapReload:
+    image:
+      repository: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader
+      tag: v0.93.1
+      imagePullSecrets:
+        - name: private-registry
+    ## Security context to be added to configmap-reload container (Kyverno compliance)
+    containerSecurityContext:
+      runAsGroup: 1001
+      runAsNonRoot: true
+      runAsUser: 1001
+      capabilities:
+        drop:
+          - ALL
+  ## Security context to be added to snmp-exporter pods
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+  ## Security context to be added to snmp-exporter containers
+  containerSecurityContext:
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001
+    capabilities:
+      drop:
+        - ALL
+  # Enable this if you're using https://github.com/prometheus-operator/prometheus-operator
+  # A service monitor will be created per each item in serviceMonitor.params[]
+  serviceMonitor:
+    enabled: true
+
+# Toggle to disable all rules via the enabled: false
+prometheusRule:
+  IstioSidecarMemModerate: true
+  IstioSidecarMemHigh: true
+  Istio5XXResponseCode: true
+  IstioSidecarEndpointError: true
+  IstioSidecarListenerConflict: true
+  IstioAmbientReadinessProbeFailures: true
+  IstioTCPConnectionFailures: true

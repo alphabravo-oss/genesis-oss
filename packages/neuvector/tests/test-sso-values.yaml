@@ -1,0 +1,33 @@
+########################
+# Required for package #
+########################
+
+addons:
+  keycloak:
+    enabled: true
+    values:
+      bbtests:
+        enabled: true
+        cypress:
+          envs:
+            cypress_tnr_username: "cypress"
+            cypress_tnr_password: "tnr_w!G33ZyAt@C8"
+
+neuvector:
+  enabled: true
+  sso:
+    enabled: true
+    # The Cypress suite initiates an image scan, which requires write access.
+    default_role: admin
+  values:
+    bbtests:
+      updater:
+        enabled: true
+kyvernoPolicies:
+  values:
+    bbtests:
+      enabled: false
+kyverno:
+  values:
+    bbtests:
+      enabled: false

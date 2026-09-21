@@ -1,0 +1,203 @@
+suite: cert-manager bbtests template gating
+templates:
+  - templates/tests/gluon.yaml
+  - templates/tests/clusterrole.yaml
+  - templates/tests/clusterrolebinding.yaml
+tests:
+  - it: does not render bbtest resources by default
+    template: templates/tests/clusterrole.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders bbtest clusterrole when enabled
+    template: templates/tests/clusterrole.yaml
+    set:
+      bbtests.enabled: true
+    asserts:
+      - isKind:
+          of: ClusterRole
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: test
+
+  - it: renders bbtest clusterrolebinding when enabled
+    template: templates/tests/clusterrolebinding.yaml
+    set:
+      bbtests.enabled: true
+    asserts:
+      - isKind:
+          of: ClusterRoleBinding
+      - equal:
+          path: roleRef.kind
+          value: ClusterRole
+
+  - it: binds the Gluon ServiceAccount for a custom release name
+    template: templates/tests/clusterrolebinding.yaml
+    release:
+      name: custom-release
+      namespace: cert-manager
+    set:
+      bbtests.enabled: true
+    asserts:
+      - equal:
+          path: subjects[0].name
+          value: custom-release-script-sa
+
+  - it: passes custom release context to runtime scripts
+    template: templates/tests/gluon.yaml
+    release:
+      name: custom-release
+      namespace: custom-namespace
+    documentSelector:
+      path: kind
+      value: Pod
+    set:
+      bbtests.enabled: true
+      bbtests.scripts.enabled: true
+    asserts:
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: NAMESPACE
+            value: custom-namespace
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: INSTANCE_NAME
+            value: custom-release
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: WEBHOOK_SERVICE
+            value: cert-manager-webhook
+
+  - it: passes a custom upstream webhook name to runtime scripts
+    template: templates/tests/gluon.yaml
+    release:
+      name: custom-release
+      namespace: custom-namespace
+    documentSelector:
+      path: kind
+      value: Pod
+    set:
+      bbtests.enabled: true
+      bbtests.scripts.enabled: true
+      upstream.fullnameOverride: renamed
+    asserts:
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: WEBHOOK_SERVICE
+            value: renamed-webhook
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: WEBHOOK_CA_SECRET
+            value: renamed-webhook-ca
+
+  - it: grants runtime ACME and endpoint permissions
+    template: templates/tests/clusterrole.yaml
+    set:
+      bbtests.enabled: true
+    asserts:
+      - contains:
+          path: rules
+          content:
+            apiGroups:
+              - acme.cert-manager.io
+            resources:
+              - orders
+              - challenges
+            verbs:
+              - get
+              - list
+              - watch
+      - contains:
+          path: rules
+          content:
+            apiGroups:
+              - ""
+            resources:
+              - pods
+              - pods/log
+              - secrets
+              - endpoints
+            verbs:
+              - create
+              - delete
+              - get
+              - list
+              - watch
+
+  - it: allows a temporary issuer during clean-install runtime tests
+    template: templates/tests/gluon.yaml
+    documentSelector:
+      path: kind
+      value: Pod
+    set:
+      bbtests.enabled: true
+      bbtests.scripts.enabled: true
+    asserts:
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: REQUIRE_BUILTIN_ISSUER
+            value: "false"
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: BUILTIN_ISSUER_NAME
+            value: RELEASE-NAME-selfsigned
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: BUILTIN_ISSUER_KIND
+            value: Issuer
+
+  - it: allows an upgrade runtime test without the self-signed issuer
+    template: templates/tests/gluon.yaml
+    release:
+      upgrade: true
+    documentSelector:
+      path: kind
+      value: Pod
+    set:
+      bbtests.enabled: true
+      bbtests.scripts.enabled: true
+    asserts:
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: REQUIRE_BUILTIN_ISSUER
+            value: "false"
+
+  - it: passes enabled self-signed issuer overrides to upgrade runtime tests
+    template: templates/tests/gluon.yaml
+    release:
+      upgrade: true
+    documentSelector:
+      path: kind
+      value: Pod
+    set:
+      bbtests.enabled: true
+      bbtests.scripts.enabled: true
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.name: custom-selfsigned
+      issuers.selfSigned.scope: ClusterIssuer
+    asserts:
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: REQUIRE_BUILTIN_ISSUER
+            value: "true"
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: BUILTIN_ISSUER_NAME
+            value: custom-selfsigned
+      - contains:
+          path: spec.containers[0].env
+          content:
+            name: BUILTIN_ISSUER_KIND
+            value: ClusterIssuer

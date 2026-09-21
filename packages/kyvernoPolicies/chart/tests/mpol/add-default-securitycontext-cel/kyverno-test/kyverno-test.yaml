@@ -1,0 +1,17 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: add-default-securitycontext-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- policy: add-default-securitycontext-cel
+  resources:
+  - bare-pod
+  - partial-pod
+  - full-pod
+  patchedResources: patched.yaml
+  kind: Pod
+  result: pass

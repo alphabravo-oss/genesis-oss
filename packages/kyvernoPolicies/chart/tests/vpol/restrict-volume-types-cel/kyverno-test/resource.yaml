@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-hostpath
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  volumes:
+  - name: host
+    hostPath:
+      path: /tmp
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-nfs
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  volumes:
+  - name: data
+    nfs:
+      server: example.internal
+      path: /exports
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-mixed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  volumes:
+  - name: cfg
+    configMap:
+      name: allowed
+  - name: host
+    hostPath:
+      path: /tmp
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-no-volumes
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-configmap
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  volumes:
+  - name: cfg
+    configMap:
+      name: cfg
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-multiple-allowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  volumes:
+  - name: cfg
+    configMap:
+      name: cfg
+  - name: scratch
+    emptyDir: {}
+  - name: tok
+    projected:
+      sources:
+      - serviceAccountToken:
+          path: token
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-hostpath
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+      volumes:
+      - name: host
+        hostPath:
+          path: /tmp
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-emptydir
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+      volumes:
+      - name: scratch
+        emptyDir: {}

@@ -1,0 +1,395 @@
+# Development and Maintenance Guide for the Monitoring package
+
+## Code Changes for Updates
+
+Monitoring is a modified/customized version of an upstream chart. The below details the steps required to update to a new version of the Monitoring package.
+
+1. Checkout the `renovate/ironbank` branch. This branch will already have most of the updates you need for the images.
+
+2. See the [Big Bang Modifications](#big-bang-modifications) section below for the specific changes that need to be made to the [`chart/Chart.yaml`](#chartchartyaml) and [`chart/values.yaml`](#chartvaluesyaml) files.
+
+3. Modify the `version` in `Chart.yaml` - you will want to append `-bb.0` to the chart version from upstream.
+
+4. If needed, update `CHANGELOG.md` adding an entry for the new version and noting all changes (at minimum should include `Updated Monitoring chart to x.x.x` and `Updated image versions to latest in IB (P: x.x.x G: x.x.x A: x.x.x)` with the versions for Prometheus, Grafana, Alertmanager).
+
+5. Update dependencies and binaries using `helm dependency update ./chart`
+    - Pull assets and commit the binaries as well as the Chart.lock file that was generated.
+    - **If the `prometheus/snmp_exporter` image is being updated in `Chart.yaml`:**
+      - Check the [upstream prometheus-snmp-exporter Chart.yaml](https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus-snmp-exporter/Chart.yaml) file to see if there is a new chart released with the new image update
+        - If a new chart exists with the new image:
+            1. Update the `prometheus-snmp-exporter` chart version in `chart/Chart.yaml` and the image version in `chart/values.yaml`.
+            2. Run `helm dependency update ./chart` to pull the new chart version.
+        - Otherwise (if a new chart does not exist with the new image), skip this image update (i.e. revert it from `Chart.yaml` because Renovate is trying to jump ahead) and continue to `Step 9.`
+
+       - Please check the below for corresponding exporter updates to include the MR breaking changes: 
+         - Helm Repo: 
+           - [prometheus-snmp-exporter/README.md](https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus-snmp-exporter/README.md)
+           - [prometheus-blackbox-exporter/README.md](https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus-blackbox-exporter/README.md)
+         - Image Repo: 
+           - [snmp_exporter/changelog](https://github.com/prometheus/snmp_exporter/releases)
+           - [blackbox_exporter/releases](https://github.com/prometheus/blackbox_exporter/releases)
+
+6. Generate the `README.md` updates by following the [guide in gluon](https://repo1.dso.mil/platform-one/big-bang/apps/library-charts/gluon/-/blob/master/docs/bb-package-readme.md).
+
+7. Push up your changes, validate that CI passes. If there are any failures follow the information in the pipeline to make the necessary updates and reach out to the team if needed.
+
+8. (_Only required if package changes are expected to have cascading effects on bigbang umbrella chart_) As part of your MR that modifies bigbang packages, you should modify the bigbang [bigbang/tests/test-values.yaml](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/tests/test-values.yaml?ref_type=heads) against your branch for the CI/CD MR testing by enabling your packages.
+
+- To do this, at a minimum, you will need to follow the instructions at [bigbang/docs/developer/test-package-against-bb.md](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/developer/test-package-against-bb.md?ref_type=heads) with changes for Monitoring enabled (the below is a reference, actual changes could be more depending on what changes were made to Monitoring in the package MR).
+
+### [test-values.yaml](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/tests/test-values.yaml?ref_type=heads)
+```yaml
+monitoring:
+  enabled: true
+  git:
+    tag: null
+    branch: "renovate/ironbank"
+  values:
+    istio:
+      hardened:
+        enabled: true
+  ### Additional components of Monitoring should be changed to reflect testing changes introduced in the package MR
+```
+
+9. Perform the steps below for manual testing. CI provides a good set of basic smoke tests but it is beneficial to run some additional checks.
+
+## Manual Testing for Updates
+
+>NOTE: For these testing steps it is good to do them on both a clean install and an upgrade. For clean install, point Monitoring to your branch. For an upgrade do an install with Monitoring pointing to the latest tag, then perform a helm upgrade with Monitoring pointing to your branch.
+
+Development workstsation test values are contained in `dev-overrides.yaml`
+
+Testing Steps:
+
+- Login with SSO to [Prometheus](https://prometheus.dev.bigbang.mil) (if you are not prompted for an SSO login, this could indicate a problem with the authservice connection), check the [Status -> Targets page](https://prometheus.dev.bigbang.mil/targets?pool=) and validate that all targets show as up
+- Go to [Alertmanager](https://alertmanager.dev.bigbang.mil) and validate that alerts are firing (if the main page shows no alert groups check the Prometheus logs and see if there are errors with that connection)
+- Login with SSO to [Grafana](https://grafana.dev.bigbang.mil) and take a look at some [dashboards](https://grafana.dev.bigbang.mil/dashboards), validate that data is loaded.
+- Login to Grafana with [admin credentials](https://docs-bigbang.dso.mil/latest/docs/guides/using-bigbang/default-credentials/?h=default+cred%2F/#packages-with-built-in-authentication) go to the [Datasources](https://grafana.dev.bigbang.mil/connections/datasources), click on Prometheus, scroll to the bottom and click on "Save and Test" to test the datasource connection to ensure no error.
+- Login to [Kiali](https://kiali.dev.bigbang.mil) and go to [Applications](https://kiali.dev.bigbang.mil/kiali/console/applications?duration=60&refresh=60000&namespaces=monitoring&appName=prometheus&opLabel=or), pick `monitoring` namespace and `prometheus` for the application, validate that there is data in some of the inbound/outbound metrics fields - also validate Kiali is showing no red bells on the top bar (this could indicate connection issues with Prometheus/Grafana)
+
+When in doubt with any testing or upgrade steps ask one of the CODEOWNERS for assistance.
+
+## Upstream changes needed for Big Bang
+
+Due to how Big Bang is making use of Monitoring, there were values and chart changes that needed to be made.
+
+This provides a log of these changes to make updates from upstream faster.
+
+## Big Bang Modifications
+
+### ```chart/Chart.yaml```
+
+- Ensure `condition: prometheus.enabled` is set for prometheus as in the following example:
+
+  ```yaml
+  - name: prometheus
+    image: registry1.dso.mil/ironbank/opensource/prometheus/prometheus:vX.Y.Z
+    condition: prometheus.enabled
+  ```
+
+### ```chart/values.yaml```
+
+- Ensure `nameOverride` is set to `chart/values.yaml` to keep resource names from changing
+
+  ```yaml
+  nameOverride: "kube-prometheus-stack"
+  ```
+
+- Ensure `crds.enabled=false` since this is handled by the prometheus-operator-crds chart
+
+- Ensure `alertmanager.serviceAccount.automountServiceAccountToken: false` is set.
+
+- Ensure `alertmanager.alertmanagerSpec.externalUrl` is set.
+
+  ```yaml
+  ## The external URL the Alertmanager instances will be available under. This is necessary to generate correct URLs. This is necessary if Alertmanager is not served from root of a DNS name. string  false
+  ##
+  externalUrl: "https://alertmanager.{{ .Values.domain }}"
+  ```
+
+
+- Ensure the `snmpExporter` configuration is present and that the `snmpExporter.image.tag` and `snmpExporter.configmapReload.image.tag` are set to the intended versions. Consult the upstream `prometheus-snmp-exporter` chart version for the correct versions. The following is an example of the configuration block for the SNMP exporter:
+
+  ```yaml
+  ## Deploy SNMP exporter as a deployment to all nodes
+  snmpExporter:
+    enabled: false
+  ## Configuration for prometheus-snmp-exporter subchart
+    nameOverride: prometheus-snmp-exporter
+    image:
+      repository: registry1.dso.mil/ironbank/opensource/prometheus/snmp_exporter
+      tag: v0.30.1
+      imagePullSecrets:
+        - name: private-registry
+    configmapReload:
+      image:
+        repository: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader
+        tag: v0.88.0
+        imagePullSecrets:
+          - name: private-registry
+      ## Security context to be added to configmap-reload container (Kyverno compliance)
+      containerSecurityContext:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+        capabilities:
+          drop:
+            - ALL
+    ## Security context to be added to snmp-exporter pods
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
+    ## Security context to be added to snmp-exporter containers
+    containerSecurityContext:
+      runAsGroup: 1001
+      runAsNonRoot: true
+      runAsUser: 1001
+      capabilities:
+        drop:
+          - ALL
+    serviceMonitor:
+      enabled: true
+  ```
+
+- Ensure the `blackboxExporter` and `prometheus-blackbox-exporter` configuration is present and that the `prometheus-blackbox-exporter.image.tag` and `prometheus-blackbox-exporter.configmapReload.image.tag` are set to the intended versions. Consult the upstream `prometheus-blackbox-exporter` chart version for the correct versions. The following is an example of the configuration block for the SNMP exporter:
+
+```yaml
+# Enable blackbox exporter
+blackboxExporter:
+  enabled: false
+
+## Configuration for Prometheus Blackbox exporter subchart
+prometheus-blackbox-exporter:
+  global:
+    ## Global image registry to use if it needs to be overriden for some specific use cases (e.g local registries, custom images, ...)
+    ##
+    imageRegistry: "registry1.dso.mil"
+
+  restartPolicy: Always
+
+  kind: Deployment
+
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+
+  image:
+    registry: registry1.dso.mil
+    repository: ironbank/opensource/prometheus/blackbox_exporter
+    # Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }}
+    tag: v0.27.0
+
+    ## Optionally specify an array of imagePullSecrets.
+    ## Secrets must be manually created in the namespace.
+    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+    ##
+    # pullSecrets:
+    #   - myRegistrKeySecretName
+
+  podSecurityContext: {}
+  # fsGroup: 1000
+
+  ## User and Group to run blackbox-exporter container as
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+  # Add NET_RAW to enable ICMP
+  #    add: ["NET_RAW"]
+
+  secretConfig: false
+  config:
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 5s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          follow_redirects: true
+          preferred_ip_protocol: "ip4"
+
+  priorityClassName: ""
+
+  service:
+    annotations: {}
+    labels: {}
+    type: ClusterIP
+    port: 9115
+    ipDualStack:
+      enabled: false
+      ipFamilies: ["IPv6", "IPv4"]
+      ipFamilyPolicy: "PreferDualStack"
+
+  # Only changes container port. Application port can be changed with extraArgs (--web.listen-address=:9115)
+  # https://github.com/prometheus/blackbox_exporter/blob/998037b5b40c1de5fee348ffdea8820509d85171/main.go#L55
+  containerPort: 9115
+
+  serviceMonitor:
+    ## If true, a ServiceMonitor CRD is created for a prometheus operator
+    ## https://github.com/coreos/prometheus-operator for blackbox-exporter itself
+    ##
+    selfMonitor:
+      enabled: false
+      additionalMetricsRelabels: {}
+      additionalRelabeling: []
+      labels: {}
+      path: /metrics
+      scheme: http
+      tlsConfig: {}
+      interval: 30s
+      scrapeTimeout: 30s
+      ## Port can be defined by assigning a value for the port key below
+      ## port:
+
+    ## If true, a ServiceMonitor CRD is created for a prometheus operator
+    ## https://github.com/coreos/prometheus-operator for each target
+    ##
+    enabled: false
+
+    # Default values that will be used for all ServiceMonitors created by `targets`
+    defaults:
+      additionalMetricsRelabels: {}
+      additionalRelabeling: []
+      labels: {}
+      interval: 30s
+      scrapeTimeout: 30s
+      honorTimestamps: true
+      module: http_2xx
+    ## scheme: HTTP scheme to use for scraping. Can be used with `tlsConfig` for example if using istio mTLS.
+    scheme: http
+    ## path: HTTP path. Needs to be adjusted, if web.route-prefix is set
+    path: "/probe"
+    ## tlsConfig: TLS configuration to use when scraping the endpoint. For example if using istio mTLS.
+    ## Of type: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#tlsconfig
+    tlsConfig: {}
+    bearerTokenFile:
+
+    targets:
+
+  podMonitoring:
+    ## If true, a PodMonitoring CR is created for google managed prometheus
+    ## https://cloud.google.com/stackdriver/docs/managed-prometheus/setup-managed#gmp-pod-monitoring for blackbox-exporter itself
+    ##
+    selfMonitor:
+      enabled: false
+      additionalMetricsRelabels: {}
+      labels: {}
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 30s
+
+    ## If true, a PodMonitoring CR is created for a google managed prometheus
+    ## https://cloud.google.com/stackdriver/docs/managed-prometheus/setup-managed#gmp-pod-monitoring for each target
+    ##
+    enabled: false
+
+    ## Default values that will be used for all PodMonitoring created by `targets`
+    ## Following PodMonitoring API specs https://github.com/GoogleCloudPlatform/prometheus-engine/blob/main/doc/api.md#scrapeendpoint
+    defaults:
+      additionalMetricsRelabels: {}
+      labels: {}
+      interval: 30s
+      scrapeTimeout: 30s
+      module: http_2xx
+    ## scheme: Protocol scheme to use to scrape.
+    scheme: http
+    ## path: HTTP path. Needs to be adjusted, if web.route-prefix is set
+    path: "/probe"
+    ## tlsConfig: TLS configuration to use when scraping the endpoint. For example if using istio mTLS.
+    ## Of type: https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md#tlsconfig
+    tlsConfig: {}
+
+  configReloader:
+    enabled: false
+    containerPort: 8080
+    config:
+      logFormat: logfmt
+      logLevel: info
+      watchInterval: 1m
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/prometheus-operator/prometheus-config-reloader
+      tag: v0.82.0
+      pullPolicy: IfNotPresent
+      digest: ""
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+    resources:
+      limits:
+        memory: 50Mi
+      requests:
+        cpu: 10m
+        memory: 20Mi
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: reloader-web
+        scheme: HTTP
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: reloader-web
+        scheme: HTTP
+    service:
+      port: 8080
+    serviceMonitor:
+      selfMonitor:
+        additionalMetricsRelabels: {}
+        additionalRelabeling: []
+        path: /metrics
+        scheme: http
+        tlsConfig: {}
+        interval: 30s
+        scrapeTimeout: 30s
+```
+
+- Ensure `prometheusOperator.clusterDomain: "cluster.local"` is set.
+
+- Ensure `prometheusOperator.resources` is set to the following:
+
+  ```yaml
+  resources:
+    limits:
+      cpu: 200m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 512Mi
+  ```
+
+- Ensure the `prometheusOperator.image.tag` and `prometheusOperator.prometheusConfigReloader.image.tag` values are not ahead of the actual `appVersion` in `Chart.yaml`. You need to check `values.yaml` and `Chart.yaml` for unintended changes. The bot will try to jump ahead.
+
+- Ensure `prometheus.prometheusSpec.externalUrl` is set.
+
+  ```yaml
+  ## External URL at which Prometheus will be reachable.
+  ##
+  externalUrl: "https://prometheus.{{ .Values.domain }}"
+  ```
+
+- Ensure `prometheus.prometheusSpec.serviceDiscoveryRole` is set to `"EndpointSlice"`.
+  This configures the Prometheus Operator to use the EndpointSlice API for target discovery,
+  replacing the deprecated Endpoints API (Kubernetes v1.33+).
+
+- Ensure the `prometheus-blackbox-exporter` configuration is present and the images are set to pull from ironbank.
+
+### ```chart/values.yaml``` (prometheus-snmp-exporter)
+
+- The `prometheus-snmp-exporter` chart is pulled directly from the upstream Helm repository as a normal dependency (no local KPT copy). BB-specific overrides are set in `chart/values.yaml` under the `snmpExporter:` key:
+
+  - `nameOverride: prometheus-snmp-exporter` — keeps resource names stable despite the `snmpExporter` alias.
+  - `configmapReload.containerSecurityContext` — sets Kyverno-compliant security context on the configmap-reload sidecar (the upstream chart supports this natively via `configmapReload.containerSecurityContext`).

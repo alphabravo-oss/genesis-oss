@@ -1,0 +1,52 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsAlloy := mergeOverwrite (deepCopy .Values.flux) .Values.alloy.flux -}}
+{{- if .Values.alloy.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $isStrictIstio := and $istioEnabled (eq (dig "istio" "mtls" "mode" "STRICT" .Values.alloy.values) "STRICT") -}}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: alloy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: alloy
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/alloy/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: alloy
+  releaseName: alloy
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "alloy" "package" .Values.alloy "root" .) | nindent 2 }}
+  {{- toYaml $fluxSettingsAlloy | nindent 2 }}
+  {{- if .Values.alloy.postRenderers }}
+  postRenderers:
+  {{- with .Values.alloy.postRenderers }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "alloy" "root" .) | nindent 2 }}
+
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled .Values.loki.enabled }}
+  dependsOn:
+  {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.loki.enabled }}
+    - name: loki
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+

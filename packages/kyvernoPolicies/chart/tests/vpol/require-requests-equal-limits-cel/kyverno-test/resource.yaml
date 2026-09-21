@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-unequal-cpu
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+      limits:
+        cpu: "200m"
+        memory: "64Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-unequal-memory
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-missing-requests
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    resources:
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-missing-limits
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-no-resources
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-good-equal
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "64Mi"
+      limits:
+        cpu: "100m"
+        memory: "64Mi"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-good-unit-equivalents
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "65536Ki"
+      limits:
+        cpu: "0.1"
+        memory: "64Mi"

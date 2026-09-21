@@ -1,0 +1,12 @@
+dependencies:
+- name: gluon
+  repository: oci://registry1.dso.mil/bigbang
+  version: 1.1.1
+- name: bb-common
+  repository: oci://registry1.dso.mil/bigbang
+  version: 1.0.2
+- name: cert-manager
+  repository: https://charts.jetstack.io
+  version: v1.20.3
+digest: sha256:4561de317d51b0f6ea41b4a87780adf43ee6b03136dbe5111b3a2326d5456bd3
+generated: "2026-06-26T06:37:01.488006133Z"

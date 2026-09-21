@@ -1,0 +1,5 @@
+{{- if .Values.bbtests.scripts.enabled }}
+{{- include "gluon.tests.script-configmap.base" .}}
+---
+{{- include "gluon.tests.script-runner.base" .}}
+{{- end }}

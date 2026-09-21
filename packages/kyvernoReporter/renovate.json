@@ -1,0 +1,70 @@
+{
+  "baseBranchPatterns": [
+    "main"
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Renovate: Update Kyverno Reporter Dependencies",
+  "draftPR": true,
+  "labels": [
+    "kyvernoReporter",
+    "renovate",
+    "kind::maintenance",
+    "team::Package Maintenance"
+  ],
+  "enabledManagers": [
+    "helmv3",
+    "helm-values",
+    "custom.regex"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker",
+        "helm"
+      ],
+      "groupName": "Kyverno Reporter",
+      "postUpgradeTasks": {
+        "commands": [
+          "match-chart-yaml-appversion",
+          "bump-changelog '{{#each upgrades}}- {{depName}} {{currentVersion}} -> {{newVersion}}\\n{{/each}}'",
+          "regenerate-helm-docs"
+        ],
+        "fileFilters": [
+          "chart/Chart.yaml",
+          "README.md",
+          "CHANGELOG.md"
+        ],
+        "executionMode": "branch"
+      }
+    }
+  ],
+  "separateMajorMinor": false,
+  "postUpdateOptions": [
+    "helmUpdateSubChartArchives"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update app version in Chart.yaml",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "appVersion:[^\\S\\r\\n]+(?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Update images in Chart.yaml",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "image:[^\\S\\r\\n]+(?<depName>.+):(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

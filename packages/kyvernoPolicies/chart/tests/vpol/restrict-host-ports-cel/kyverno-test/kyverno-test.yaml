@@ -1,0 +1,43 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-host-ports-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-host-ports-cel
+  resources:
+  - badpod-container-hostport
+  - badpod-initcontainer-hostport
+  - badpod-ephemeralcontainer-hostport
+  - badpod-gap-hostport
+  - badpod-multiple-ports
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-host-ports-cel
+  resources:
+  - baddeployment-hostport
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-host-ports-cel
+  resources:
+  - goodpod-no-ports
+  - goodpod-no-hostport
+  - goodpod-exact-hostport
+  - goodpod-range-hostport
+  - goodpod-open-ended-hostport
+  - goodpod-initcontainer-hostport
+  - goodpod-all-containers
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-host-ports-cel
+  resources:
+  - gooddeployment-hostport
+  result: pass

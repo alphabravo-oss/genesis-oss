@@ -1,0 +1,50 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-requests-equal-limits-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01-policy-ready
+    try:
+    - apply:
+        file: ../policy.yaml
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: ValidatingPolicy
+          metadata:
+            name: require-requests-equal-limits-cel
+          spec:
+            validationActions:
+             - Deny
+            matchConditions:
+              - name: scope-to-test-ns
+                expression: (cel; "object.metadata.?namespace.orValue('') == '" + string(bindings.resolve("namespace")) + "'")
+    - assert:
+        file: policy-ready.yaml
+  - name: step-02-bad-deny
+    try:
+    - apply:
+        dryRun: true
+        expect:
+        - check:
+            ($error != null): true
+            (contains($error, 'require-requests-equal-limits-cel')): true
+        file: pod-bad-unequal-cpu.yaml
+    # Note: a "missing requests" case isn't testable at live admission — the
+    # apiserver auto-defaults requests to limits before the webhook fires.
+    # "missing limits" has no such mutation, so it actually reaches the policy.
+    - apply:
+        dryRun: true
+        expect:
+        - check:
+            ($error != null): true
+            (contains($error, 'require-requests-equal-limits-cel')): true
+        file: pod-bad-missing-limits.yaml
+  - name: step-03-good-allow
+    try:
+    - apply:
+        dryRun: true
+        file: pod-good.yaml

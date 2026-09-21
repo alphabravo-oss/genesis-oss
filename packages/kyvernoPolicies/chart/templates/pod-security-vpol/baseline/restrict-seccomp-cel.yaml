@@ -1,0 +1,85 @@
+{{- $name := "restrict-seccomp-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $allowLocalhost := dig $name "parameters" "localhost" false .Values.celPoliciesBeta -}}
+{{- $allowRuntimeDefault := dig $name "parameters" "runtimeDefault" false .Values.celPoliciesBeta -}}
+{{- $allowUnconfined := dig $name "parameters" "unconfined" false .Values.celPoliciesBeta -}}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Restrict Seccomp
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: {{ default "high" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      The SecComp profile should not be explicitly set to Unconfined. This policy,
+      requiring Kubernetes v1.19 or later, ensures that the `seccompProfile.Type` is undefined
+      or restricted to the values in the allowed list.  By default, this is `RuntimeDefault` or
+      `Localhost`.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+  - name: allContainers
+    expression: >-
+      {{ include "bb-kyverno-policies.vpol-allContainers" (merge (dict "name" $name) .) }}
+  validations:
+    - expression: |
+        (
+          !object.spec.?securityContext.?seccompProfile.?type.hasValue()
+          {{- if $allowLocalhost }} || object.spec.securityContext.seccompProfile.type == "Localhost"{{ end }}
+          {{- if $allowRuntimeDefault }} || object.spec.securityContext.seccompProfile.type == "RuntimeDefault"{{ end }}
+          {{- if $allowUnconfined }} || object.spec.securityContext.seccompProfile.type == "Unconfined"{{ end }}
+        )
+        &&
+        variables.allContainers.all(c, !c.?securityContext.?seccompProfile.?type.hasValue()
+          {{- if $allowLocalhost }} || c.securityContext.seccompProfile.type == "Localhost"{{ end }}
+          {{- if $allowRuntimeDefault }} || c.securityContext.seccompProfile.type == "RuntimeDefault"{{ end }}
+          {{- if $allowUnconfined }} || c.securityContext.seccompProfile.type == "Unconfined"{{ end }}
+        )
+      message: >-
+        The fields spec.securityContext.seccompProfile.type,
+        spec.containers[*].securityContext.seccompProfile.type,
+        spec.initContainers[*].securityContext.seccompProfile.type, and
+        spec.ephemeralContainers[*].securityContext.seccompProfile.type must
+        {{- if and $allowLocalhost $allowRuntimeDefault $allowUnconfined }} be `Localhost`, `RuntimeDefault`, or `Unconfined`
+        {{- else if and $allowLocalhost $allowRuntimeDefault }} be `Localhost` or `RuntimeDefault`
+        {{- else if and $allowLocalhost $allowUnconfined }} be `Localhost` or `Unconfined`
+        {{- else if and $allowRuntimeDefault $allowUnconfined }} be `RuntimeDefault` or `Unconfined`
+        {{- else if $allowLocalhost }} be `Localhost`
+        {{- else if $allowRuntimeDefault }} be `RuntimeDefault`
+        {{- else if $allowUnconfined }} be `Unconfined`
+        {{- else }} be unset
+        {{- end }}.
+{{- end -}}

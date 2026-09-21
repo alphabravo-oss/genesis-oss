@@ -1,0 +1,12 @@
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default-{{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+      app: {{ include "gateway.name" . }}
+  mtls:
+    mode: {{ .Values.mtls.mode }}

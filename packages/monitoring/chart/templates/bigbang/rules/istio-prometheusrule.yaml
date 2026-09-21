@@ -1,0 +1,84 @@
+{{- if and .Values.istio.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+{{- if or .Values.prometheusRule.IstioSidecarMemModerate .Values.prometheusRule.IstioSidecarMemHigh .Values.prometheusRule.Istio5XXResponseCode .Values.prometheusRule.IstioSidecarEndpointError .Values.prometheusRule.IstioSidecarListenerConflict .Values.prometheusRule.IstioAmbientReadinessProbeFailures .Values.prometheusRule.IstioTCPConnectionFailures }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: istio-prometheus-rules
+  namespace: {{ .Release.Namespace }}
+spec:
+  groups:
+  - name: istio.rules
+    rules:
+    {{- if and .Values.prometheusRule.IstioSidecarMemModerate }}
+    - alert: IstioSidecarMemModerate
+      annotations:
+        description: Istio Sidecar Memory is above 50MB for {{`{{`}} $labels.pod_name {{`}}`}}
+        summary: Istio Sidecar Memory usage is above average
+        # "0.00000095357432" multiplier used to convert Bytes to Megabytes to make human readable
+      expr: istio_agent_go_memstats_heap_sys_bytes{} * 0.00000095357432 > 50
+      for: 1h
+      labels:
+        severity: warning
+    {{- end }}
+    {{- if and .Values.prometheusRule.IstioSidecarMemHigh }}
+    - alert: IstioSidecarMemHigh
+      annotations:
+        description: Istio Sidecar Memory is above 100MB for {{`{{`}} $labels.pod_name {{`}}`}}
+        summary: Istio Sidecar Memory usage is very high
+        # "0.00000095357432" multiplier used to convert Bytes to Megabytes to make human readable
+      expr: istio_agent_go_memstats_heap_sys_bytes{} * 0.00000095357432 > 100
+      for: 1h
+      labels:
+        severity: critical
+    {{- end }}
+    {{- if and .Values.prometheusRule.Istio5XXResponseCode }}
+    - alert: Istio5XXResponseCode
+      annotations:
+        description: Multiple {{`{{`}} $labels.response_code {{`}}`}} Errors for pod {{`{{`}} $labels.pod_name {{`}}`}}
+        summary: Istio Mesh is Reporting 5XX Errors from Applications in-mesh
+      expr: increase(istio_requests_total{reporter="source",response_code=~"5.*"}[10m]) >= 10
+      for: 10m
+      labels:
+        severity: critical
+    {{- end }}
+    {{- if and .Values.prometheusRule.IstioSidecarEndpointError }}
+    - alert: IstioSidecarEndpointError
+      annotations:
+        description: Istio Sidecar Agent Not Ready for pod {{`{{`}} $labels.pod_name {{`}}`}} in namespace {{`{{`}} $labels.namespace {{`}}`}}
+        summary: One or more Istio Sidecars are Not Ready
+      expr: istio_agent_pilot_endpoint_not_ready{} >= 1
+      for: 10m
+      labels:
+        severity: critical
+    {{- end }}
+    {{- if and .Values.prometheusRule.IstioSidecarListenerConflict }}
+    - alert: IstioSidecarListenerConflict
+      annotations:
+        description: Istio Sidecar Agent Has Listener Conflict for pod {{`{{`}} $labels.pod_name {{`}}`}} in namespace {{`{{`}} $labels.namespace {{`}}`}}
+        summary: One or more Istio Sidecars have a Listener Conflict
+      expr: istio_agent_pilot_conflict_inbound_listener{} >= 1
+      for: 10m
+      labels:
+        severity: warning
+    {{- end }}
+    {{- if and .Values.prometheusRule.IstioAmbientReadinessProbeFailures }}
+    - alert: IstioAmbientReadinessProbeFailures
+      annotations:
+        description: Ztunnel or Istio-CNI pod {{`{{`}} $labels.pod {{`}}`}} in namespace {{`{{`}} $labels.namespace {{`}}`}} has failed its readiness probe more than 5 times in 2 minutes
+        summary: Istio ambient readiness probe failures detected
+      expr: sum by (namespace, pod) (increase(prober_probe_total{probe_type="Readiness",result="failed",pod=~"^(istio-cni-node|ztunnel)-.*"}[2m])) > 5
+      for: 3m
+      labels:
+        severity: critical
+    {{- end }}
+    {{- if and .Values.prometheusRule.IstioTCPConnectionFailures }}
+    - alert: IstioTCPConnectionFailures
+      annotations:
+        description: 10 or more failed connections have occurred from {{`{{`}} $labels.source_workload {{`}}`}} in the {{`{{`}} $labels.source_workload_namespace {{`}}`}} namespace in the past 5 minutes
+        summary: Istio TCP connection failures detected
+      expr: sum by (source_workload, source_workload_namespace) (increase(istio_tcp_connections_failed_total{reporter="source"}[5m])) >= 10
+      labels:
+        severity: warning
+    {{- end }}
+{{- end }}
+{{- end }}

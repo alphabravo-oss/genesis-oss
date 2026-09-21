@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-by-key
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+  tolerations:
+  - key: "node-role.kubernetes.io/master"
+    operator: "Exists"
+    effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-by-value
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+  tolerations:
+  - key: "taint-with-value"
+    operator: "Equal"
+    value: "forbidden-value"
+    effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-by-effect
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+  tolerations:
+  - key: "taint-with-effect"
+    operator: "Exists"
+    effect: "PreferNoSchedule"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-bad-keyless-exists
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+  tolerations:
+  - operator: "Exists"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-good-toleration
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+  tolerations:
+  - key: "harmless-taint"
+    operator: "Equal"
+    value: "harmless-value"
+    effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-no-tolerations
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: runtimeclass-bad-by-key
+handler: runc
+scheduling:
+  tolerations:
+  - key: "node-role.kubernetes.io/master"
+    operator: "Exists"
+    effect: "NoSchedule"
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: runtimeclass-bad-by-value
+handler: runc
+scheduling:
+  tolerations:
+  - key: "taint-with-value"
+    operator: "Equal"
+    value: "forbidden-value"
+    effect: "NoSchedule"
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: runtimeclass-bad-by-effect
+handler: runc
+scheduling:
+  tolerations:
+  - key: "taint-with-effect"
+    operator: "Exists"
+    effect: "PreferNoSchedule"
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: runtimeclass-bad-keyless-exists
+handler: runc
+scheduling:
+  tolerations:
+  - operator: "Exists"
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: runtimeclass-good-toleration
+handler: runc
+scheduling:
+  tolerations:
+  - key: "harmless-taint"
+    operator: "Equal"
+    value: "harmless-value"
+    effect: "NoSchedule"
+---
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: runtimeclass-no-tolerations
+handler: runc

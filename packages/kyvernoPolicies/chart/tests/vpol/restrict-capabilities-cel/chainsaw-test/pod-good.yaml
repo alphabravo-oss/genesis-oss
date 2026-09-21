@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-add-allowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+        add: ["NET_BIND_SERVICE"]

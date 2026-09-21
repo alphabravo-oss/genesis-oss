@@ -1,0 +1,827 @@
+# Changelog
+
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
+
+---
+## [3.9.1-bb.0] (2026-09-12)
+### Changed
+- bb-common 1.4.0 -> 1.6.0
+- gluon 1.1.6 -> 1.1.7
+- kyverno 3.9.0 -> 3.9.1
+- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.35 -> v1.37
+- registry1.dso.mil/ironbank/opensource/kyverno v1.19.0 -> v1.19.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller v1.19.0 -> v1.19.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller v1.19.0 -> v1.19.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker v1.19.0 -> v1.19.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller v1.19.0 -> v1.19.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli v1.19.0 -> v1.19.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre v1.19.0 -> v1.19.1
+
+## [3.9.0-bb.0] (2026-08-21)
+### Changed
+- gluon 1.1.5 -> 1.1.6
+- kyverno 3.8.2 -> 3.9.0
+- registry1.dso.mil/ironbank/opensource/kyverno v1.18.2 -> v1.19.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller v1.18.2 -> v1.19.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller v1.18.2 -> v1.19.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker v1.18.2 -> v1.19.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller v1.18.2 -> v1.19.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli v1.18.2 -> v1.19.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre v1.18.2 -> v1.19.0
+- removed values from values.yaml that are no longer used
+
+## [3.8.2-bb.2] (2026-08-12)
+### Changed
+- bb-common 1.2.0 -> 1.4.0
+- gluon 1.1.3 -> 1.1.5
+
+## [3.8.2-bb.1] (2026-07-31)
+### Fixed
+- Fixed the nesting under global key in values.yaml
+
+## [3.8.2-bb.0] (2026-07-24)
+### Changed
+- bb-common 0.14.2 -> 1.2.0
+- gluon 1.1.0 -> 1.1.3
+- kyverno 3.8.1 -> 3.8.2
+- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.35.5 -> v1.35.7
+- registry1.dso.mil/ironbank/opensource/kyverno v1.18.1 -> v1.18.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller v1.18.1 -> v1.18.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller v1.18.1 -> v1.18.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker v1.18.1 -> v1.18.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller v1.18.1 -> v1.18.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli v1.18.1 -> v1.18.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre v1.18.1 -> v1.18.2
+- removed deprecated bigbang.dev/applicationVersions annotation from Chart.yaml
+
+## [3.8.1-bb.6] (2026-07-20)
+### Changed
+- Migrated the `sync-secrets` bbtest policy from the deprecated `ClusterPolicy` to the CEL-based `GeneratingPolicy`.
+- Updated docs to use `GeneratingPolicy`/`ValidatingPolicy` examples instead of `ClusterPolicy`.
+
+## [3.8.1-bb.5] (2026-07-20)
+### Changed
+- Removed duplicate default and not utilized values from package values file
+
+## [3.8.1-bb.4] (2026-06-30)
+### Changed
+- Render Gluon script test overrides without also rendering the base resources to avoid duplicate Helm hook resources during Flux post-rendering.
+- add missing readiness-checker image to Chart.yaml images list
+
+## [3.8.1-bb.3] (2026-06-02)
+### Changed
+- remove comments that create upstream entries in values readme table
+
+## [3.8.1-bb.2] (2026-06-01)
+### Changed
+- Fix values and helmdocs to display more configurations.
+- Remove stale configurations that no longer exist in upstream kyverno repository
+
+## [3.8.1-bb.1] (2026-05-20)
+### Changed
+- bb-common 0.15.0 -> 0.14.2 to work around a bug that generates unwanted AuthorizationPolicies.
+
+## [3.8.1-bb.0] (2026-05-19)
+### Changed
+- gluon 1.0.1 -> 1.1.0
+- kyverno 3.8.0 -> 3.8.1
+- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.35.4 -> v1.35.5
+- registry1.dso.mil/ironbank/opensource/kyverno v1.18.0 -> v1.18.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller v1.18.0 -> v1.18.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller v1.18.0 -> v1.18.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker v1.18.0 -> v1.18.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller v1.18.0 -> v1.18.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli v1.18.0 -> v1.18.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre v1.18.0 -> v1.18.1
+
+## [3.8.0-bb.0] (2026-05-08)
+### Changed
+- bb-common 0.14.2 -> 0.15.0
+- kyverno 3.7.2 -> 3.8.0
+- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.34.7 -> v1.35.4
+- registry1.dso.mil/ironbank/opensource/kyverno v1.17.2 -> v1.18.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller v1.17.2 -> v1.18.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller v1.17.2 -> v1.18.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker v1.17.2 -> v1.18.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller v1.17.2 -> v1.18.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli v1.17.2 -> v1.18.0
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre v1.17.2 -> v1.18.0
+
+## [3.7.2-bb.1] (2026-05-05)
+### Changed
+
+- Enable PolicyExceptions for "kyverno" namespace
+
+## [3.7.2-bb.0] (2026-04-25)
+### Changed
+
+- bb-common 0.14.1 -> 0.14.2
+- gluon 0.9.8 -> 1.0.1
+- kyverno 3.7.1 -> 3.7.2
+- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.34.4 -> v1.34.7
+- registry1.dso.mil/ironbank/opensource/kyverno v1.17.1 -> v1.17.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller v1.17.1 -> v1.17.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller v1.17.1 -> v1.17.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker v0.1.0 -> v1.17.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller v1.17.1 -> v1.17.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli v1.17.1 -> v1.17.2
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre v1.17.1 -> v1.17.2
+
+## [3.7.1-bb.0] (2026-02-25)
+### Changed
+
+- bb-common 0.14.0 -> 0.14.1
+- gluon 0.9.7 -> 0.9.8
+- kyverno 3.7.0 -> 3.7.1
+- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.34.3 -> v1.34.4
+- registry1.dso.mil/ironbank/opensource/kyverno v1.17.0 -> v1.17.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller v1.17.0 -> v1.17.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller v1.17.0 -> v1.17.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller v1.17.0 -> v1.17.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli v1.17.0 -> v1.17.1
+- registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre v1.17.0 -> v1.17.1
+
+## [3.7.0-bb.1] (2026-02-10)
+### Changed
+
+- Use kyverno's new readiness-checker image for helm tests.
+
+## [3.7.0-bb.0] (2026-02-04)
+### Changed
+
+- Updated chart version `3.6.2` -> `3.7.0` and app version from `v1.16.3` -> `v1.17.0`
+- Updated bb-common from `0.12.0` -> `0.14.0`
+- Updated ironbank/opensource/kyverno `v1.16.3` -> `v1.17.0`
+- Updated ironbank/opensource/kyverno/kyverno/background-controller `v1.16.3` -> `v1.17.0`
+- Updated ironbank/opensource/kyverno/kyverno/cleanup-controller `v1.16.3` -> `v1.17.0`
+- Updated ironbank/opensource/kyverno/kyverno/reports-controller `v1.16.3` -> `v1.17.0`
+- Updated ironbank/opensource/kyverno/kyvernocli `v1.16.3` -> `v1.17.0`
+- Updated ironbank/opensource/kyverno/kyvernopre `v1.16.3` -> `v1.17.0`
+
+## [3.6.2-bb.1] (2026-01-27)
+### Changed
+
+- Updated app version from `v1.16.2` -> `v1.16.3`
+- Updated ironbank/opensource/kyverno `v1.16.2` -> `v1.16.3`
+- Updated ironbank/opensource/kyverno/kyverno/background-controller `v1.16.2` -> `v1.16.3`
+- Updated ironbank/opensource/kyverno/kyverno/cleanup-controller `v1.16.2` -> `v1.16.3`
+- Updated ironbank/opensource/kyverno/kyverno/reports-controller `v1.16.2` -> `v1.16.3`
+- Updated ironbank/opensource/kyverno/kyvernocli `v1.16.2` -> `v1.16.3`
+- Updated ironbank/opensource/kyverno/kyvernopre `v1.16.2` -> `v1.16.3`
+
+## [3.6.2-bb.0] (2026-01-14)
+### Changed
+
+- Updated chart version `3.6.1` -> `3.6.2` and app version from `v1.16.1` -> `v1.16.2`
+- Updated ironbank/opensource/kyverno `v1.16.1` -> `v1.16.2`
+- Updated ironbank/opensource/kyverno/kyverno/background-controller `v1.16.1` -> `v1.16.2`
+- Updated ironbank/opensource/kyverno/kyverno/cleanup-controller `v1.16.1` -> `v1.16.2`
+- Updated ironbank/opensource/kyverno/kyverno/reports-controller `v1.16.1` -> `v1.16.2`
+- Updated ironbank/opensource/kyverno/kyvernocli `v1.16.1` -> `v1.16.2`
+- Updated ironbank/opensource/kyverno/kyvernopre `v1.16.1` -> `v1.16.2`
+- Updated ironbank/opensource/kubernetes/kubectl `v1.34.2` -> `v1.34.3`
+
+## [3.6.1-bb.1] (2025-12-19)
+### Changed
+
+- Added bb-common 0.12.0 as a helm dependency
+- Replaced all network policies with bb-common generated network policies
+
+## [3.6.1-bb.0] (2025-12-05)
+### Changed
+
+- Updated chart version `3.6.0` -> `3.6.1` and app version from `v1.16.0` -> `v1.16.1`
+- Updated gluon from `v0.9.6` to `v0.9.7`
+- Updated ironbank/opensource/kyverno `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kyverno/kyverno/background-controller `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kyverno/kyverno/cleanup-controller `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kyverno/kyverno/reports-controller `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kyverno/kyvernocli `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kyverno/kyvernopre `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kubernetes/kubectl `v1.33.5` -> `v1.34.2`
+- Updated ironbank/opensource/kyverno `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kyverno/kyverno/background-controller `v1.16.0` -> `v1.16.1`
+- Updated ironbank/opensource/kyverno/kyverno/cleanup-controller `v1.16.0` -> `v1.16.1`
+- Updated dead links in docs
+
+## [3.6.0-bb.1] (2025-11-13)
+
+### Changed
+
+- Updated egress-kube-api network policy to allow for setting the vpcCidr value
+
+## [3.6.0-bb.0] (2025-11-10)
+
+### Changed
+
+- Updated app version from `3.5.2-bb.0` to `3.6.0-bb.0`
+- Updated `background-controller`, `cleanup-controller`, `reports-controller`, `kyverno`, `kyvernocli`, `kyvernopre` from  `v1.15.2` to `v1.16.0`
+- Updated gluon from `v0.9.2` to `v0.9.6`
+
+## [3.5.2-bb.0] - 2025-10-06
+
+### Removed
+
+- Updated app version from `3.5.1-bb.0` to `3.5.2-bb.0`
+- Update gluon from `0.8.4` to `0.9.2`
+- Updated kubectl from `v1.33.4` to `v1.33.5`
+
+## [3.5.1-bb.0] - 2025-09-01
+
+### Removed
+
+- Updated app version from `3.4.4-bb.3` to `3.5.1-bb.0`
+- Updated `background-controller`, `cleanup-controller`, `reports-controller`, `kyverno`, `kyvernocli`, `kyvernopre` from `v1.14.4` to `v1.15.1`
+- Removed value key under automountservicetoken value to be just a boolean
+- Shifted values so that bigbang values are on top to match with pass-through ADR
+
+## [3.4.4-bb.3] - 2025-08-19
+
+### Removed
+
+- Removed promtail from test/test-values.yaml
+
+## [3.4.4-bb.2] - 2025-07-29
+
+### Removed
+
+- Removed crds/crd-servicemonitors.yaml as this CRD is now created by the prometheus-operator-crds chart
+
+## [3.4.4-bb.1] - 2025-07-24
+
+### Changed
+
+- Updated `kubectl` from `v1.32.6` to `v1.32.7`
+
+## [3.4.1-bb.0] - 2025-07-10
+
+### Changed
+
+- Updated app version from `3.4.1-bb.0` to `3.4.4-bb.0`
+- Updated `background-controller`, `cleanup-controller`, `reports-controller`, `kyverno`, `kyvernocli`, `kyvernopre` from `v1.14.2` to `v1.14.4`
+- Updated `kubectl` from `v1.32.5` to `v1.32.6`
+
+## [3.4.1-bb.0] - 2025-06-24
+
+### Changed
+
+- Updated app version from `3.3.6-bb.2` to `3.4.1-bb.0`
+- Updated `background-controller`, `cleanup-controller`, `reports-controller`, `kyverno`, `kyvernocli`, `kyvernopre` from `v1.13.4` to `v1.14.2`
+- Updated `kubectl` from `v1.30.10` to `v1.32.5`
+- Updated `ubi9-minimal` from `9.5` to `9.6`
+
+## [3.3.6-bb.5] - 2025-06-06
+
+### Changed
+
+- Moved crd-servicemonitor from templates directory to chart directory for helm to install it first.
+
+## [3.3.6-bb.4] - 2025-06-03
+
+### Changed
+
+- Deleted test templates that are in upstream and adjusted test values so they are passed to the child chart.
+- Updated gluon from `0.5.17` to `0.6.2`
+- Swapped ubi9-minimal `9.5` image in test with busybox `v1.37.0`
+- Set upstream alias for child chart values
+- Updated networkPolicies to accomdate alias and trim bb version for pass-through
+
+## [3.3.6-bb.3] - 2025-05-30
+
+### Changed
+
+- Updated servicemonitors.monitoring.coreos.com with latest version
+
+## [3.3.6-bb.2] - 2025-04-21
+
+### Changed
+
+- Refactor kyverno BB package with pass-through pattern.
+- Enabled bbtests for kyverno-policies for better integration testing.
+- Added upstream notes to chart.yaml and readme.
+
+## [3.3.6-bb.1] - 2025-04-07
+
+### Changed
+
+- update renovate.json for renovate config
+
+## [3.3.6-bb.0] - 2025-02-17
+
+### Changed
+
+- Updated upstream chart from `3.3.4` to `3.3.6` and app version from `v1.13.2` to `v1.13.4`
+- Updated `background-controller`, `cleanup-controller`, `reports-controller`, `kyverno`, `kyvernocli`, `kyvernopre` from `v1.13.2` to `v1.13.4`
+- Updated `kubectl` from `v1.30.6` to `v1.30.10`
+
+## [3.3.4-bb.2] - 2024-01-30
+
+### Changed
+
+- Enable PolicyExceptions in test-values for testing policy exceptions in kyverno policy
+
+## [3.3.4-bb.1] - 2024-01-21
+
+### Changed
+
+- Increase default package memory limit for admissionController to 1Gi
+- Increase default package vCPU limit for admissionController to 1 core
+- Update gluon to v0.5.14
+
+## [3.3.4-bb.0] - 2024-12-10
+
+### Changed
+
+- Updated upstream chart from `3.2.7` to `3.3.3` and app version from `v1.12.6` to `v1.13.2`
+- Updated `background-controller`, `cleanup-controller`, `reports-controller`, `kyverno`, `kyvernocli`, `kyvernopre` from `v1.12.6` to `v1.13.2`
+- Updated `ubi9-minimal` from `9.4` to `9.5`
+- Updated `kubectl` from `v1.30.5` to `v1.30.6`
+
+## [3.2.7-bb.0] - 2024-10-01
+
+### Changed
+
+- Updated `kyverno` chart from `3.2.6` to `3.2.7` and app version from `v1.12.5` to `v1.12.6`
+- Updated `kubectl` from `1.29.7` to `1.30.5`
+- Updated `kyverno`, `background-controller`, `cleanup-controller`, `reports-controller`, `kyvernocli`, `kyvernopre` from `v1.12.5` to `v1.12.6`
+- Added the maintenance track annotation and badge
+
+## [3.2.6-bb.3] - 2024-09-30
+
+### Changed
+
+- Updated secrets.sh with kubectl wait for namespace and secret creation
+
+## [3.2.6-bb.2] - 2024-09-20
+
+### Changed
+
+- Updated secrets.sh with --wait=false on kubectl delete namespace
+
+## [3.2.6-bb.1] - 2024-09-20
+
+### Changed
+
+- Updated secrets.sh and clusterpolicy.sh to fix early exit.
+
+## [3.2.6-bb.0] - 2024-07-30
+
+### Changed
+
+- Updated kyverno chart from `3.2.5` to `3.2.6` and app version from `v1.12.5` to `v1.12.5`
+- Updated `kubectl` from `1.29.6` to `1.29.7`
+- Updated `kyverno`, `background-controller`, `cleanup-controller`, `reports-controller`, `kyvernopre`  from `v1.12.4` to `v1.12.5`
+- Added reference to `kyvernocli` with version `v1.12.5`
+
+## [3.2.5-bb.5] - 2024-07-30
+
+### Changed
+
+- Update secret sync test script to check for kyverno-bbtest-secret already existing.
+
+## [3.2.5-bb.4] - 2024-07-30
+
+### Changed
+
+- Update secret sync test script to check for secret sync policy before creating namespace.
+- Update gluon to latest v0.5.2
+
+## [3.2.5-bb.3] - 2024-07-18
+
+### Changed
+
+- Updated `kubectl` from `1.29.4` to `1.29.6`
+- Updated `kyverno`, `background-controller`, `cleanup-controller`, `reports-controller`, `kyvernopre`  from `v1.12.3` to `v1.12.4`
+- Added reference to `kyvernocli` with version `v1.12.4`
+- Updated DEVELOPMENT_MAINTENANCE.md to accurately reflect list of files with `automountServiceAccountToken` changes.
+
+## [3.2.5-bb.2] - 2024-07-18
+
+### Removed
+
+- Removed duplicate dashboard.json in `chart/charts/grafana/`
+
+## [3.2.5-bb.1] - 2024-07-15
+
+### Changed
+
+- Disabled policy cleanup in post-upgarde hook in `/chart/values.yaml`
+
+## [3.2.5-bb.0] - 2024-07-09
+
+### Changed
+
+- Updated upstream chart from `3.2.4` to `3.2.5` and app version from `v1.12.3` to `v1.12.4`
+
+## [3.2.4-bb.2] - 2024-06-18
+
+### Changed
+
+- Updated DEVELOPMENT_MAINTENANCE.md with instructions for integration testing in pipeline
+
+## [3.2.4-bb.1] - 2024-06-13
+
+### Changed
+
+- Revert Oscal package validation checks
+
+## [3.2.4-bb.0] - 2024-06-05
+
+### Changed
+
+- Updated upstream chart from `3.1.4` to `3.2.4`
+- Updated `kyverno`, `background-controller`, `cleanup-controller`, `reports-controller`, `kyvernopre`  from `v1.11.4` to `v1.12.3`
+- Updated `kubectl` from `1.29.3` to `1.29.4`
+- Added reference to kyvernocli with version `1.12.3`
+
+## [3.1.4-bb.9] - 2024-05-24
+
+### Changed
+
+- Added healthcheck validation and configuration validation
+
+## [3.1.4-bb.8] - 2024-04-29
+
+### Changed
+
+- Updated CHANGELOG to fix formatting
+
+## [3.1.4-bb.7] - 2024-04-23
+
+### Changed
+
+- Fixed README.md for the chart that was overwritten and the README.md.gotmpl
+
+## [3.1.4-bb.6] - 2024-04-16
+
+### Changed
+
+- Updated `kubectl` from `1.28.7` to `1.29.3`
+
+## [3.1.4-bb.5] - 2024-04-05
+
+### Added
+
+- Custom network policies
+
+## [3.1.4-bb.4] - 2024-03-11
+
+### Changed
+
+- Added Openshift updates for deploying kyverno into Openshift cluster
+
+## [3.1.4-bb.3] - 2024-03-08
+
+### Changed
+
+- Updated `kubectl` from `1.28.6` to `1.28.7`
+
+## [3.1.4-bb.2] - 2024-02-16
+
+### Changed
+
+- Added the resource limits for pre-delete and post-upgrade pods.
+
+## [3.1.4-bb.1] - 2024-01-26
+
+### Changed
+
+- Updated `kubectl` from `1.28.5` to `1.28.6`
+
+## [3.1.4-bb.0] - 2024-01-22
+
+### Changed
+
+- Updated upstream chart from `3.1.3` to `3.1.4`
+- Updated `kyverno`, `background-controller`, `cleanup-controller`, `reports-controller`, `kyvernopre`  from `v1.11.3` to `v1.11.4`
+- Updated `kubectl` from `1.28.4` to `1.28.5`
+
+## [3.1.3-bb.0] - 2024-01-10
+
+### Changed
+
+- Updated upstream chart from `3.1.1` to `3.1.3`
+- Updated `kyverno`, `background-controller`, `cleanup-controller`, `reports-controller`, `kyvernopre`  from `v1.11.1` to `v1.11.3`
+- Updated `kubectl` from `1.28.4` to `1.28.5`
+
+## [3.1.1-bb.0] - 2024-01-8
+
+### Changed
+
+- Updated upstream chart from `3.1.0` to `3.1.1`
+- Updated `kyverno`, `background-controller`, `cleanup-controller`, `reports-controller`, `kyvernopre`  from `v1.11.0` to `v1.11.1`
+- Updated `gluon` from `0.3.1` to `0.4.6`
+- Added `ServiceMonitor` CRD
+
+## [3.1.0-bb.2] - 2023-12-14
+
+### Changed
+
+- Updated `ubi8-minimal:8.9` to `ubi9-minimal:9.3`
+
+## [3.1.0-bb.1] - 2023-12-06
+
+### Changed
+
+- Updating OSCAL Component File.
+
+## [3.1.0-bb.0] - 2023-11-21
+
+### Changed
+
+- Updated `kubectl` from `v1.28.3` to `v1.28.4`
+- Updated `kyverno` from `v1.10.3` to `v1.11.0`
+- Updated `background-controller` from `1.10.3` to `v1.11.0`
+- Updated `cleanup-controller` from `v1.10.3` to `v1.11.0`
+- Updated `reports-controller` from `1.10.3` to `v1.11.0`
+- Updated `kyvernopre` from `v1.10.3` to `v1.11.0`
+- Updated `ubi8-minimal` from `8.8` to `8.9`
+
+## [3.0.0-bb.13] - 2023-11-24
+
+### Changed
+
+- Allow the automountserviceaccounttoken to be disabled/enabled
+
+## [3.0.0-bb.12] - 2023-11-16
+
+### Changed
+
+- Added `registry1.dso.mil/ironbank/redhat/ubi/ubi8-minimal:8.8` to `tests/images.txt`
+
+## [3.0.0-bb.11] - 2023-11-06
+
+### Changed
+
+- Added the rights to get, list, watch, update, and patch the kyverno-background-controller serviceaccount
+
+## [3.0.0-bb.10] - 2023-11-02
+
+### Changed
+
+- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl patch v1.28.2 -> v1.28.3
+- Added `.Values.allowExternalRegistryEgress` option to enable a `NetworkPolicy` that allows the Admission Controller to talk to external networks. Default: false
+
+## [3.0.0-bb.9] - 2023-10-24
+
+### Changed
+
+- Add pod level securityContext for kyverno test
+
+## [3.0.0-bb.8] - 2023-10-18
+
+### Changed
+
+- Fixed RunAsGroup typo in chart/values.yaml
+
+## [3.0.0-bb.7] - 2023-10-17
+
+### Changed
+
+- Modified OSCAL Version for kyverno and updated to 1.1.1
+
+## [3.0.0-bb.6] - 2023-10-13
+
+### Changed
+
+- Update `kubectl version` to v1.28.2
+
+## [3.0.0-bb.5] - 2023-10-11
+
+### Changed
+
+- Modified `features.policyExceptions.enabled` to true
+- Restricted new `policyExceptions` to the kyerno `namespace`
+
+## [3.0.0-bb.4] - 2023-09-20
+
+### Changed
+
+- Modified runAsGroup securityContext for kyverno containers
+
+## [3.0.0-bb.3] - 2023-09-19
+
+### Changed
+
+- Set controlPlaneCidr to 0.0.0.0/0 for package test
+
+## [3.0.0-bb.2] - 2023-09-14
+
+### Changed
+
+- Made test resources conditional on bbtests.enabled
+
+## [3.0.0-bb.2] - 2023-09-14
+
+### Changed
+
+- Made test resources conditional on bbtests.enabled
+
+## [3.0.0-bb.1] - 2023-09-12
+
+### Changed
+
+- NetworkPolicy fixes based on new labels
+
+## [3.0.0-bb.0] - 2023-08-24
+
+### Changed
+
+- Updated to latest images 1.10.3
+- Updated to latest chart 3.0.0
+
+## [2.7.2-bb.0] - 2023-04-17
+
+### Changed
+
+- Updated to latest image 1.9.2
+- Updated to latest chart 2.7.2
+
+## [2.6.5-bb.3] - 2023-03-13
+
+### Changed
+
+- Updated kubectl to v1.26.2
+
+## [2.6.5-bb.2] - 2023-02-07
+
+### Changed
+
+- Updated kubectl to v1.26.1
+
+## [2.6.5-bb.1] - 2023-01-26
+
+### Changed
+
+- Updated kubectl to v1.25.6
+
+## [2.6.5-bb.0] - 2023-01-06
+
+### Changed
+
+- Updated kubectl to v1.25.5
+- Updated Helm chart to v2.6.5
+- Updated appVersion to v1.8.5
+
+## [2.6.1-bb.0] - 2022-11-15
+
+### Changed
+
+- Updated Helm chart to v2.6.1
+- Updated Kyverno image to v1.8.1
+- Updated kubectl image to v1.25.4
+- Updated ubi image to 8.7
+
+## [2.6.0-bb.2] - 2022-10-5-28
+
+### Added
+
+- Added pull policy arg to kyverno deployment and network policy for container registries
+
+## [2.6.0-bb.1] - 2022-11-01
+
+### Changed
+
+- Updated Kubectl image to 1.25.3
+
+## [2.6.0-bb.0] - 2022-10-19
+
+### Changed
+
+- Updated Helm chart to v2.6.0
+- Updated Kyverno to v1.8.0
+
+## [2.5.4-bb.0] - 2022-10-06
+
+### Changed
+
+- Updated Helm chart to v2.5.4
+- Updated Kyverno to v1.7.4
+
+## [2.5.3-bb.1] - 2022-09-28
+
+### Changed
+
+- Updated kubectl to v1.25.2
+- Update gluon to 0.3.1
+
+## [2.5.3-bb.0] - 2022-08-30
+
+### Changed
+
+- Updated Helm chart to v2.5.3
+- Updated Kyverno to v1.7.3
+- updated kubectl from v1.22.2 to v1.24.4
+
+## [2.5.2-bb.0] - 2022-08-12
+
+### Changed
+
+- Updated Helm chart to v2.5.2
+- Updated Kyverno to v1.7.2
+
+## [2.2.0-bb.5] - 2022-04-11
+
+### Added
+
+- OSCAL documentation with initial 800-53b controls satisfied
+
+## [2.2.0-bb.4] - 2022-03-22
+
+### Changed
+
+- Added kyverno introduction
+- Updated overview with instructions to migrate from gatekeeper
+
+## [2.2.0-bb.3] - 2021-03-08
+
+### Changed
+
+- Increase default QPS and burst rates to eliminate client throttling
+
+## [2.2.0-bb.2] - 2021-02-17
+
+### Changed
+
+- Fixed datasource for Grafana dashboard
+
+## [2.2.0-bb.1] - 2021-02-14
+
+### Changed
+
+- Added tag to kubectl image for test
+
+## [2.2.0-bb.0] - 2021-02-09
+
+### Changed
+
+- Bumped chart to v2.2.0, which contains Kyverno version 1.6.0
+
+## [2.1.10-bb.0] - 2021-01-28
+
+### Changed
+
+- Bumped chart to Kyverno version 1.5.8
+
+## [2.1.7-bb.2] - 2021-01-27
+
+### Changed
+
+- Update Chart.yaml to follow new standardization for release automation
+
+## [2.1.7-bb.1] - 2021-01-27
+
+### Changed
+
+- Bumped chart to Kyverno version 1.5.7
+- Fix deployment for Helm release name overrides causing kyverno-pre to fail
+- Updated test library (gluon) to 0.2.5
+
+## [2.1.7-bb.0] - 2021-01-21
+
+### Changed
+
+- Bumped chart to Kyverno version 1.5.5
+- Increased CPU to 0.5 default for main pod to handle larger number of policies
+
+## [2.1.3-bb.3] - 2021-12-15
+
+### Changed
+
+- Updated Memory and CPU resources for kyverno in values.yaml
+
+## [2.1.3-bb.2] - 2021-12-14
+
+### Changed
+
+- Adjusted Helm test to use curl so Iron Bank base image could be used
+- Moved Helm test configuration (`bbtest`) to values.yaml
+
+## [2.1.3-bb.1] - 2021-12-14
+
+### Changed
+
+- Added namespaces to test resources
+- Updated dashboard to fix JSON syntax
+
+## [2.1.3-bb.0] - 2021-12-07
+
+### Added
+
+- Grafana dashboard
+- Overview document
+
+### Changed
+
+- Updated Helm chart to 2.1.3 from upstream
+- Replaced `PodMonitor` with `ServiceMonitor`
+- Updated test resources to latest images (gluon, kubectl)
+- Split test resources into one resource per file
+- Updated labels and annotations on test resources to fix upgrade issue
+- Added timeout to scripted Helm test
+
+## [2.0.3-bb.0] - 2021-10-18
+
+### Added
+
+- Initial creation of the chart

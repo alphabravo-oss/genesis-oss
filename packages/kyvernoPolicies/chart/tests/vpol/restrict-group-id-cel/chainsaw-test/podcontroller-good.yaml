@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-allowed-gid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      securityContext:
+        runAsGroup: 1001
+      containers:
+        - name: container01
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal

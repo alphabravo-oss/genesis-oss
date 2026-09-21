@@ -1,0 +1,35 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-image-registries-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-image-registries-cel
+  resources:
+  - badpod-container-disallowed
+  - badpod-initcontainer-disallowed
+  - badpod-ephemeral-disallowed
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-image-registries-cel
+  resources:
+  - baddeployment-disallowed
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-image-registries-cel
+  resources:
+  - goodpod-all-containers-allowed
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-image-registries-cel
+  resources:
+  - gooddeployment-allowed
+  result: pass

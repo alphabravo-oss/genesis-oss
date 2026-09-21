@@ -1,0 +1,34 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- /* Used for GitOps on a package's Helm chart */ -}}
+{{- $customPackages := .Values._customPackages | default dict -}}
+{{- range $pkgKey, $vals := $customPackages -}}
+{{- if and (not $.Values.offline) (dig "enabled" true $vals) (eq (dig "sourceType" "git" $vals) "git") ($vals.git) -}}
+{{- $pkg := include "resourceName" $pkgKey -}}
+
+{{- $gitCredsDict := dict
+  "name" $pkg
+  "packageGitScope" $vals.git
+  "rootScope" $
+  "releaseName" $pkg
+}}
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: {{ $pkg }}
+  namespace: {{ if dig "helmRelease" "namespace" nil (index $customPackages $pkgKey) }}
+               {{ dig "helmRelease" "namespace" "" (index $customPackages $pkgKey) }}
+             {{ else }}
+               {{ default (dig "namespace" "name" $pkg $vals) "" }}
+             {{ end }}
+  labels:
+    app.kubernetes.io/name: {{ $pkg }}
+    {{- include "commonLabels" $ | nindent 4 }}
+spec:
+  interval: {{ $.Values.flux.interval }}
+  url: {{ dig "git" "repo" nil $vals }}
+  ref:
+    {{- include "validRef" $vals.git | nindent 4 -}}
+  {{- include "gitCredsExtended" $gitCredsDict | nindent 2 }}
+---
+{{- end -}}
+{{- end -}}

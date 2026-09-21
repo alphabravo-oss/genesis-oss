@@ -1,0 +1,58 @@
+{{- $name := "disallow-host-namespaces-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Disallow Host Namespaces
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: {{ default "high" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Host namespaces (Process ID namespace, Inter-Process Communication namespace, and
+      network namespace) allow access to shared information and can be used to elevate
+      privileges. Pods should not be allowed access to host namespaces. This policy ensures
+      fields which make use of these host namespaces are set to `false`.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  validations:
+    - expression: >-
+        object.spec.?hostPID.orValue(false) == false &&
+        object.spec.?hostIPC.orValue(false) == false &&
+        object.spec.?hostNetwork.orValue(false) == false
+      message: >-
+        Sharing the host namespaces is disallowed. The fields spec.hostNetwork,
+        spec.hostIPC, and spec.hostPID must not be set to true.
+{{- end -}}

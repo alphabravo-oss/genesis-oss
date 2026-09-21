@@ -1,0 +1,188 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-no-drop
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        add: ["NET_BIND_SERVICE"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-initcontainer-no-drop
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        add: ["NET_BIND_SERVICE"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-partial-drop
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["NET_ADMIN", "DISALLOWED"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-initcontainer-partial-drop
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["NET_ADMIN", "DISALLOWED"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-no-securitycontext
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-ephemeral-no-drop
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+  ephemeralContainers:
+  - name: debug01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-drop-all
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-drop-all-with-add
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+        add: ["NET_BIND_SERVICE"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-drop-all-initcontainer
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["NET_ADMIN", "ALL"]
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["NET_ADMIN", "ALL"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-drop-all-ephemeral
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+  ephemeralContainers:
+  - name: debug01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      capabilities:
+        drop: ["ALL"]
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-no-drop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-drop-all
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+        securityContext:
+          capabilities:
+            drop: ["ALL"]

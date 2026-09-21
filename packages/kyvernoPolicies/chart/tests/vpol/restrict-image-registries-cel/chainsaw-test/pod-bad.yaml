@@ -1,0 +1,11 @@
+# registry.dso.mil is in the legacy CPol allow list but not in the
+# CEL VPol allow list under tests/test-values.yaml, so this pod fails
+# only the new policy.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-disallowed-registry
+spec:
+  containers:
+  - name: container01
+    image: registry.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7

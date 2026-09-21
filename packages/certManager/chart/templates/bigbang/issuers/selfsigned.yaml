@@ -1,0 +1,18 @@
+{{- include "cert-manager.validateSelfSignedIssuer" . -}}
+{{- with .Values.issuers.selfSigned }}
+{{- if and .enabled (or .createOnInstall $.Release.IsUpgrade) }}
+apiVersion: cert-manager.io/v1
+kind: {{ include "cert-manager.issuerKind" . }}
+metadata:
+  name: {{ include "cert-manager.selfSignedIssuerName" $ | quote }}
+  {{- include "cert-manager.issuerNamespace" (dict "scope" .scope "root" $) | nindent 2 }}
+  labels:
+    {{- include "cert-manager.issuerLabels" (dict "root" $ "labels" .labels) | nindent 4 }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selfSigned: {}
+{{- end }}
+{{- end }}

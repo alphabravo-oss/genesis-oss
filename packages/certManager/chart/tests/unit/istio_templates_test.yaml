@@ -1,0 +1,228 @@
+suite: cert-manager bb-common security templates
+templates:
+  - charts/bb-common/templates/istio/render.yaml
+  - charts/bb-common/templates/network-policies/render.yaml
+  - templates/bigbang/webhook-peer-authentication.yaml
+release:
+  name: cert-manager
+  namespace: cert-manager
+capabilities:
+  apiVersions:
+    - security.istio.io/v1
+    - networking.istio.io/v1
+tests:
+  - it: renders no bb-common resources when all features disabled
+    set:
+      bb-common.istio.enabled: false
+      bb-common.networkPolicies.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders strict peer authentication
+    template: charts/bb-common/templates/istio/render.yaml
+    documentSelector:
+      path: kind
+      value: PeerAuthentication
+    asserts:
+      - isKind:
+          of: PeerAuthentication
+      - equal:
+          path: spec.mtls.mode
+          value: STRICT
+
+  - it: renders release-aware bb-common kube-api egress selectors
+    template: charts/bb-common/templates/network-policies/render.yaml
+    release:
+      name: custom
+      namespace: cert-manager
+    documentSelector:
+      path: metadata.name
+      value: allow-egress-from-cert-manager-controller-to-kubeapi
+    asserts:
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/instance"]
+          value: custom
+
+  - it: renders permissive peer authentication for kube-apiserver webhook callbacks
+    template: templates/bigbang/webhook-peer-authentication.yaml
+    asserts:
+      - isKind:
+          of: PeerAuthentication
+      - equal:
+          path: metadata.name
+          value: cert-manager-webhook-permissive
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: webhook
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
+          value: cert-manager
+      - equal:
+          path: spec.portLevelMtls["10250"].mode
+          value: PERMISSIVE
+
+  - it: selects the custom release webhook pods
+    template: templates/bigbang/webhook-peer-authentication.yaml
+    release:
+      name: custom
+      namespace: cert-manager
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
+          value: custom
+
+  - it: renders sidecar with registry-only mode
+    template: charts/bb-common/templates/istio/render.yaml
+    documentSelector:
+      path: kind
+      value: Sidecar
+    asserts:
+      - equal:
+          path: metadata.name
+          value: sidecar
+      - equal:
+          path: spec.outboundTrafficPolicy.mode
+          value: REGISTRY_ONLY
+
+  - it: renders default deny authorization policy
+    template: charts/bb-common/templates/istio/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: default-authz-allow-nothing
+    asserts:
+      - isKind:
+          of: AuthorizationPolicy
+
+  - it: renders only authz, peer auth, and sidecar resources
+    template: charts/bb-common/templates/istio/render.yaml
+    asserts:
+      - hasDocuments:
+          count: 4
+
+  - it: renders no webhook peer authentication when istio disabled
+    template: templates/bigbang/webhook-peer-authentication.yaml
+    set:
+      bb-common.istio.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders no istio resources when istio disabled
+    template: charts/bb-common/templates/istio/render.yaml
+    set:
+      bb-common.istio.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders default deny ingress network policy
+    template: charts/bb-common/templates/network-policies/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: default-ingress-deny-all
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - contains:
+          path: spec.policyTypes
+          content: Ingress
+
+  - it: renders default deny egress network policy
+    template: charts/bb-common/templates/network-policies/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: default-egress-deny-all
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - contains:
+          path: spec.policyTypes
+          content: Egress
+
+  - it: renders webhook kube-api ingress policy on 10250
+    template: charts/bb-common/templates/network-policies/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: allow-ingress-to-cert-manager-webhook-port-10250-from-kubeapi
+    asserts:
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 10250
+      - equal:
+          path: spec.ingress[0].from[0].ipBlock.cidr
+          value: 10.0.0.0/8
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/component"]
+          value: webhook
+
+  - it: renders prometheus metrics ingress policy on 9402
+    template: charts/bb-common/templates/network-policies/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: allow-ingress-to-cert-manager-metrics-tcp-port-9402-from-ns-monitoring-pod-prometheus
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 9402
+      - equal:
+          path: spec.ingress[0].from[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"]
+          value: monitoring
+      - equal:
+          path: spec.ingress[0].from[0].podSelector.matchLabels["app.kubernetes.io/name"]
+          value: prometheus
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/instance"]
+          value: cert-manager
+
+  - it: renders prometheus metrics authorization policy on 9402
+    template: charts/bb-common/templates/network-policies/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: allow-ingress-to-cert-manager-metrics-tcp-port-9402-from-ns-monitoring-with-identity-monitoring-monitoring-kube-prometheus
+    asserts:
+      - isKind:
+          of: AuthorizationPolicy
+      - equal:
+          path: spec.rules[0].from[0].source.principals[0]
+          value: cluster.local/ns/monitoring/sa/monitoring-monitoring-kube-prometheus
+      - equal:
+          path: spec.rules[0].to[0].operation.ports[0]
+          value: "9402"
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
+          value: cert-manager
+
+  - it: renders controller kube-api egress policy
+    template: charts/bb-common/templates/network-policies/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: allow-egress-from-cert-manager-controller-to-kubeapi
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+
+  - it: renders startupapicheck kube-api egress policy
+    template: charts/bb-common/templates/network-policies/render.yaml
+    documentSelector:
+      path: metadata.name
+      value: allow-egress-from-cert-manager-startupapicheck-to-kubeapi
+    asserts:
+      - isKind:
+          of: NetworkPolicy
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/component"]
+          value: startupapicheck
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/instance"]
+          value: cert-manager
+
+  - it: renders no network policies when disabled
+    template: charts/bb-common/templates/network-policies/render.yaml
+    set:
+      bb-common.networkPolicies.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

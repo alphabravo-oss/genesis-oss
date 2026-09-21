@@ -1,0 +1,178 @@
+###### Pods - Bad
+---
+# no probes at all
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-no-probes
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+# has liveness but missing readiness
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-missing-readiness
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    livenessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+---
+# has readiness but missing liveness
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-missing-liveness
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    readinessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+---
+# one container good, other missing probes
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-partial
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    readinessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+    livenessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+  - name: container02
+    image: dummyimagename
+---
+###### Pods - Good
+---
+# both probes on container
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-both-probes
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    readinessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+    livenessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+---
+# initContainers exempt from probe requirements
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-init-exempt
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    readinessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+    livenessProbe:
+      exec:
+        command: ["true"]
+      periodSeconds: 10
+  initContainers:
+  - name: init01
+    image: dummyimagename
+---
+# multi-container, all with probes
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-multi-container
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      periodSeconds: 5
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      periodSeconds: 10
+  - name: container02
+    image: dummyimagename
+    readinessProbe:
+      tcpSocket:
+        port: 3306
+      periodSeconds: 15
+    livenessProbe:
+      tcpSocket:
+        port: 3306
+      periodSeconds: 20
+---
+###### Deployments - Bad
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-no-probes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename
+---
+###### Deployments - Good
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename
+        readinessProbe:
+          exec:
+            command: ["true"]
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["true"]
+          periodSeconds: 10

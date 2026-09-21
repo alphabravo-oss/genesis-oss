@@ -1,0 +1,48 @@
+########################
+# Required for package #
+########################
+certManager:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+monitoring:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+grafana:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+kyverno:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+kyvernoPolicies:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+kyvernoReporter:
+  enabled: true
+  sso:
+    enabled: true
+  values:
+    bbtests:
+      enabled: true
+      cypress:
+        envs:
+          cypress_policyreporter_ui: "https://policyreporter.dev.bigbang.mil"
+addons:
+  keycloak:
+    enabled: true
+    values:
+      bbtests:
+        enabled: true
+        cypress:
+          envs:
+            cypress_tnr_username: "cypress"
+            cypress_tnr_password: "tnr_w!G33ZyAt@C8"

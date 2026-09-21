@@ -1,0 +1,58 @@
+{
+  "enabledManagers": [
+    "helmv3",
+    "custom.regex"
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Renovate: Update Istio CRDs Package Dependencies",
+  "draftPR": true,
+  "labels": [
+    "istioCRDs",
+    "Big Bang Core",
+    "kind::maintenance",
+    "renovate",
+    "team::Package Maintenance"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker",
+        "helm"
+      ],
+      "matchManagers": [
+        "custom.regex",
+        "helmv3"
+      ],
+      "groupName": "Istio CRDs",
+      "postUpgradeTasks": {
+        "commands": [
+          "match-chart-yaml-appversion",
+          "bump-changelog '{{#each upgrades}}- {{depName}} {{currentVersion}} -> {{newVersion}}\\n{{/each}}'",
+          "regenerate-helm-docs"
+        ],
+        "fileFilters": [
+          "chart/Chart.yaml",
+          "README.md",
+          "CHANGELOG.md"
+        ],
+        "executionMode": "branch"
+      }
+    }
+  ],
+  "postUpdateOptions": [
+    "helmUpdateSubChartArchives"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update big bang application versions",
+      "managerFilePatterns": ["/^chart/Chart.yaml$/"],
+      "matchStrings": [
+        "appVersion:\\s+(?<currentValue>.+)"
+      ],
+      "depNameTemplate": "base",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://istio-release.storage.googleapis.com/charts"
+    }
+  ]
+}

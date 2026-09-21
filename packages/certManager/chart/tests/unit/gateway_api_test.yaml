@@ -1,0 +1,16 @@
+suite: cert-manager Gateway API controller configuration
+templates:
+  - charts/upstream/templates/controller-config.yaml
+release:
+  name: cert-manager
+  namespace: cert-manager
+tests:
+  - it: enables Gateway API in the upstream controller configuration
+    set:
+      upstream.config.enableGatewayAPI: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "enableGatewayAPI: true"

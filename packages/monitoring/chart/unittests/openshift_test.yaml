@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: Monitoring openshift templates
+templates:
+  - templates/bigbang/openshift/monitoring-clusterrolebinding-openshift-scc.yaml
+  - templates/bigbang/openshift/network-attachment-definition.yaml
+release:
+  name: monitoring
+tests:
+  # ClusterRoleBinding tests
+  - it: renders ClusterRoleBinding and RoleBinding when openshift is true
+    set:
+      openshift: true
+      istio.enabled: false
+    templates:
+      - templates/bigbang/openshift/monitoring-clusterrolebinding-openshift-scc.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+      - containsDocument:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          any: true
+      - containsDocument:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          any: true
+
+  - it: renders nothing when openshift is false
+    set:
+      openshift: false
+    templates:
+      - templates/bigbang/openshift/monitoring-clusterrolebinding-openshift-scc.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: ClusterRoleBinding references nonroot-v2 SCC role
+    set:
+      openshift: true
+    templates:
+      - templates/bigbang/openshift/monitoring-clusterrolebinding-openshift-scc.yaml
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: roleRef.name
+          value: "system:openshift:scc:nonroot-v2"
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: "pre-install,pre-upgrade"
+
+  # NetworkAttachmentDefinition tests
+  - it: renders NetworkAttachmentDefinition when both openshift and istio are enabled
+    set:
+      openshift: true
+      istio.enabled: true
+    templates:
+      - templates/bigbang/openshift/network-attachment-definition.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - containsDocument:
+          apiVersion: k8s.cni.cncf.io/v1
+          kind: NetworkAttachmentDefinition
+
+  - it: renders nothing when openshift is false even with istio enabled
+    set:
+      openshift: false
+      istio.enabled: true
+    templates:
+      - templates/bigbang/openshift/network-attachment-definition.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders nothing when istio is disabled even with openshift true
+    set:
+      openshift: true
+      istio.enabled: false
+    templates:
+      - templates/bigbang/openshift/network-attachment-definition.yaml
+    asserts:
+      - hasDocuments:
+          count: 0

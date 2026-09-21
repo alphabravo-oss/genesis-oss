@@ -1,0 +1,36 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-labels-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-labels-cel
+  resources:
+  - badpod-disallowed-key
+  - badpod-key-value-match
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-labels-cel
+  resources:
+  - baddeployment-disallowed-key
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-labels-cel
+  resources:
+  - goodpod-no-labels
+  - goodpod-unrelated-label
+  - goodpod-key-value-mismatch
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-labels-cel
+  resources:
+  - gooddeployment-no-labels
+  result: pass

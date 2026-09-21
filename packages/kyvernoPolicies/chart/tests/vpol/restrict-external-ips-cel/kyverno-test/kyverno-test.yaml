@@ -1,0 +1,23 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-external-ips-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Service
+  policy: restrict-external-ips-cel
+  resources:
+  - bad-disallowed-ip
+  result: fail
+- isValidatingPolicy: true
+  kind: Service
+  policy: restrict-external-ips-cel
+  resources:
+  - good-allowed-ip
+  - good-no-externalips
+  - good-empty-externalips
+  result: pass

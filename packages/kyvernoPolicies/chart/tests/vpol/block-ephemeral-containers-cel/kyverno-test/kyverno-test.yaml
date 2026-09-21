@@ -1,0 +1,39 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: block-ephemeral-containers-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: block-ephemeral-containers-cel
+  resources:
+  - badpod01
+  - badpod02
+  - badpod03
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: block-ephemeral-containers-cel
+  resources:
+  - baddeployment01
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: block-ephemeral-containers-cel
+  resources:
+  - goodpod01
+  - goodpod02
+  - goodpod03
+  - goodpod04
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: block-ephemeral-containers-cel
+  resources:
+  - gooddeployment01
+  - gooddeployment02
+  result: pass

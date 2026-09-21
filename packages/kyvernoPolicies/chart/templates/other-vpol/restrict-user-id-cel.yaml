@@ -1,0 +1,122 @@
+{{- define "restrict-user-id-cel.integerString" -}}
+{{- regexReplaceAll "\\.0+$" (toString .) "" -}}
+{{- end -}}
+{{- define "restrict-user-id-cel.matches" -}}
+{{- printf "%s.exists(r, (!has(r.min) || %s >= r.min) && (!has(r.max) || %s <= r.max))" .list .uid .uid -}}
+{{- end -}}
+{{- define "restrict-user-id-cel.allowed" -}}
+{{- $allowExpr := include "restrict-user-id-cel.matches" (dict "uid" .uid "list" "variables.allowRanges") -}}
+{{- $denyExpr := include "restrict-user-id-cel.matches" (dict "uid" .uid "list" "variables.denyRanges") -}}
+{{- printf "(variables.allowRanges.size() == 0 || %s) && !(%s)" $allowExpr $denyExpr -}}
+{{- end -}}
+{{- $name := "restrict-user-id-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $allow := dig $name "parameters" "allow" (list) .Values.celPoliciesBeta -}}
+{{- $deny := dig $name "parameters" "deny" (list) .Values.celPoliciesBeta -}}
+{{- if and (not $allow) (not $deny) -}}
+  {{- fail (printf "%s is enabled but both celPoliciesBeta.%s.parameters.allow and .deny are empty - disable the policy or provide at least one range" $name $name) -}}
+{{- end -}}
+{{- range $r := $allow -}}
+  {{- if not (kindIs "map" $r) -}}
+    {{- fail (printf "%s: each parameters.allow entry must be a map with min, max, or both" $name) -}}
+  {{- end -}}
+  {{- if and (not (hasKey $r "min")) (not (hasKey $r "max")) -}}
+    {{- fail (printf "%s: each parameters.allow entry must set min, max, or both" $name) -}}
+  {{- end -}}
+  {{- if and (hasKey $r "min") (not (regexMatch "^-?[0-9]+(\\.0+)?$" (toString $r.min))) -}}
+    {{- fail (printf "%s: parameters.allow min must be an integer" $name) -}}
+  {{- end -}}
+  {{- if and (hasKey $r "max") (not (regexMatch "^-?[0-9]+(\\.0+)?$" (toString $r.max))) -}}
+    {{- fail (printf "%s: parameters.allow max must be an integer" $name) -}}
+  {{- end -}}
+  {{- if and (hasKey $r "min") (hasKey $r "max") (gt (int (include "restrict-user-id-cel.integerString" $r.min)) (int (include "restrict-user-id-cel.integerString" $r.max))) -}}
+    {{- fail (printf "%s: parameters.allow min must be less than or equal to max" $name) -}}
+  {{- end -}}
+{{- end -}}
+{{- range $r := $deny -}}
+  {{- if not (kindIs "map" $r) -}}
+    {{- fail (printf "%s: each parameters.deny entry must be a map with min, max, or both" $name) -}}
+  {{- end -}}
+  {{- if and (not (hasKey $r "min")) (not (hasKey $r "max")) -}}
+    {{- fail (printf "%s: each parameters.deny entry must set min, max, or both" $name) -}}
+  {{- end -}}
+  {{- if and (hasKey $r "min") (not (regexMatch "^-?[0-9]+(\\.0+)?$" (toString $r.min))) -}}
+    {{- fail (printf "%s: parameters.deny min must be an integer" $name) -}}
+  {{- end -}}
+  {{- if and (hasKey $r "max") (not (regexMatch "^-?[0-9]+(\\.0+)?$" (toString $r.max))) -}}
+    {{- fail (printf "%s: parameters.deny max must be an integer" $name) -}}
+  {{- end -}}
+  {{- if and (hasKey $r "min") (hasKey $r "max") (gt (int (include "restrict-user-id-cel.integerString" $r.min)) (int (include "restrict-user-id-cel.integerString" $r.max))) -}}
+    {{- fail (printf "%s: parameters.deny min must be less than or equal to max" $name) -}}
+  {{- end -}}
+{{- end -}}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Restrict User ID
+    policies.kyverno.io/category: Best Practices (Security)
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Processes inside a pod can be made to run with a specific user ID by setting `runAsUser`.
+      User IDs below 1000 are generally reserved for system accounts, services, and special accounts.
+      This policy restricts user IDs to configured allowed ranges.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+  - name: allowRanges
+    expression: {{ $allow | toJson | quote }}
+  - name: denyRanges
+    expression: {{ $deny | toJson | quote }}
+  - name: allContainers
+    expression: >-
+      {{ include "bb-kyverno-policies.vpol-allContainers" (merge (dict "name" $name) .) }}
+  validations:
+    - expression: >-
+        !object.spec.?securityContext.?runAsUser.hasValue() ||
+        ({{ include "restrict-user-id-cel.allowed" (dict "uid" "object.spec.securityContext.runAsUser") }})
+      message: >-
+        Setting runAsUser to an ID outside of the allowed ranges is not allowed.
+        spec.securityContext.runAsUser must either be undefined or set to an allowed value.
+    - expression: >-
+        variables.allContainers.all(c,
+          !c.?securityContext.?runAsUser.hasValue() ||
+          ({{ include "restrict-user-id-cel.allowed" (dict "uid" "c.securityContext.runAsUser") }}))
+      message: >-
+        Setting runAsUser to an ID outside of the allowed ranges is not allowed.
+        spec.containers[*].securityContext.runAsUser, spec.initContainers[*].securityContext.runAsUser,
+        and spec.ephemeralContainers[*].securityContext.runAsUser must either be undefined or set to an allowed value.
+{{- end -}}

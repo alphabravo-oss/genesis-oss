@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-image-registries-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/restrict-image-registries-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-image-registries-cel:
+          enabled: true
+          parameters:
+            allow:
+              - 'registry1\.dso\.mil/'
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render when enabled with a non-empty allow list
+    set:
+      celPoliciesBeta:
+        restrict-image-registries-cel:
+          enabled: true
+          parameters:
+            allow:
+              - 'registry1\.dso\.mil/'
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: restrict-image-registries-cel
+
+  - it: should fail to render when enabled with an empty allow list
+    set:
+      celPoliciesBeta:
+        restrict-image-registries-cel:
+          enabled: true
+          parameters:
+            allow: []
+    asserts:
+      - failedTemplate:
+          errorMessage: "restrict-image-registries-cel is enabled but celPoliciesBeta.restrict-image-registries-cel.parameters.allow is empty - disable the policy or provide a list of allowed registry prefixes"
+
+  - it: validation message names the approved-registries contract
+    set:
+      celPoliciesBeta:
+        restrict-image-registries-cel:
+          enabled: true
+          parameters:
+            allow:
+              - 'registry1\.dso\.mil/'
+    asserts:
+      - equal:
+          path: spec.validations[0].message
+          value: "Container images must come from one of the approved registries."

@@ -1,0 +1,23 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-istio-on-namespaces-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Namespace
+  policy: require-istio-on-namespaces-cel
+  resources:
+  - badnamespace-no-label
+  - badnamespace-disabled
+  result: fail
+- isValidatingPolicy: true
+  kind: Namespace
+  policy: require-istio-on-namespaces-cel
+  resources:
+  - goodnamespace-enabled
+  - goodnamespace-ambient
+  result: pass

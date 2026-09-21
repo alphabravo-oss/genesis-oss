@@ -1,0 +1,14 @@
+{{- /* .overrides only — as of gluon 0.9.7, .base and .overrides each emit the full resource set. */}}
+{{- include "gluon.tests.script-configmap.overrides" (list . "kyverno-policies-bbtest.script-configmap") }}
+{{- define "kyverno-policies-bbtest.script-configmap" }}
+metadata:
+  labels:
+    {{- include "kyverno-policies.test-labels" . | nindent 4 }}
+{{- end }}
+---
+{{- include "gluon.tests.script-runner.overrides" (list . "kyverno-policies-bbtest.script-runner") -}}
+{{- define "kyverno-policies-bbtest.script-runner" -}}
+metadata:
+  labels:
+    {{- include "kyverno-policies.test-labels" . | nindent 4 }}
+{{- end }}

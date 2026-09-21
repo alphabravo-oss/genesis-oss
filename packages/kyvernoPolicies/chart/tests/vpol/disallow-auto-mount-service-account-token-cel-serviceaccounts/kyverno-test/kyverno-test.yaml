@@ -1,0 +1,22 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-auto-mount-service-account-token-cel-serviceaccounts
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: ServiceAccount
+  policy: disallow-auto-mount-service-account-token-cel-serviceaccounts
+  resources:
+  - badsa-automount-true
+  - badsa-automount-undefined
+  result: fail
+- isValidatingPolicy: true
+  kind: ServiceAccount
+  policy: disallow-auto-mount-service-account-token-cel-serviceaccounts
+  resources:
+  - goodsa-automount-false
+  result: pass

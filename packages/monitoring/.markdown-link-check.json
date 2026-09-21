@@ -1,0 +1,13 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https://alertmanager.DOMAIN"
+    },
+    {
+      "pattern": "^https://prometheus.DOMAIN"
+    },
+    {
+      "pattern": "^https://grafana.DOMAIN"
+    }
+  ]
+}

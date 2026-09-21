@@ -1,0 +1,42 @@
+# No deprecated APIs have been scheduled for removal since v1.32, and
+# every one on the policy's list has since been fully removed from the
+# k8s versions we test on — so we can't exercise a rejection here.
+# When a future k8s release schedules a new removal, add a fail-case
+# resource for that gvk and assert `result: fail`.
+###### Current apiVersions should pass
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: good-ingress-v1
+  namespace: default
+spec:
+  rules: []
+---
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: good-flowschema-v1
+spec:
+  matchingPrecedence: 1000
+  priorityLevelConfiguration:
+    name: exempt
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: good-storageclass-v1
+provisioner: kubernetes.io/no-provisioner
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: good-hpa-v2
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: test
+  minReplicas: 1
+  maxReplicas: 3

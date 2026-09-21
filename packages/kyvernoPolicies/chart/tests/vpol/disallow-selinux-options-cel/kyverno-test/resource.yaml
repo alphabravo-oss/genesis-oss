@@ -1,0 +1,175 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-user-pod-level
+spec:
+  securityContext:
+    seLinuxOptions:
+      user: disallowed
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-role-container
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      seLinuxOptions:
+        role: disallowed
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-user-initcontainer
+spec:
+  initContainers:
+  - name: initcontainer01
+    image: dummyimagename
+    securityContext:
+      seLinuxOptions:
+        user: disallowed
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-role-pod-and-container
+spec:
+  securityContext:
+    seLinuxOptions:
+      role: disallowed
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      seLinuxOptions:
+        role: disallowed
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-role-ephemeral
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+  ephemeralContainers:
+  - name: debug01
+    image: dummyimagename
+    securityContext:
+      seLinuxOptions:
+        role: disallowed
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-no-selinux
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-allowed-fields-only
+spec:
+  securityContext:
+    seLinuxOptions:
+      type: container_kvm_t
+      level: s0
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-type-and-level-on-containers
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      seLinuxOptions:
+        type: container_t
+        level: s0
+  initContainers:
+  - name: initcontainer01
+    image: dummyimagename
+    securityContext:
+      seLinuxOptions:
+        type: container_init_t
+        level: s0
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-user
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      securityContext:
+        seLinuxOptions:
+          user: disallowed
+      containers:
+      - name: container01
+        image: dummyimagename
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-role-container
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename
+        securityContext:
+          seLinuxOptions:
+            role: disallowed
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-no-selinux
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename

@@ -1,0 +1,109 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-external-names-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/restrict-external-names-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: restrict-external-names-cel
+
+  - it: should not render when disabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: "allow: inlines allow-list entries into the CEL expression"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: true
+          parameters:
+            allow:
+              - allowed.example.com
+              - '.*\.allowed\.internal'
+    asserts:
+      - equal:
+          path: spec.validations[0].message
+          value: "Only external names from the approved list are allowed."
+      - equal:
+          path: spec.validations[0].expression
+          value: "object.spec.?type.orValue('ClusterIP') != 'ExternalName' || object.spec.?externalName.hasValue() && object.spec.externalName.matches('^(allowed.example.com|.*\\\\.allowed\\\\.internal)$')"
+
+  - it: "allow: omitted preserves legacy no-input behavior"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.validations[0].message
+          value: "No external names are allowed."
+
+  - it: "allow: empty list preserves legacy no-input behavior"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: true
+          parameters:
+            allow: []
+    asserts:
+      - equal:
+          path: spec.validations[0].message
+          value: "No external names are allowed."
+
+  - it: "allow: null preserves legacy no-input behavior"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: true
+          parameters:
+            allow: null
+    asserts:
+      - equal:
+          path: spec.validations[0].message
+          value: "No external names are allowed."
+
+  - it: "allow: empty string preserves legacy no-input behavior"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        restrict-external-names-cel:
+          enabled: true
+          parameters:
+            allow: ""
+    asserts:
+      - equal:
+          path: spec.validations[0].message
+          value: "No external names are allowed."

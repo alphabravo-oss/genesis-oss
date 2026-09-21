@@ -1,0 +1,335 @@
+## Bigbang Additions
+networkPolicies:
+  enabled: false
+  ingress:
+    defaults:
+      allowPrometheusToIstioSidecar:
+        enabled: false # Disabled as Kyverno is not in the service mesh
+    definitions:
+      kubeAPI:
+        from:
+          - ipBlock:
+              cidr: 192.168.0.0/16
+          - ipBlock:
+              cidr: 172.16.0.0/12
+          - ipBlock:
+              cidr: 10.0.0.0/8
+    to:
+      kyverno-admission-controller:9443:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: admission-controller
+        from:
+          definition:
+            kubeAPI: true
+      kyverno:8000:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/instance: kyverno-kyverno
+        from:
+          k8s:
+            monitoring/prometheus: true
+  egress:
+    defaults:
+      allowIstiod:
+        enabled: false  # Disabled as Kyverno is not in the service mesh
+    definitions:
+      private-registry:
+        to:
+          - ipBlock:
+              cidr: "15.205.173.153/32"
+        ports:
+          - port: 443
+            protocol: TCP
+    from:
+      kyverno-admission-controller:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: admission-controller
+        to:
+          definition:
+            private-registry: true
+            kubeAPI: true
+      kyverno-migrate-resources:
+        podSelector:
+          matchLabels:
+            batch.kubernetes.io/job-name: kyverno-kyverno-migrate-resources
+        to:
+          definition:
+            kubeAPI: true
+  additionalPolicies: []
+istio:
+  enabled: false
+openshift: false
+bbtests:
+  enabled: false
+  scripts:
+    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.37
+    additionalVolumeMounts:
+      - name: "kyverno-bbtest-manifest"
+        mountPath: /yaml
+    additionalVolumes:
+      - name: "kyverno-bbtest-manifest"
+        configMap:
+          name: "kyverno-bbtest-manifest"
+
+global:
+  image:
+    registry: registry1.dso.mil
+  imagePullSecrets:
+    - name: private-registry
+  resyncPeriod: 15m
+  templating:
+    enabled: false
+    debug: false
+    version: ~
+
+# -- Values to pass to [the upstream Kyverno chart](https://github.com/kyverno/kyverno/blob/main/charts/kyverno/values.yaml)
+# @default -- Upstream chart values
+upstream:
+  nameOverride: kyverno
+  fullnameOverride: kyverno
+  upgrade:
+    fromV2: true
+  apiVersionOverride:
+    podDisruptionBudget: policy/v1
+  # CRDs configuration
+  crds:
+    migration:
+      image:
+        defaultRegistry: registry1.dso.mil
+        repository: ironbank/opensource/kyverno/kyvernocli
+        tag: 'v1.19.1'
+      imagePullSecrets:
+      - name: private-registry
+
+  # Configuration
+  config:
+    defaultRegistry: registry1.dso.mil
+
+  webhooksCleanup:
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/kubernetes/kubectl
+      tag: 'v1.37'
+    imagePullSecrets:
+      - name: private-registry
+    podSecurityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+    resources:
+      limits:
+        cpu: "0.5"
+      requests:
+        cpu: "0.5"
+        memory: "256Mi"
+  features:
+    policyExceptions:
+      enabled: true
+      namespace: 'kyverno'
+
+  # Admission controller configuration
+  admissionController:
+    rbac:
+      coreClusterRole:
+        extraResources:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+
+      clusterRole:
+        extraResources:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+    replicas: 3
+    podSecurityContext:
+      runAsUser: 10001
+      runAsGroup: 10001
+      runAsNonRoot: true
+    imagePullSecrets:
+      - name: private-registry
+    initContainer:
+      image:
+        defaultRegistry: registry1.dso.mil
+        repository: ironbank/opensource/kyverno/kyvernopre
+        tag: 'v1.19.1'
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+    container:
+      image:
+        defaultRegistry: registry1.dso.mil
+        repository: ironbank/opensource/kyverno
+        tag: 'v1.19.1'
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 500m
+          memory: 512Mi
+      securityContext:
+        runAsUser: 10001
+        # Background controller configuration
+        runAsGroup: 10001
+  backgroundController:
+    rbac:
+      serviceAccount:
+        automountServiceAccountToken: false
+      coreClusterRole:
+        extraResources:
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - ingresses
+          - ingressclasses
+          - networkpolicies
+          verbs:
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - rolebindings
+          - roles
+          verbs:
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - '*'
+          resources:
+          - configmaps
+          - resourcequotas
+          - limitranges
+          verbs:
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - '*'
+          resources:
+          - serviceaccounts
+          verbs:
+          - get
+          - list
+          - watch
+          - update
+          - patch
+      clusterRole:
+        extraResources:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - '*'
+          resources:
+          - secrets
+          verbs:
+          - create
+          - update
+          - delete
+    image:
+      defaultRegistry: registry1.dso.mil
+      repository: ironbank/opensource/kyverno/kyverno/background-controller
+      tag: 'v1.19.1'
+    imagePullSecrets:
+      - name: private-registry
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+  cleanupController:
+    rbac:
+      serviceAccount:
+        automountServiceAccountToken: false
+
+    image:
+      defaultRegistry: registry1.dso.mil
+      repository: ironbank/opensource/kyverno/kyverno/cleanup-controller
+      tag: 'v1.19.1'
+    imagePullSecrets:
+      - name: private-registry
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+  reportsController:
+    rbac:
+      serviceAccount:
+        automountServiceAccountToken: false
+      coreClusterRole:
+        extraResources:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+      clusterRole:
+        extraResources:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - get
+          - list
+          - watch
+    image:
+      defaultRegistry: registry1.dso.mil
+      repository: ironbank/opensource/kyverno/kyverno/reports-controller
+      tag: 'v1.19.1'
+    imagePullSecrets:
+      - name: private-registry
+    podSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+    securityContext:
+      runAsUser: 1000
+      # Tests configuration
+      runAsGroup: 1000
+  test:
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/kyverno/kyverno/readiness-checker
+      tag: 'v1.19.1'
+    imagePullSecrets:
+      - name: private-registry

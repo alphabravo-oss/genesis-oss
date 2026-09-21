@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clone-source
+  namespace: default
+data:
+  app: cloned-app
+  env: test

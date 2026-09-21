@@ -1,0 +1,9 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: api-access-allowed-stateful
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: true

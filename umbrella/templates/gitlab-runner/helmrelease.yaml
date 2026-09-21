@@ -1,0 +1,50 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsGitlabRunner := mergeOverwrite (deepCopy .Values.flux) .Values.addons.gitlabRunner.flux -}}
+{{- if .Values.addons.gitlabRunner.enabled }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gitlab-runner
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: gitlab-runner
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/gitlab-runner/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: gitlab-runner
+  releaseName: gitlab-runner
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "gitlab-runner" "package" .Values.addons.gitlabRunner "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsGitlabRunner | nindent 2 }}
+
+  {{- if .Values.addons.gitlabRunner.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.gitlabRunner.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "gitlab-runner" "root" .) | nindent 2 }}
+
+  {{- if or .Values.gatekeeper.enabled .Values.kyverno.enabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled .Values.addons.gitlab.enabled }}
+  dependsOn:
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.kyverno.enabled }}
+    - name: kyverno
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.addons.gitlab.enabled }}
+    - name: gitlab
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

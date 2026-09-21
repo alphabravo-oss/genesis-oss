@@ -1,0 +1,79 @@
+mtls:
+  # -- STRICT = Allow only mutual TLS traffic,
+  # PERMISSIVE = Allow both plain text and mutual TLS traffic
+  mode: STRICT
+
+networkPolicies:
+  enabled: true
+  prependReleaseName: true
+
+# -- Gateway-scoped classification banner configuration. This injects the
+# banner at this gateway for matching HTML hosts.
+classificationBanner:
+  enabled: false
+  classificationLevel: unclassified
+  text: ""
+  addFooter: false
+  enabledHosts: []
+  # enabledHosts:
+  #   - app.example.mil
+
+gateway:
+  servers:
+    - hosts:
+        - '*.dev.bigbang.mil'
+      port:
+        name: http
+        number: 8080
+        protocol: HTTP
+      tls:
+        httpsRedirect: true
+    - hosts:
+        - '*.dev.bigbang.mil'
+      port:
+        name: https
+        number: 8443
+        protocol: HTTPS
+      tls:
+        credentialName: public-cert
+        mode: SIMPLE
+
+waitJob:
+  enabled: false
+  permissions:
+    apiGroups:
+    - ''
+    - "apps"
+    resources:
+    - pods
+    - deployments
+    verbs:
+    - patch
+    - list
+    - get
+    - watch
+
+# -- Values passed to the upstream istio gateway chart.
+# See [the upstream chart's values.yaml](https://github.com/istio/istio/blob/master/manifests/charts/gateway/values.yaml)
+# for configuration options.
+upstream:
+  service:
+    # Type of service. Set to "None" to disable the service entirely
+    type: LoadBalancer
+    ports:
+    - name: tcp-status-port
+      port: 15021
+      protocol: TCP
+      targetPort: 15021
+    - name: http2
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 8443
+  labels:
+    # -- We set this label by default to more easily
+    # integrate with other Big Bang components.
+    istio: ingressgateway

@@ -1,0 +1,196 @@
+# -- This value will be removed in a later release as Tempo no longer has a UI
+domain: dev.bigbang.mil
+# -- Toggle istio integration. Intended to be controlled via BigBang passthrough of istio package status
+istio:
+  enabled: false
+
+  sidecar:
+    enabled: false
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+
+  serviceEntries:
+    custom: []
+
+  authorizationPolicies:
+    enabled: false
+    custom: []
+
+  # Default tempo peer authentication
+  mtls:
+    # STRICT = Allow only mutual TLS traffic
+    # PERMISSIVE = Allow both plain text and mutual TLS traffic
+    mode: STRICT
+
+
+routes:
+  inbound:
+    tempo-query:
+      enabled: false
+      gateways:
+      - istio-gateway/public-ingressgateway
+      hosts:
+      - tempo.{{ .Values.domain }}
+      service: tempo-tempo
+      port: 3200
+      selector:
+        app.kubernetes.io/name: tempo
+
+# -- Toggle for BigBang specific NetworkPolicies.
+# If disabled no NetworkPolicies will be installed with package
+# ref: https://kubernetes.io/docs/concepts/services-networking/network-policies/
+networkPolicies:
+  enabled: false
+  # -- Istio IngressGateway labels for VirtualService external routing to app UI
+  ingressLabels:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  # -- Use `kubectl cluster-info` and then resolve to IP for kube-api.
+  # Review value description in BigBang README.md
+  controlPlaneCidr: 0.0.0.0/0
+  ingress:
+    to:
+      tempo:3200:
+        from:
+          k8s:
+            kiali-service-account@kiali/kiali: true
+            monitoring-grafana@monitoring/grafana: true
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: true
+      tempo:4317:
+        from:
+          k8s:
+            alloy-alloy-operator@alloy/alloy: true
+            alloy-alloy-logs@alloy/alloy-logs: true
+      tempo:9411:
+        from:
+          k8s:
+            "*/*": true
+  egress:
+    from:
+      tempo:
+        to:
+          k8s:
+            monitoring/prometheus:9090: true
+  additionalPolicies: []
+
+# -- Toggle monitoring integration. Intended to be controlled via BigBang passthrough of monitoring package status
+monitoring:
+  enabled: false
+
+upgradeJob:
+  # -- Enable BigBang specific autoRollingUpgrade support
+  enabled: true
+  name: tempo-upgrade-job
+  image:
+    repository: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl
+    tag: v1.34.7
+    imagePullPolicy: Always
+    pullSecrets: private-registry
+  hook:
+    phase: pre-upgrade  # or post-upgrade, pre-install, post-install
+    deletePolicy: hook-succeeded,before-hook-creation
+  serviceAccount: upgrade-job-svc-account
+  role: upgrade-role
+  roleBinding: upgrade-rolebinding
+
+bbtests:
+  enabled: false
+  cypress:
+    artifacts: true
+    envs:
+      cypress_tempo_datasource: 'http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc:3200'
+      cypress_check_datasource: "false"
+      cypress_grafana_url: "http://monitoring-grafana.monitoring.svc.cluster.local"
+    resources:
+      requests:
+        cpu: "1"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "2Gi"
+  scripts:
+    enabled: true
+    image: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+    envs:
+      TEMPO_METRICS_URL: 'http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc:3200'
+
+# -- Toggle or openshift specific config
+openshift: false
+# -- Values to pass to [the upstream tempo chart](https://github.com/grafana-community/helm-charts/blob/main/charts/tempo/values.yaml)
+# @default -- Upstream chart values
+upstream:
+  # -- Overrides the chart's computed fullname
+  fullnameOverride: "tempo-tempo"
+
+  # -- Overrides the chart's computed name
+  nameOverride: "tempo"
+
+  # --- Add writable runtime volume ---
+  extraVolumes:
+  - name: tempo-runtime
+    emptyDir: {}    # ephemeral, backed by node disk or memory
+
+  tempo:
+    # -- Docker image registry
+    registry: registry1.dso.mil
+    # -- Docker image repository
+    repository: ironbank/opensource/grafana/tempo
+    # -- Docker image tag
+    tag: 2.10.5
+    # -- Docker image pull policy
+    pullPolicy: Always
+
+    extraVolumeMounts:
+    - name: tempo-runtime
+      mountPath: /var/tempo
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+
+    reportingEnabled: false
+    ingester:
+      trace_idle_period: 10s
+      max_block_bytes: 1_000_000
+      max_block_duration: 5m
+    retention: 336h
+
+    receivers:
+      zipkin:
+        endpoint: 0.0.0.0:9411
+    securityContext:
+      capabilities:
+        drop:
+        - ALL
+
+  tempoQuery:
+    # -- Docker image repository
+    repository: registry1.dso.mil/ironbank/opensource/grafana/tempo-query
+    # -- Docker image tag
+    tag: 2.10.5
+    # -- Docker image pull policy
+    pullPolicy: Always
+    resources:
+      requests:
+        cpu: 300m
+        memory: 256Mi
+
+    securityContext:
+      capabilities:
+        drop:
+        - ALL
+
+  # -- securityContext for container
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+  serviceAccount:
+    # -- Image pull secrets for the service account
+    imagePullSecrets:
+    - name: private-registry
+    automountServiceAccountToken: false
+
+  # -- Pod Annotations
+  podAnnotations:
+    traffic.sidecar.istio.io/excludeInboundPorts: "9411"

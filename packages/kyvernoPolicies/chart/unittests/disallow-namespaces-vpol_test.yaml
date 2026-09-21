@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: disallow-namespaces-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/disallow-namespaces-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-namespaces-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - default
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: disallow-namespaces-cel
+
+  - it: should not render when disabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-namespaces-cel:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        disallow-namespaces-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails when disallow list is empty
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-namespaces-cel:
+          enabled: true
+          parameters:
+            disallow: []
+    asserts:
+      - failedTemplate:
+          errorMessage: disallow-namespaces-cel is enabled but celPoliciesBeta.disallow-namespaces-cel.parameters.disallow is empty - disable the policy or provide a list of disallowed namespace names
+
+  - it: emits one validation by default and adds the require-namespace check when default is in the disallow list
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-namespaces-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - default
+              - bigbang
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 2

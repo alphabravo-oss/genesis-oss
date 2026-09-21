@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-proc-mount-cel ValidatingPolicy
+templates:
+  - templates/pod-security-vpol/baseline/restrict-proc-mount-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-proc-mount-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render when enabled
+    set:
+      celPoliciesBeta:
+        restrict-proc-mount-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: restrict-proc-mount-cel
+
+  - it: both toggles on include Default and Unmasked in the expression
+    set:
+      celPoliciesBeta:
+        restrict-proc-mount-cel:
+          enabled: true
+          parameters:
+            default: true
+            unmasked: true
+    asserts:
+      - matchRegex:
+          path: spec.validations[0].expression
+          pattern: '"Default"'
+      - matchRegex:
+          path: spec.validations[0].expression
+          pattern: '"Unmasked"'
+
+  - it: both toggles off exclude Default and Unmasked from the expression
+    set:
+      celPoliciesBeta:
+        restrict-proc-mount-cel:
+          enabled: true
+          parameters:
+            default: false
+            unmasked: false
+    asserts:
+      - notMatchRegex:
+          path: spec.validations[0].expression
+          pattern: '"Default"'
+      - notMatchRegex:
+          path: spec.validations[0].expression
+          pattern: '"Unmasked"'

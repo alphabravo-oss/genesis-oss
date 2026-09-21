@@ -1,0 +1,26 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-requests-equal-limits-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-requests-equal-limits-cel
+  resources:
+  - pod-bad-unequal-cpu
+  - pod-bad-unequal-memory
+  - pod-bad-missing-requests
+  - pod-bad-missing-limits
+  - pod-bad-no-resources
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-requests-equal-limits-cel
+  resources:
+  - pod-good-equal
+  - pod-good-unit-equivalents
+  result: pass

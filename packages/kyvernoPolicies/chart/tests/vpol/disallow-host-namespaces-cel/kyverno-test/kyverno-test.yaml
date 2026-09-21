@@ -1,0 +1,39 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-host-namespaces-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-host-namespaces-cel
+  resources:
+  - badpod-hostpid
+  - badpod-hostipc
+  - badpod-hostnetwork
+  - badpod-all-true
+  - badpod-pid-and-ipc
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-host-namespaces-cel
+  resources:
+  - baddeployment-hostnetwork
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-host-namespaces-cel
+  resources:
+  - goodpod-unset
+  - goodpod-all-false
+  - goodpod-partial-false
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-host-namespaces-cel
+  resources:
+  - gooddeployment-unset
+  result: pass

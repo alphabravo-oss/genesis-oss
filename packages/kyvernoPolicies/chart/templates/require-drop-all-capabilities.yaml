@@ -1,0 +1,54 @@
+{{- $name := "require-drop-all-capabilities" }}
+{{- $failureAction := default (dig $name "validationFailureAction" nil .Values.policies) .Values.validationFailureAction  }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.policies) }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    {{- with .Values.autogenControllers }}
+    pod-policies.kyverno.io/autogen-controllers: {{ . }}
+    {{- end }}
+    policies.kyverno.io/title: Drop All Capabilities
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.policies) }}
+    policies.kyverno.io/minversion: 1.5.0
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Capabilities permit privileged actions without giving full root access. All
+      capabilities should be dropped from a Pod, with only those required added back.
+      This policy ensures that all containers explicitly specify `drop: ["ALL"]`.
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "kyverno-policies.webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  validationFailureAction: {{ $failureAction }}
+  background: false
+  failurePolicy: {{ default .Values.failurePolicy (include "setFailurePolicy" $failureAction) }}
+  rules:
+  - name: drop-all-capabilities
+    {{- include "kyverno-policies.exclude" (merge (dict "name" $name) .) | indent 4 }}
+    {{- include "kyverno-policies.match" (merge (dict "name" $name "kinds" (list "Pod")) .) | nindent 4 }}
+    {{- with index .Values "policyPreconditions" $name }}
+    preconditions:
+      {{- toYaml . | nindent 6 }}
+    {{- else }}
+    preconditions:
+      all:
+      - key: "{{`{{ request.operation || 'BACKGROUND' }}`}}"
+        operator: NotEquals
+        value: DELETE
+    {{- end }}
+    validate:
+      message: >-
+        Containers must drop all Linux capabilities by setting the fields
+        spec.containers[*].securityContext.capabilities.drop,
+        spec.initContainers[*].securityContext.capabilities.drop, and
+        spec.ephemeralContainers[*].securityContext.capabilities.drop to `ALL`.
+      {{- include "kyverno-policies.excludeContainers" (merge (dict "name" $name) .) | nindent 6 }}
+            deny:
+              conditions:
+                any:
+                - key: "{{ "{{" }} not_null(element.securityContext.capabilities.drop, '[]') | contains(@, 'ALL') {{ "}}" }}"
+                  operator: Equals
+                  value: false
+{{- end -}}

@@ -1,0 +1,127 @@
+# -- domain to use for virtual service
+domain: dev.bigbang.mil
+
+global:
+  fullnameOverride: kyverno-reporter
+  labels: {}
+
+istio:
+  enabled: false
+
+  sidecar:
+    enabled: false
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+
+  serviceEntries:
+    custom: []
+
+  authorizationPolicies:
+    enabled: false
+    custom: []
+
+  # Default kyverno-reporter peer authentication
+  mtls:
+    # STRICT = Allow only mutual TLS traffic
+    # PERMISSIVE = Allow both plain text and mutual TLS traffic
+    mode: STRICT
+
+routes:
+  inbound:
+    policy-reporter-ui:
+      enabled: true
+      gateways:
+        - istio-gateway/public-ingressgateway
+      hosts:
+        - policyreporter.dev.bigbang.mil
+      service: policy-reporter-ui.kyverno-reporter.svc.cluster.local
+      port: 8080
+
+networkPolicies:
+  enabled: false
+  egress:
+    from:
+      kyverno-reporter:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/instance: kyverno-reporter-kyverno-reporter
+        to:
+          definition:
+            kubeAPI: true
+  ingress:
+    to:
+      policy-reporter:8080:
+        from:
+          k8s:
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: false
+  additionalPolicies: []
+
+bbtests:
+  enabled: false
+  cypress:
+    artifacts: true
+    envs:
+      cypress_grafana_url: http://grafana.monitoring.svc.cluster.local
+      cypress_prometheus_url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+      cypress_grafana_user: "admin"
+      cypress_grafana_pass: "prom-operator"
+      cypress_reporter_ns: kyverno-reporter
+      cypress_policyreporter_ui: http://policy-reporter-ui.kyverno-reporter.svc.cluster.local:8080
+  scripts:
+    envs:
+      KYVERNO_REPORTER_URL: 'http://policy-reporter.kyverno-reporter.svc:8080'
+  volumes: []
+
+# -- Values to pass to [the upstream kyverno chart](https://github.com/kyverno/policy-reporter/blob/main/charts/policy-reporter/values.yaml)
+# @default -- Upstream chart values
+
+upstream:
+  nameOverride: "kyverno-reporter"
+  namespaceOverride: "kyverno-reporter"
+
+  imagePullSecrets: 
+    - name: private-registry
+
+  image:
+    registry: registry1.dso.mil
+    repository: ironbank/opensource/kyverno/policy-reporter
+    pullPolicy: IfNotPresent
+    tag: 3.10.0
+    priorityClassName: ""
+
+  ui:
+    enabled: true
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/nirmata/policy-reporter/policy-reporter-ui
+      pullPolicy: IfNotPresent
+      tag: "2.8.1"
+    imagePullSecrets: 
+      - name: private-registry
+    podLabels:
+      app.kubernetes.io/part-of: policy-reporter
+    openIDConnect:
+      enabled: false
+      discoveryUrl: "https://login.dso.mil/auth/realms/baby-yoda/.well-known/openid-configuration"
+      callbackUrl: "https://policyreporter.dev.bigbang.mil/callback"
+      clientId: ""
+
+  plugin:
+    kyverno:
+      enabled: true
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/opensource/kyverno/policy-reporter/kyverno-plugin
+        pullPolicy: IfNotPresent
+        tag: "0.6.2"
+      imagePullSecrets:
+        - name: private-registry
+      podLabels:
+        app.kubernetes.io/part-of: policy-reporter
+
+  monitoring:
+    # -- Enables the Prometheus Operator integration
+    enabled: true
+    grafana:
+      dashboards:
+        enabled: true
+        namespace: monitoring

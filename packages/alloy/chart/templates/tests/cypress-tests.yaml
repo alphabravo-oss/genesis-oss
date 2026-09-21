@@ -1,0 +1,13 @@
+{{- include "gluon.tests.cypress-configmap.overrides" (list . "k8s-monitoring-test.cypress-configmap") }}
+{{- define "k8s-monitoring-test.cypress-configmap" }}
+metadata:
+  labels:
+    app: alloy
+{{- end }}
+---
+{{- include "gluon.tests.cypress-runner.overrides" (list . "k8s-monitoring-test.cypress-runner") -}}
+{{- define "k8s-monitoring-test.cypress-runner" -}}
+metadata:
+  labels:
+    app: alloy
+{{- end }}

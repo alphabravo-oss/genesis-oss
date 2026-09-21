@@ -1,0 +1,73 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-auto-mount-service-account-token-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01-policy-ready
+    try:
+    - apply:
+        file: ../policy.yaml
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: ValidatingPolicy
+          metadata:
+            name: disallow-auto-mount-service-account-token-cel
+          spec:
+            validationActions:
+             - Deny
+            matchConditions:
+              - name: scope-to-test-ns
+                expression: (cel; "object.metadata.namespace == '" + string(bindings.resolve("namespace")) + "'")
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: ValidatingPolicy
+          metadata:
+            name: disallow-auto-mount-service-account-token-cel-serviceaccounts
+          spec:
+            validationActions:
+             - Deny
+            matchConditions:
+              - name: scope-to-test-ns
+                expression: (cel; "object.metadata.namespace == '" + string(bindings.resolve("namespace")) + "'")
+    - assert:
+        file: policy-ready.yaml
+    - assert:
+        file: policy-ready-serviceaccounts.yaml
+  - name: step-02-pod-deny
+    try:
+    - apply:
+        dryRun: true
+        expect:
+        - check:
+            ($error != null): true
+            (contains($error, 'validate.kyverno.svc')): true
+            (contains($error, 'disallow-auto-mount-service-account-token-cel')): true
+        file: pod-bad.yaml
+  - name: step-03-pod-allow
+    try:
+    - apply:
+        dryRun: true
+        file: pod-good.yaml
+    - apply:
+        dryRun: true
+        file: podcontroller-good.yaml
+  - name: step-04-sa-deny
+    try:
+    - apply:
+        dryRun: true
+        expect:
+        - check:
+            ($error != null): true
+            (contains($error, 'validate.kyverno.svc')): true
+            (contains($error, 'disallow-auto-mount-service-account-token-cel-serviceaccounts')): true
+        file: serviceaccount-bad.yaml
+  - name: step-05-sa-allow
+    try:
+    - apply:
+        dryRun: true
+        file: serviceaccount-good.yaml

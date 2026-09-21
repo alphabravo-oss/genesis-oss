@@ -1,0 +1,95 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-disallowed-key
+  annotations:
+    kyverno-policies-bbtest/disallowed: "anything"
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-key-value-match
+  annotations:
+    kyverno-policies-bbtest/test: disallowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-disallowed-key
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+      annotations:
+        kyverno-policies-bbtest/disallowed: "anything"
+    spec:
+      containers:
+        - name: container01
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-no-annotations
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-unrelated-annotation
+  annotations:
+    app.kubernetes.io/name: myapp
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-key-value-mismatch
+  annotations:
+    kyverno-policies-bbtest/test: allowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-no-annotations
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: container01
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7

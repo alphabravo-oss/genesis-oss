@@ -1,0 +1,40 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-capabilities-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-capabilities-cel
+  resources:
+  - badpod-add-sys-admin
+  - badpod-initcontainer-add-net-admin
+  - badpod-ephemeral-add-sys-admin
+  - badpod-multiple-add-mixed
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-capabilities-cel
+  resources:
+  - baddeployment-add-sys-admin
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-capabilities-cel
+  resources:
+  - goodpod-no-securitycontext
+  - goodpod-no-capabilities
+  - goodpod-empty-add
+  - goodpod-add-allowed
+  - goodpod-add-allowed-all-container-types
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-capabilities-cel
+  resources:
+  - gooddeployment-add-allowed
+  result: pass

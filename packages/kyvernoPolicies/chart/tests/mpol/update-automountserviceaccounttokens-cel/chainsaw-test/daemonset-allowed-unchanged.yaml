@@ -1,0 +1,9 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: api-access-allowed-daemon
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  template:
+    spec:
+      automountServiceAccountToken: false

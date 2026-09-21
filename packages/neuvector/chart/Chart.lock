@@ -1,0 +1,18 @@
+dependencies:
+- name: crd
+  repository: https://neuvector.github.io/neuvector-helm/
+  version: 2.11.1
+- name: core
+  repository: https://neuvector.github.io/neuvector-helm/
+  version: 2.11.1
+- name: monitor
+  repository: https://neuvector.github.io/neuvector-helm/
+  version: 2.11.1
+- name: bb-common
+  repository: oci://registry1.dso.mil/bigbang
+  version: 1.5.0
+- name: gluon
+  repository: oci://registry1.dso.mil/bigbang
+  version: 1.1.7
+digest: sha256:0455915fa7fbbba9f852d6bb452c7dc61b92888c18e217c13543a337d373b049
+generated: "2026-09-04T07:16:20.410075129Z"

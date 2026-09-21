@@ -1,0 +1,63 @@
+{{- $name := "require-ro-rootfs-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Require Read-Only Root Filesystem
+    policies.kyverno.io/category: Best Practices (Security)
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      A read-only root file system helps to enforce an immutable infrastructure strategy.
+      Containers should only need to write to mounted volumes that persist state or cache data.
+      An immutable root filesystem can also prevent malicious binaries from writing to the
+      host system. This policy validates that containers define a securityContext
+      with `readOnlyRootFilesystem: true`.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+  - name: allContainers
+    expression: >-
+      {{ include "bb-kyverno-policies.vpol-allContainers" (merge (dict "name" $name) .) }}
+  validations:
+    - expression: >-
+        variables.allContainers.all(c, c.?securityContext.?readOnlyRootFilesystem.orValue(false) == true)
+      message: >-
+        Containers must set a read-only root filesystem by setting
+        spec.containers[*].securityContext.readOnlyRootFilesystem,
+        spec.initContainers[*].securityContext.readOnlyRootFilesystem, and
+        spec.ephemeralContainers[*].securityContext.readOnlyRootFilesystem to `true`.
+{{- end -}}

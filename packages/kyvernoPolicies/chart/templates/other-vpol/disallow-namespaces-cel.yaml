@@ -1,0 +1,68 @@
+{{- $name := "disallow-namespaces-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $disallow := dig $name "parameters" "disallow" (list) .Values.celPoliciesBeta -}}
+{{- if not $disallow -}}
+  {{- fail (printf "%s is enabled but celPoliciesBeta.%s.parameters.disallow is empty - disable the policy or provide a list of disallowed namespace names" $name $name) -}}
+{{- end -}}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Disallow Default Namespace
+    policies.kyverno.io/category: Best Practices (Security)
+    policies.kyverno.io/severity: {{ default "low" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod, Deployment, StatefulSet, DaemonSet, Jobs, CronJobs
+    policies.kyverno.io/description: >-
+      Kubernetes Namespaces are an optional feature that provide a way to segment and
+      isolate cluster resources across multiple applications and users. As a best
+      practice, workloads should be isolated with Namespaces. Namespaces should be required
+      and the default (empty) Namespace should not be used. This policy validates that resources
+      specify a Namespace name other than `default`.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+  - name: disallowed
+    expression: {{ $disallow | toJson | quote }}
+  validations:
+    # We use request.namespace instead of object.metadata.namespace because
+    # autogen's pod-controller rules look at the embedded pod template, where
+    # namespace is unset; request.namespace stays the controller's namespace.
+    - expression: "!(request.namespace in variables.disallowed)"
+      message: "The namespace used for this resource is not allowed."
+    {{- if has "default" $disallow }}
+    - expression: "request.namespace != ''"
+      message: "A namespace is required."
+    {{- end }}
+{{- end -}}

@@ -1,0 +1,19 @@
+###### ServiceAccounts - Bad
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: badsa-automount-true
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: badsa-automount-undefined
+---
+###### ServiceAccounts - Good
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: goodsa-automount-false
+automountServiceAccountToken: false

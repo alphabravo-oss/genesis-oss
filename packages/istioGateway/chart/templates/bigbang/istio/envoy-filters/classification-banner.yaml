@@ -1,0 +1,143 @@
+{{- $banner := .Values.classificationBanner }}
+{{- if and $banner.enabled $banner.enabledHosts }}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: {{ printf "classification-banner-%s" .Release.Name | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  workloadSelector:
+    labels:
+      app: {{ .Release.Name | quote }}
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        context: GATEWAY
+        listener:
+          filterChain:
+            filter:
+              name: envoy.filters.network.http_connection_manager
+              subFilter:
+                name: envoy.filters.http.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.lua.classification-banner-gateway
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inlineCode: |
+              local classification_synonyms = {
+                ["unclassified"] = "unclassified",
+                ["u"] = "unclassified",
+                ["controlled"] = "controlled",
+                ["cui"] = "controlled",
+                ["uci"] = "controlled",
+                ["confidential"] = "confidential",
+                ["secret"] = "secret",
+                ["s"] = "secret",
+                ["top secret"] = "top secret",
+                ["ts"] = "top secret",
+                ["top secret//sci"] = "top secret//sci",
+                ["sci"] = "top secret//sci"
+              }
+
+              local classification_colors = {
+                ["unclassified"] = { bg="#007a33", text="white", display_text="UNCLASSIFIED" },
+                ["controlled"] = { bg="#502b85", text="white", display_text="CONTROLLED (CUI)" },
+                ["confidential"] = { bg="#0033a0", text="white", display_text="CONFIDENTIAL" },
+                ["secret"] = { bg="#c8102e", text="white", display_text="SECRET" },
+                ["top secret"] = { bg="#ff8c00", text="black", display_text="TOP SECRET" },
+                ["top secret//sci"] = { bg="#fce83a", text="black", display_text="TOP SECRET//SCI" }
+              }
+
+              local config = {
+                classification_level = {{ default "unclassified" $banner.classificationLevel | toJson }},
+                text = {{ default "" $banner.text | toJson }},
+                add_footer = {{ default false $banner.addFooter }},
+                enabled_hosts = {
+                  {{- range $banner.enabledHosts }}
+                  [{{ . | toJson }}] = true,
+                  {{- end }}
+                }
+              }
+
+              local function normalize_host(host)
+                if not host then return "" end
+                return host:lower():gsub(":%d+$", "")
+              end
+
+              local function banner_values()
+                local canonical = classification_synonyms[tostring(config.classification_level):lower()] or "unclassified"
+                local colors = classification_colors[canonical] or classification_colors["unclassified"]
+                local text = config.text
+                if text == "" then
+                  text = colors.display_text
+                end
+
+                return {
+                  text = text,
+                  bg = colors.bg,
+                  color = colors.text
+                }
+              end
+
+              local function build_banner()
+                local values = banner_values()
+                local style = "position: fixed; left: 0; width: 100svw; z-index: 9999; " ..
+                  "height: 2rem; background-color: " .. values.bg .. "; color: " .. values.color .. "; " ..
+                  "text-align: center; display: flex; align-items: center; justify-content: center; " ..
+                  "font-family: sans-serif; font-size: 1rem; font-weight: bold;"
+
+                local top = string.format([[
+                  <div id="bigbang-banner-top" style="%s top: 0;">
+                    %s
+                  </div>
+                ]], style, values.text)
+
+                if not config.add_footer then
+                  return top
+                end
+
+                local bottom = string.format([[
+                  <div id="bigbang-banner-bottom" style="%s bottom: 0;">
+                    %s
+                  </div>
+                ]], style, values.text)
+
+                return top .. "\n" .. bottom
+              end
+
+              function envoy_on_request(request_handle)
+                local host = normalize_host(request_handle:headers():get(":authority"))
+                request_handle:streamInfo():dynamicMetadata():set("envoy.lua.classification-banner", "host", host)
+              end
+
+              function envoy_on_response(response_handle)
+                local headers = response_handle:headers()
+                local ctype = headers:get("content-type")
+                if not ctype or not ctype:lower():find("text/html") then return end
+
+                local metadata = response_handle:streamInfo():dynamicMetadata():get("envoy.lua.classification-banner")
+                local host = metadata and metadata["host"] or ""
+                if not config.enabled_hosts[host] then return end
+
+                local body = response_handle:body()
+                if not body then return end
+
+                local content = body:getBytes(0, body:length())
+                local banner_html = build_banner()
+                if not content or #content == 0 then
+                  body:setBytes(banner_html)
+                  return
+                end
+
+                local body_tag = "</body>"
+                local pos = content:find(body_tag, 1, true)
+                if pos then
+                  body:setBytes(content:sub(1, pos - 1) .. banner_html .. content:sub(pos))
+                else
+                  body:setBytes(banner_html .. content)
+                end
+              end
+{{- end }}

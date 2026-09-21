@@ -1,0 +1,218 @@
+# Settings for the k8s-monitoring chart for gathering, scraping, and forwarding Kubernetes telemetry data to a Grafana Stack .
+# -- See https://github.com/grafana/k8s-monitoring-helm/blob/main/charts/k8s-monitoring/values.yaml for available values.
+# @default -- Our overrides are defined in charts/values.yaml file.
+
+global:
+  image:
+    registry: registry1.dso.mil
+    pullSecrets:
+      - name: private-registry
+  # -- Overrides the Docker registry globally for all images
+  imageRegistry: registry1.dso.mil
+  # To help compatibility with other charts which use global.imagePullSecrets.
+  # Allow either an array of {name: pullSecret} maps (k8s-style), or an array of strings (more common helm-style).
+  # Can be templated.
+  # global:
+  #   imagePullSecrets:
+  #   - name: pullSecret1
+  #   - name: pullSecret2
+  # or
+  # global:
+  #   imagePullSecrets:
+  #   - pullSecret1
+  #   - pullSecret2
+  imagePullSecrets:
+    - name: private-registry
+
+# Modified Service Monitor configuration and deployment at root level avoid alloy-operator scheme issues
+# For additional valid configuration options, please see the [Alloy Helm chart documentation](https://github.com/grafana/alloy/tree/main/operations/helm/charts/alloy)
+serviceMonitors: []
+  # - name: ""
+  #   selectorLabels: {}
+  #   scheme: ""
+
+networkPolicies:
+  # -- Toggle networkPolicies
+  enabled: false
+
+  ingress:
+    to:
+      # Allow alloy-metrics and Prometheus to scrape metrics from alloy-logs
+      alloy-logs:12345:
+        from:
+          k8s:
+            # Allow alloy-metrics pod (same namespace) to scrape alloy-logs
+            # Use full sa@namespace/pod format for AuthorizationPolicy principal matching
+            alloy-alloy-metrics@alloy/alloy-metrics: true
+            # Allow Prometheus to scrape metrics from alloy-logs
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: true
+
+      # Allow alloy-metrics and Prometheus to scrape metrics from alloy-singleton
+      alloy-singleton:12345:
+        from:
+          k8s:
+            # Allow alloy-metrics pod (same namespace) to scrape alloy-singleton
+            alloy-alloy-metrics@alloy/alloy-metrics: true
+            # Allow Prometheus to scrape metrics from alloy-singleton
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: true
+
+      # Allow Prometheus to scrape metrics from alloy-metrics
+      alloy-metrics:12345:
+        from:
+          k8s:
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: true
+      # Allow any namespace to send traces to alloy-receiver via OTLP gRPC
+      alloy-receiver:4317:
+        from:
+          k8s:
+            "*/*": true
+      # Allow any namespace to send traces to alloy-receiver via Zipkin
+      alloy-receiver:9411:
+        from:
+          k8s:
+            "*/*": true
+      # Allow Prometheus and alloy-metrics to scrape metrics from alloy-receiver
+      alloy-receiver:12345:
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: true
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: true
+  egress:
+    defaults:
+      enabled: true
+    from:
+      alloy-logs:
+        to:
+          definition:
+            # Allow alloy-logs to query Kubernetes API for pod discovery and metadata enrichment
+            kubeAPI: true
+          k8s:
+            # Allow alloy-logs to forward collected logs to Loki aggregation backends across deployment modes.
+            logging/logging-loki:3100: true
+            logging/logging-loki-write:3100: true
+            logging/logging-loki-distributor:3100: true
+
+      alloy-operator:
+        to:
+          definition:
+            # Allow alloy-operator to manage Alloy CRDs and deployments via Kubernetes API
+            kubeAPI: true
+      
+      alloy-upstream:
+        to:
+          definition:
+            # Allow alloy-upstream finalizer job to connect to Kube API
+            kubeAPI: true
+
+      alloy-singleton:
+        to:
+          definition:
+            # Allow alloy-singleton to query Kubernetes API for event watching
+            kubeAPI: true
+          k8s:
+            # Allow alloy-singleton to forward collected events to Loki across deployment modes.
+            logging/logging-loki:3100: true
+            logging/logging-loki-write:3100: true
+            logging/logging-loki-distributor:3100: true
+
+      # Allow alloy-receiver to forward traces to Tempo backend
+      alloy-receiver:
+        to:
+          k8s:
+            tempo/tempo:4317: true
+          definition:
+            kubeAPI: true
+
+autoRollingUpgrade:
+  enabled: true
+  image:
+    repository: registry1.dso.mil/ironbank/big-bang/base
+    tag: 2.1.0
+
+
+istio:
+  enabled: false
+
+  sidecar:
+    enabled: false
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+
+  serviceEntries:
+    custom: []
+
+  authorizationPolicies:
+    enabled: false
+    custom: []
+
+  mtls:
+    mode: STRICT
+
+bbtests:
+  enabled: false
+  cypress:
+    artifacts: true
+    envs:
+      cypress_prometheus_url: 'https://prometheus.dev.bigbang.mil'
+      cypress_alertmanager_url: 'https://alertmanager.dev.bigbang.mil'
+  scripts:
+    envs:
+      LOKI_SERVICE: "loki.dev.bigbang.mil"
+      TIMEOUT: "10"
+      RETRIES: "7"
+
+# -- Values to pass to [the upstream k8s-monitoring chart](https://github.com/grafana/k8s-monitoring-helm/blob/main/charts/k8s-monitoring/values.yaml)
+# @default -- Upstream chart values
+upstream:
+# NOTE: k8s-monitoring features, collectors, and destinations are disabled by default.
+# These components are enabled through the Big Bang umbrella chart as they are dependent on other services.
+  cluster:
+    name: bigbang
+  alloy-operator:
+    waitForAlloyRemoval:
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/opensource/grafana/helm-chart-toolbox-kubectl
+        tag: "1.0"
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/grafana/alloy-operator
+      tag: "1.11.0"
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+  collectorCommon:
+    alloy:
+      image:
+        registry: registry1.dso.mil
+        repository: ironbank/opensource/grafana/alloy
+        tag: "v1.18.0"
+      configReloader:
+        image:
+          registry: registry1.dso.mil
+          repository: ironbank/opensource/prometheus-operator/prometheus-config-reloader
+          tag: "v0.93.0"
+        securityContext:
+          capabilities:
+            drop:
+              - ALL
+      alloy:
+        # toggle usage reporting, to prevent trying to reach out to the internet
+        enableReporting: false
+      controller:
+        securityContext:
+          capabilities:
+            drop:
+              - ALL
+  applicationObservability:
+    connectors:
+      grafanaCloudMetrics:
+        enabled: false
+    receivers:
+      otlp:
+        grpc:
+          enabled: true
+    collector: alloy-receiver
+  podLogsViaLoki:
+    collector: alloy-logs
+  clusterEvents:
+    collector: alloy-singleton

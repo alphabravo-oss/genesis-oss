@@ -1,0 +1,1392 @@
+# Overrides for all policies.  Blank values indicate to use the policy-specific value or the default value
+
+# -- Enable policy deployments
+enabled: true
+
+# -- Override all policies' validation failure action with "Audit" or "Enforce".  If blank, uses policy setting.
+validationFailureAction: ""
+
+# -- API server behavior if the webhook fails to respond ('Ignore', 'Fail')
+# For more info: https://kyverno.io/docs/policy-types/cluster-policy/policy-settings/
+failurePolicy: Fail
+
+# -- Policies background mode
+background: true
+
+# -- Kyverno version
+# The default of "autodetect" will try to determine the currently installed version from the deployment
+kyvernoVersion: autodetect
+
+# -- Override all policies' time to wait for admission webhook to respond.  If blank, uses policy setting or default (10).  Range is 1 to 30.
+webhookTimeoutSeconds: 30
+
+# -- Adds an exclusion to all policies.  This is merged with any policy-specific excludes.  See https://kyverno.io/docs/policy-types/cluster-policy/policy-rules/ for fields.
+exclude:
+  #Do not want to block anything in kube-system
+  any:
+  - resources:
+      namespaces:
+      - kube-system
+
+# -- Adds an excludeContainers to all policies.  This is merged with any policy-specific excludeContainers.
+excludeContainers: []
+
+# -- Customize the target Pod controllers for the auto-generated rules. (Eg. `none`, `Deployment`, `DaemonSet,Deployment,StatefulSet`)
+# For more info https://kyverno.io/docs/policy-types/cluster-policy/autogen/.
+autogenControllers: "Deployment,ReplicaSet,DaemonSet,StatefulSet"
+
+# -- Additional labels to apply to all policies.
+customLabels: {}
+
+# -- Add preconditions to individual policies.
+# Policies with multiple rules can have individual rules excluded by using the name of the rule as the key in the `policyPreconditions` map.
+policyPreconditions: {}
+  # # Exclude resources from individual policies
+  # require-run-as-non-root-user:
+  #   all:
+  #   - key: "{{ request.object.metadata.name }}"
+  #     operator: NotEquals
+  #     value: "dcgm-exporter*"
+  # # Policies with multiple rules can have individual rules excluded
+  # require-drop-all:
+  #   any:
+  #   - key: "{{ request.object.metadata.name }}"
+  #     operator: NotEquals
+  #     value: "dcgm-exporter*"
+  # adding-capabilities-strict:
+  #   all:
+  #   - key: "{{ request.object.metadata.name }}"
+  #     operator: NotEquals
+  #     value: "dcgm-exporter*"
+
+# webhookTimeoutSecond: can be added to any policy to override the timeout for that policy
+# match: can be added to any policy to completely override selection of resources by the policy
+# exclude: can be added to any policy to add specific exclusions to the policy
+# See https://kyverno.io/docs/policy-types/cluster-policy/policy-rules/ on how to format match/exclude
+
+policies:
+  # Keep policies in alphabetical order and name them the same as the .yaml file to help with configuration and troubleshooting
+
+  # -- Sample policy showing values that can be added to any policy
+  sample:
+    # -- Controls policy deployment
+    enabled: false
+    # -- Controls if a validation policy rule failure should disallow (Enforce) or allow (Audit) the admission
+    validationFailureAction: Audit # or Enforce
+    # -- Specifies the maximum time in seconds allowed to apply this policy. Default is 10. Range is 1 to 30.
+    webhookTimeoutSeconds: ""
+    # -- Defines when this policy's rules should be applied.  This completely overrides any default matches.
+    match: {}
+    # -- Defines when this policy's rules should not be applied.  This completely overrides any default excludes.
+    exclude: {}
+    # -- Policy specific parameters that are added to the configMap for the policy rules
+    parameters:
+      # -- Adds a container exclusion (by name) to a specific policy.  This is merged with any global excludeContainers.
+      excludeContainers: []
+
+ # Block ephemeral containers with privilege escalation.
+  block-ephemeral-containers:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Clone existing configMap or secret in new Namespaces
+  clone-configs:
+    enabled: false
+    parameters:
+      # -- ConfigMap or Secrets that should be cloned.  Each item requres the kind, name, and namespace of the resource to clone
+      clone: []
+        #   # -- Name of the ConfigMap/Secret
+        # - name: sample
+        #   # -- Kind of the resource: ConfigMap or Secret
+        #   kind: ConfigMap
+        #   # -- Namespace to find the ConfigMap/Secret.  This can be templated.
+        #   namespace: "{{ .Release.Namespace }}"
+    generateExisting: false
+
+  # -- Prevent specified annotations on pods
+  disallow-annotations:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- List of annotations disallowed on pods.  Entries can be just a "key", or a quoted "key: value".  Wildcards '*' and '?' are supported.
+      disallow: []
+
+  # -- Prevent resources that use deprecated or removed APIs (through Kubernetes 1.26)
+  disallow-deprecated-apis:
+    enabled: true
+    validationFailureAction: Audit
+
+  # -- Prevent use of the host namespace (PID, IPC, Network) by pods
+  disallow-host-namespaces:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Prevent container images with specified tags.  Also, requires images to have a tag.
+  disallow-image-tags:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      disallow:
+      - latest
+
+  # -- Prevent the `sidecar.istio.io/inject: false` label on pods.
+  disallow-istio-injection-bypass:
+    enabled: false
+    validationFailureAction: Audit
+
+  # -- Prevent specified labels on pods
+  disallow-labels:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- List of labels disallowed on pods.  Entries can be just a "key", or a quoted "key: value".  Wildcards '*' and '?' are supported.
+      disallow: []
+
+  # -- Prevent pods from using the listed namespaces
+  disallow-namespaces:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of namespaces to deny pod deployment
+      disallow:
+      - default
+
+  # -- Prevent services of the type NodePort
+  disallow-nodeport-services:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Prevent the use of `exec` or `attach` on pods
+  disallow-pod-exec:
+    enabled: false
+    validationFailureAction: Audit
+
+  # -- Prevent privilege escalation on pods
+  disallow-privilege-escalation:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Prevent Automounting of Kubernetes API Credentials on Pods and Service Accounts
+  disallow-auto-mount-service-account-token: 
+    enabled: true
+    validationFailureAction: Audit
+
+  # -- Prevent containers that run as privileged
+  disallow-privileged-containers:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Prevent specified SELinux options from being used on pods.
+  disallow-selinux-options:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of selinux options that are not allowed.  Valid values include `level`, `role`, `type`, and `user`.
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards
+      disallow:
+      - user
+      - role
+
+  # -- Prevent tolerations that bypass specified taints
+  disallow-tolerations:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- List of taints to protect from toleration.  Each entry can have `key`, `value`, and/or `effect`.  Wildcards '*' and '?' can be used
+      # If key, value, or effect are not defined, they are ignored in the policy rule
+      disallow:
+      # Prevent scheduling of pods on control plane nodes
+      - key: node-role.kubernetes.io/master
+
+      # The following example would prevent tolerations that match a taint of "Critical*Only=true:*NoSchedule" where '*' is zero or more characters.
+      # - key: "Critical*Only"
+      #   value: "true"
+      #   effect: "*NoSchedule"
+      # This would block tolerations with
+      #  - key=null && effect=(NoSchedule || PreferNoSchedule)
+      #  - key=Critical*Only && operator=Exists && effect=(null || NoSchedule || PreferNoSchedule)
+      #  - key=Critical*Only && operator=Equal && value=true && effect=(null || NoSchedule || PreferNoSchedule)
+
+  # -- Prevent additional RBAC permissions on default service accounts
+  disallow-rbac-on-default-serviceaccounts:
+    enabled: false
+    validationFailureAction: Audit
+    exclude:
+      any:
+      - resources:
+          # Clusters allow all service accounts access to the service account issuer discovery documents
+          # See https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#service-account-issuer-discovery
+          name: system:service-account-issuer-discovery
+
+  # -- Require specified annotations on all pods
+  require-annotations:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- List of annotations required on all pods.  Entries can be just a "key", or a quoted "key: value".  Wildcards '*' and '?' are supported.
+      require: []
+
+  # -- Require containers have CPU limits defined and within the specified range
+  require-cpu-limit:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- CPU limitations (only one required condition needs to be met).  The following operators are valid: >, <, >=, <=, !, \|, &.
+      require:
+      - <10
+
+  # -- Requires containers to drop all Linux capabilities
+  require-drop-all-capabilities:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Require specified images to be signed and verified
+  require-image-signature:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- List of images that must be signed and the public key to verify.  Use `kubectl explain clusterpolicy.spec.rules.verifyImages` for fields.
+      require:
+      - imageReferences:
+        - "registry1.dso.mil/ironbank/*"
+        attestors:
+        - count: 1
+          entries:
+          - keys:
+              publicKeys: |-
+                -----BEGIN PUBLIC KEY-----
+                MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7CjMGH005DFFz6mffqTIGurBt6fL
+                UfTZxuEDFRBS8mFJx1xw8DEVvjMibLTtqmAoJxUmzmGFgzz+LV875syVEg==
+                -----END PUBLIC KEY-----
+              # Skip Rekor Transparency log check
+              rekor:
+                ignoreTlog: true
+                url: ""
+              ctlog:
+                ignoreSCT: true
+        # Ironbank images are rebuilt nightly and tags are not immutable
+        mutateDigest: false
+        verifyDigest: false
+
+  # -- Require Istio sidecar injection label on namespaces
+  require-istio-on-namespaces:
+    enabled: false
+    validationFailureAction: Audit
+
+  # -- Require specified labels to be on all pods
+  require-labels:
+    enabled: true
+    validationFailureAction: Audit
+    parameters:
+      # -- List of labels required on all pods.  Entries can be just a "key", or a quoted "key: value".  Wildcards '*' and '?' are supported.
+      # See https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels
+      # See https://helm.sh/docs/chart_best_practices/labels/#standard-labels
+      require:
+      - app.kubernetes.io/name
+      - app.kubernetes.io/instance
+      - app.kubernetes.io/version
+
+  # -- Require containers have memory limits defined and within the specified range
+  require-memory-limit:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- Memory limitations (only one required condition needs to be met).  Can use standard Kubernetes resource units (e.g. Mi, Gi).  The following operators are valid: >, <, >=, <=, !, \|, &.
+      require:
+      - <64Gi
+  # -- This policy will mutate a Pod to set `spec.(initEphemeralC\|c)ontainers[].securityContext.capabilities.drop` to 'ALL' if it is not already set.
+  add-default-capability-drop:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- This policy will mutate a Pod to set `runAsNonRoot`, `runAsUser`, `runAsGroup`, and `fsGroup` fields within the Pod securityContext if they are not already set.
+  add-default-securitycontext:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Require containers to run with non-root group
+  require-non-root-group:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Require containers to run as non-root user
+  require-non-root-user:
+    enabled: true
+    validationFailureAction: Enforce
+
+  # -- Require specified probes on pods
+  require-probes:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- List of probes that are required on pods.  Valid values are `readinessProbe`, `livenessProbe`, and `startupProbe`.
+      require:
+      - readinessProbe
+      - livenessProbe
+
+  # -- Require CPU and memory requests equal limits for guaranteed quality of service
+  require-requests-equal-limits:
+    enabled: false
+    validationFailureAction: Audit
+
+  # -- Require containers set root filesystem to read-only
+  require-ro-rootfs:
+    enabled: false
+    validationFailureAction: Audit
+
+  # -- Restricts pods that use AppArmor to specified profiles
+  restrict-apparmor:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed AppArmor profiles
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards/#baseline
+      allow:
+      - runtime/default
+      - localhost/*
+
+  # -- Restrict services with External IPs to a specified list (CVE-2020-8554)
+  restrict-external-ips:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of external IPs allowed in services.  Must be an IP address.  Use the wildcard `?*` to support subnets (e.g. `192.168.0.?*`)
+      allow: []
+
+  # -- Restrict services with External Names to a specified list (CVE-2020-8554)
+  restrict-external-names:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of external names allowed in services.  Must be a lowercase RFC-1123 hostname.
+      allow: []
+
+  # -- Restrict Linux capabilities added to containers to the specified list
+  restrict-capabilities:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of capabilities that are allowed to be added
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+      # See https://man7.org/linux/man-pages/man7/capabilities.7.html for list of capabilities.  The `CAP_` prefix is removed in Kubernetes names.
+      allow:
+      - NET_BIND_SERVICE
+
+  # -- Restrict container group IDs to specified ranges
+  # NOTE: Using require-non-root-group will force runAsGroup to be defined
+  restrict-group-id:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- Allowed group IDs / ranges.  The following operators are valid: ">, <, >=, <=, !, \|, &."
+      # For a lower and upper limit, use ">=min & <=max"
+      allow:
+      - ">=1000"
+
+  # -- Restrict the paths that can be mounted by hostPath volumes to the allowed list.  HostPath volumes are normally disallowed.  If exceptions are made, the path(s) should be restricted.
+  restrict-host-path-mount:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed paths for hostPath volumes to mount
+      allow: []
+
+  restrict-host-path-mount-pv:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed paths for hostPath volumes to mount
+      allow: []
+
+  # -- Restrict the paths that can be mounted as read/write by hostPath volumes to the allowed list.  HostPath volumes, if allowed, should normally be mounted as read-only.  If exceptions are made, the path(s) should be restricted.
+  restrict-host-path-write:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed paths for hostPath volumes to mount as read/write
+      allow: []
+
+  # -- Restrict host ports in containers to the specified list
+  restrict-host-ports:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed host ports
+      allow: []
+
+  # -- Restricts container images to registries in the specified list
+  restrict-image-registries:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed registries that images may use
+      allow:
+      - registry1.dso.mil
+      - registry.dso.mil
+
+  # -- Restrict mounting /proc to the specified mask
+  restrict-proc-mount:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed proc mount values.  Valid values are `Default` and `Unmasked`.
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards
+      allow:
+      - Default
+
+  # -- Restrict seccomp profiles to the specified list
+  restrict-seccomp:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed seccomp profiles.  Valid values are `Localhost`, `RuntimeDefault`, and `Unconfined`
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+      allow:
+      - RuntimeDefault
+      - Localhost
+
+  # -- Restrict SELinux types to the specified list.
+  restrict-selinux-type:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed values for the `type` field
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards
+      allow:
+      - container_t
+      - container_init_t
+      - container_kvm_t
+
+  # -- Restrict sysctls to the specified list
+  restrict-sysctls:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed sysctls.
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards
+      allow:
+      - kernel.shm_rmid_forced
+      - net.ipv4.ip_local_port_range
+      - net.ipv4.ip_unprivileged_port_start
+      - net.ipv4.tcp_syncookies
+      - net.ipv4.ping_group_range
+      - net.ipv4.ip_local_reserved_ports
+      - net.ipv4.tcp_keepalive_time
+      - net.ipv4.tcp_fin_timeout
+      - net.ipv4.tcp_keepalive_intvl
+      - net.ipv4.tcp_keepalive_probes
+
+  # -- Restrict user IDs to the specified ranges
+  # NOTE: Using require-non-root-user will force runAsUser to be defined
+  restrict-user-id:
+    enabled: false
+    validationFailureAction: Audit
+    parameters:
+      # -- Allowed user IDs / ranges.  The following operators are valid: >, <, >=, <=, !, \|, &.
+      # For a lower and upper limit, use ">=min & <=max"
+      allow:
+      - ">=1000"
+
+  # -- Restrict the volume types to the specified list
+  restrict-volume-types:
+    enabled: true
+    validationFailureAction: Enforce
+    parameters:
+      # -- List of allowed Volume types.  Valid values are the volume types listed here: https://kubernetes.io/docs/concepts/storage/volumes/#volume-types
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+      allow:
+      - "configMap"
+      - "csi"
+      - "downwardAPI"
+      - "emptyDir"
+      - "ephemeral"
+      - "persistentVolumeClaim"
+      - "projected"
+      - "secret"
+
+  # -- Updates the image pull policy on containers
+  update-image-pull-policy:
+    enabled: false
+    parameters:
+      # -- List of image pull policy updates.  `from` contains the pull policy value to replace.  If `from` is blank, it matches everything.  `to` contains the new pull policy to use.  Must be one of `Always`, `Never`, or `IfNotPresent`.
+      update:
+      - to: Always
+
+  # -- Updates an existing image registry with a new registry in containers (e.g. proxy)
+  update-image-registry:
+    enabled: false
+    parameters:
+      # -- List of registry updates.  `from` contains the registry to replace. `to` contains the new registry to use.
+      update: []
+      # - from: "registry.to.replace"
+      #   to: "new.registry.to.use"
+
+  # -- List of namespaces to explictly disable mounting the serviceaccount token
+  update-automountserviceaccounttokens-default: 
+    enabled: false
+#   namespaces:
+#     - istio-system
+#     - istio-operator
+
+  # -- Namespace-scoped ServiceAccount hardening and Pod allow/deny exceptions. Omit serviceAccounts to match all ServiceAccounts in a namespace.
+  update-automountserviceaccounttokens:  
+    enabled: false
+#   namespaces:
+#     - namespace: istio-system
+#       serviceAccounts:
+#       - istiod
+#       pods:
+#          allow:
+#          - istiod-*
+#     - namespace: istio-operator
+#       serviceAccounts:
+#       - istio-operator
+#       pods:
+#          allow:
+#          - istiod-*
+#          - istio-operator-*
+
+
+# -- CEL-based ValidatingPolicy/MutatingPolicy replacements (Kyverno 1.17+).
+# -- Beta: schema may change. These run alongside existing ClusterPolicies during migration.
+# -- Each policy must be individually enabled.
+# --
+# -- Per-policy key layout:
+# --   Top level: kyverno engine config (enabled, validationFailureAction, failurePolicy, etc.)
+# --   parameters.*: business-logic tunables that feed into CEL expressions.
+# -- Policies with no tunables omit the parameters key entirely.
+celPoliciesBeta:
+  # -- VPol webhook failure behavior ('Ignore', 'Fail'). Empty auto-derives from
+  # -- validationFailureAction (Audit/Warn -> Ignore, Enforce/Deny -> Fail).
+  # -- Separate from mpolFailurePolicy because the auto-derive logic only
+  # -- applies to ValidatingPolicies. Consolidate after all 50 CPols are migrated
+  # -- and we have a clearer picture of the shared vs kind-specific config surface.
+  vpolFailurePolicy: ""
+  # -- MPol webhook failure behavior ('Ignore', 'Fail'). Empty defaults to 'Fail'.
+  # -- No auto-derive from validationFailureAction because MPols don't validate.
+  # -- Kept separate from vpolFailurePolicy to make the behavioral difference
+  # -- explicit during migration. See vpolFailurePolicy comment for consolidation plan.
+  mpolFailurePolicy: ""
+  # -- Background scanning (true/false). Empty = falls through to top-level .Values.background.
+  background: ""
+  # -- Webhook timeout 1-30s. Empty = falls through to top-level .Values.webhookTimeoutSeconds.
+  webhookTimeoutSeconds: ""
+  # -- Autogen controller list. Same comma-separated CamelCase format as top-level.
+  # Empty = falls through to top-level .Values.autogenControllers.
+  autogenControllers: ""
+  # -- Namespace names to exclude from all celPoliciesBeta policies.
+  # -- CEL equivalent of top-level .Values.exclude.any[].resources.namespaces.
+  # -- Only covers namespace-name exclusions. For complex exclusions (resource names,
+  # -- subjects, roles), use per-policy matchConditions with CEL expressions.
+  excludeNamespaces: []
+  # -- Container names to exclude from validation in all celPoliciesBeta policies.
+  # -- Merged with per-policy excludeContainers. CEL equivalent of top-level .Values.excludeContainers.
+  excludeContainers: []
+
+  # -- Add default capability drops when absent (MutatingPolicy)
+  # -cel suffix avoids name collision with the CPol during migration
+  add-default-capability-drop-cel:
+    enabled: false
+
+  # -- Add default pod securityContext fields when absent (MutatingPolicy)
+  # -cel suffix avoids name collision with the CPol during migration
+  add-default-securitycontext-cel:
+    enabled: false
+    parameters:
+      # -- Default pod securityContext values (applied only when field is absent)
+      runAsNonRoot: true
+      runAsUser: 65534
+      runAsGroup: 65534
+      fsGroup: 65534
+
+  # -- Block ephemeral (debug) containers (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  block-ephemeral-containers-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Clone ConfigMaps/Secrets into new namespaces (GeneratingPolicy)
+  # -cel suffix avoids name collision with the CPol during migration
+  clone-configs-cel:
+    enabled: false
+    parameters:
+      # -- ConfigMaps or Secrets to clone. Same structure as the CPol clone-configs policy.
+      # When `enabled` is true, this list must be non-empty or templating fails.
+      clone: []
+        #   # -- Name of the ConfigMap/Secret
+        # - name: sample
+        #   # -- Kind of the resource: ConfigMap or Secret
+        #   kind: ConfigMap
+        #   # -- Namespace to find the ConfigMap/Secret. Supports Helm templating.
+        #   namespace: "{{ .Release.Namespace }}"
+    # -- Whether to retroactively clone into existing namespaces
+    generateExisting: false
+    # -- Keep cloned resources in sync with the source
+    synchronize: true
+
+  # -- Disallow specified annotations on all pods (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-annotations-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Annotations disallowed on all pods. Each entry has a `key` (RE2 regex)
+      # and an optional `value` (RE2 regex). Both are auto-anchored with ^ and $.
+      # If `value` is omitted, any pod with a matching key is rejected regardless of value.
+      disallow: []
+
+  # -- Disallow deprecated Kubernetes APIs (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-deprecated-apis-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Prevent automounting of Kubernetes API credentials on Pods and ServiceAccounts (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-auto-mount-service-account-token-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Disallow host namespaces (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-host-namespaces-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Disallow specified image tags on container images (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-image-tags-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Image tags disallowed on every container. Match is exact and
+      # case-sensitive; an image is rejected if it ends with `:<tag>` for any
+      # entry. Empty list keeps only the require-tag check active.
+      disallow:
+        - latest
+
+  # -- Disallow Istio sidecar injection bypass (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-istio-injection-bypass-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Disallow specified labels on all pods (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-labels-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Labels disallowed on all pods. Each entry has a `key` (RE2 regex)
+      # and an optional `value` (RE2 regex). Both are auto-anchored with ^ and $.
+      # If `value` is omitted, any pod with a matching key is rejected regardless of value.
+      disallow: []
+
+  # -- Disallow workloads in specified namespaces (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-namespaces-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    # -- Default autogen list adds Job and CronJob so workload kinds the CPol
+    # matched directly are still covered.
+    autogenControllers: "Deployment,ReplicaSet,DaemonSet,StatefulSet,Job,CronJob"
+    parameters:
+      # -- Namespace names workloads must not be deployed into. Match is exact.
+      disallow:
+        - default
+
+  # -- Disallow NodePort Services (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-nodeport-services-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Disallow exec and attach on pods (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-pod-exec-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Disallow privilege escalation on containers (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-privilege-escalation-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Prevent containers that run as privileged (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-privileged-containers-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Disallow RoleBinding and ClusterRoleBinding subjects that grant access
+  # to default ServiceAccounts or service account groups (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-rbac-on-default-serviceaccounts-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    # -- Additional CEL matchConditions. Default preserves the CPol exclusion
+    # for Kubernetes service account issuer discovery RBAC. Set to [] to remove
+    # this default exclusion.
+    matchConditions:
+      - name: exclude-service-account-issuer-discovery
+        expression: "object.metadata.name != 'system:service-account-issuer-discovery'"
+
+  # -- Disallow specified SELinux options (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  disallow-selinux-options-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- SELinux option fields to disallow. Valid values: user, role, type, level.
+      # Defaults from https://kubernetes.io/docs/concepts/security/pod-security-standards
+      disallow:
+        - user
+        - role
+
+  # -- Disallow tolerations that bypass specified taints (VPol)
+  # -cel suffix avoids name collision with the CPol during migration.
+  # The same parameters key feeds two rendered VPols: disallow-tolerations-cel
+  # (Pod + autogen for controllers/CronJob) and disallow-tolerations-cel-runtimeclass
+  # (RuntimeClass scheduling.tolerations).
+  disallow-tolerations-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    # -- Default autogen list adds Job and CronJob so workload kinds the CPol
+    # matched directly are still covered.
+    autogenControllers: "Deployment,ReplicaSet,DaemonSet,StatefulSet,Job,CronJob"
+    parameters:
+      # -- Disallowed taint patterns. Each entry can have `key`, `value`, and/or
+      # `effect`, all of which are RE2 regex (auto-anchored ^...$). A toleration is
+      # blocked when every present field on the disallow entry either matches the
+      # toleration or is absent from it — absent toleration fields are treated as
+      # wildcards, so `{key: X}` rejects a keyless `operator: Exists` toleration
+      # that would tolerate every taint including X.
+      disallow:
+        # Prevent scheduling on control plane nodes
+        - key: 'node-role\.kubernetes\.io/master'
+
+  # -- Restrict AppArmor profiles to the specified list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-apparmor-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed AppArmor annotation values. Supports the same values as the CPol:
+      # `runtime/default`, `localhost/<profile>`, and wildcard patterns such as `localhost/*`.
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards/#baseline
+      allow:
+        - runtime/default
+        - localhost/*
+
+  # -- Restrict the Linux capabilities containers may add (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-capabilities-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of capabilities that are allowed to be added.
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+      # See https://man7.org/linux/man-pages/man7/capabilities.7.html for the capability list.
+      # The `CAP_` prefix is stripped in Kubernetes names. Empty list denies any addition.
+      allow:
+        - NET_BIND_SERVICE
+
+  # -- Restrict mounting /proc to the specified mask (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-proc-mount-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Allow containers to set `procMount: Default`.
+      default: true
+      # -- Allow containers to set `procMount: Unmasked`.
+      unmasked: false
+
+  # -- Restrict seccomp profile types to the specified list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-seccomp-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Allow pods and containers to set `seccompProfile.type: Localhost`.
+      localhost: true
+      # -- Allow pods and containers to set `seccompProfile.type: RuntimeDefault`.
+      runtimeDefault: true
+      # -- Allow pods and containers to set `seccompProfile.type: Unconfined`.
+      unconfined: false
+
+  # -- Restrict SELinux types to the specified list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-selinux-type-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed values for the `type` field.
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards
+      allow:
+        - container_t
+        - container_init_t
+        - container_kvm_t
+
+  # -- Restrict sysctls to the specified list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-sysctls-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed sysctls as RE2 regex patterns (auto-anchored ^...$).
+      # Example: "net\\.ipv4\\..+" to allow any sysctl under net.ipv4.
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards
+      allow:
+        - 'kernel\.shm_rmid_forced'
+        - 'net\.ipv4\.ip_local_port_range'
+        - 'net\.ipv4\.ip_unprivileged_port_start'
+        - 'net\.ipv4\.tcp_syncookies'
+        - 'net\.ipv4\.ping_group_range'
+        - 'net\.ipv4\.ip_local_reserved_ports'
+        - 'net\.ipv4\.tcp_keepalive_time'
+        - 'net\.ipv4\.tcp_fin_timeout'
+        - 'net\.ipv4\.tcp_keepalive_intvl'
+        - 'net\.ipv4\.tcp_keepalive_probes'
+
+  # -- Require specified annotations on all pods (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-annotations-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Annotations required on all pods. Each entry has a `key` (RE2 regex)
+      # and an optional `value` (RE2 regex). Both are auto-anchored with ^ and $.
+      # If `value` is omitted, any non-empty value is accepted.
+      require: []
+
+  # -- Require containers have CPU limits defined (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-cpu-limit-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Upper bound on CPU limits. Rejects containers requesting more than this.
+      # -- Default "10" (cores) mirrors the CPol's "<10" ceiling (VPol uses <=).
+      # -- not a tight limit. Set to empty string to disable the upper-bound check.
+      maxCPU: "10"
+
+  # -- Require containers to drop all Linux capabilities (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-drop-all-capabilities-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Require Cosign signatures on container images (IVPol)
+  # -cel suffix avoids name collision with the CPol during migration.
+  # Renders an ImageValidatingPolicy (not a ValidatingPolicy) because CEL
+  # validation alone cannot run Cosign — the IVPol CRD ships a CEL environment
+  # with `verifyImageSignatures` that pulls signatures from the OCI registry.
+  require-image-signature-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Image globs that the policy applies to. Each entry is a `glob` or a CEL
+      # `expression`; images that don't match any rule are skipped. See
+      # https://kyverno.io/docs/policy-types/image-validating-policy/.
+      matchImageReferences:
+        - glob: "registry1.dso.mil/ironbank/*"
+      # -- Cosign attestors (signing identities). Each entry needs a `name` and a
+      # `cosign` block with the public key and ctlog settings. The default ignores
+      # Rekor transparency log and SCT because Iron Bank images are signed offline.
+      attestors:
+        - name: ironbank
+          cosign:
+            key:
+              # Iron Bank public cosign key, from docs-ironbank.dso.mil.
+              # Verified against current registry1.dso.mil/ironbank/* signatures.
+              data: |-
+                -----BEGIN PUBLIC KEY-----
+                MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7CjMGH005DFFz6mffqTIGurBt6fL
+                UfTZxuEDFRBS8mFJx1xw8DEVvjMibLTtqmAoJxUmzmGFgzz+LV875syVEg==
+                -----END PUBLIC KEY-----
+            # A Kyverno bug makes outbound calls to fetch Rekor key material
+            # even when Rekor is disabled. Stub url + dummy pubkeys keep that
+            # quiet.
+            ctlog:
+              url: https://rekor.sigstore.dev/
+              insecureIgnoreTlog: true
+              insecureIgnoreSCT: true
+              rekorPubKey: |-
+                -----BEGIN PUBLIC KEY-----
+                MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpMBtyH6FHw55roUqrgLuWJcbmA4i
+                iWy4NU17Cs2awqUOvF1Qs1cOznUJcOwqXbQ2rluvUHHkQkHvyFBvo3OgiQ==
+                -----END PUBLIC KEY-----
+              ctLogPubKey: |-
+                -----BEGIN PUBLIC KEY-----
+                MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpMBtyH6FHw55roUqrgLuWJcbmA4i
+                iWy4NU17Cs2awqUOvF1Qs1cOznUJcOwqXbQ2rluvUHHkQkHvyFBvo3OgiQ==
+                -----END PUBLIC KEY-----
+      # -- Registry credentials the Kyverno controller uses to fetch image
+      # manifests and signature artifacts. `secrets` references dockerconfig
+      # secrets that must exist in the Kyverno namespace (not the workload
+      # namespace). Required for private registries like registry1.dso.mil.
+      credentials:
+        secrets:
+          - private-registry
+      # -- Whether to mutate image refs to include the resolved digest, and whether
+      # to require images to already have a digest. Iron Bank tags are mutable
+      # (nightly rebuilds) so both are off by default.
+      validationConfigurations:
+        mutateDigest: false
+        verifyDigest: false
+
+  # -- Require Istio sidecar injection label on namespaces (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-istio-on-namespaces-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Require specified labels on all pods (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-labels-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Labels required on all pods. Each entry has a `key` (RE2 regex)
+      # and an optional `value` (RE2 regex). Both are auto-anchored with ^ and $.
+      # If `value` is omitted, any non-empty value is accepted.
+      require: []
+
+  # -- Require containers have memory limits defined (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-memory-limit-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Upper bound on memory limits. Rejects containers requesting more than this.
+      # Default "64Gi" approximates the CPol's "<64Gi" ceiling (VPol uses <=,
+      # so exactly 64Gi is allowed unlike the CPol's strict <64Gi).
+      # Not a tight limit. Set to empty string to disable the upper-bound check.
+      maxMemory: "64Gi"
+
+  # -- Require containers run with non-root group IDs (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-non-root-group-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Require containers run as non-root user (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-non-root-user-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Require liveness/readiness probes on containers (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-probes-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    autogenControllers: "DaemonSet,Deployment,StatefulSet"
+    parameters:
+      # -- Require readinessProbe on all containers
+      readinessProbe: true
+      # -- Require livenessProbe on all containers
+      livenessProbe: true
+      # -- Require startupProbe on all containers
+      startupProbe: false
+
+  # -- Require CPU and memory requests equal limits so containers get the
+  # Guaranteed QoS class (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-requests-equal-limits-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Require containers run with a read-only root filesystem (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  require-ro-rootfs-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+
+  # -- Restrict services with External IPs to an allow-list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-external-ips-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of RE2 regex patterns (auto-anchored ^...$).
+      # Example: "192\\.168\\.0\\..+" to allow any IP
+      # in 192.168.0.0/24.
+      allow: []
+
+  # -- Restrict services with External Names to an allow-list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-external-names-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed external names as RE2 regex patterns (auto-anchored ^...$).
+      # Plain strings remain exact matches. Empty, missing, null, or empty-string
+      # input denies all ExternalName Services.
+      allow: []
+
+  # -- Restrict runAsGroup, fsGroup, and supplementalGroups IDs to allowed ranges (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-group-id-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Allowed group ID ranges. Each entry must set min, max, or both
+      # (both inclusive). A group ID passes if it falls in any allow range
+      # and no deny range. Empty allow means no positive constraint (any ID
+      # passes unless caught by deny).
+      allow:
+        - min: 1000
+      # -- Excluded group ID ranges. A group ID fails if it falls in any
+      # deny range, even if also covered by allow. Same {min, max} shape.
+      deny: []
+
+  # -- Restrict hostPath volume paths to the specified list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-host-path-mount-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed hostPath volume paths as RE2 regex patterns (auto-anchored ^...$).
+      # Plain strings remain exact matches. Empty list denies all hostPath volumes.
+      allow: []
+
+  # -- Restrict the paths that can be mounted by PersistentVolume hostPath
+  # volumes to the allowed list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-host-path-mount-pv-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed paths for PersistentVolume hostPath volumes to mount.
+      # Supports literal paths and `*` wildcards, matching the legacy CPol
+      # values shape.
+      allow: []
+
+  # -- Require hostPath volumes to be mounted readOnly, with an allow-list of
+  # paths that may be writable (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-host-path-write-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of hostPath volume paths that may be mounted read/write as
+      # RE2 regex patterns (auto-anchored ^...$). Plain strings remain exact
+      # matches. Empty list requires all hostPath mounts to be readOnly.
+      allow: []
+
+  # -- Restrict the host ports that containers may bind via hostPort (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-host-ports-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Allowed hostPort ranges. Each entry must set min, max, or both
+      # (both inclusive). A hostPort passes if it falls in any range. Empty
+      # list denies all host ports.
+      allow: []
+
+  # -- Restricts container images to registries in the specified list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-image-registries-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed registries that images may use
+      allow: []
+
+  # -- Restrict runAsUser IDs to allowed ranges (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-user-id-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- Allowed user ID ranges. Each entry must set min, max, or both
+      # (both inclusive). A user ID passes if it falls in any allow range
+      # and no deny range. Empty allow means no positive constraint (any ID
+      # passes unless caught by deny).
+      allow:
+        - min: 1000
+      # -- Excluded user ID ranges. A user ID fails if it falls in any
+      # deny range, even if also covered by allow. Same {min, max} shape.
+      deny: []
+
+  # -- Restrict volume types to the specified list (VPol)
+  # -cel suffix avoids name collision with the CPol during migration
+  restrict-volume-types-cel:
+    enabled: false
+    # -- Empty string falls through to the global validationFailureAction
+    validationFailureAction: ""
+    parameters:
+      # -- List of allowed Volume types.  Valid values are the volume types listed here: https://kubernetes.io/docs/concepts/storage/volumes/#volume-types
+      # Defaults pulled from https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+      allow:
+        - configMap
+        - csi
+        - downwardAPI
+        - emptyDir
+        - ephemeral
+        - persistentVolumeClaim
+        - projected
+        - secret
+
+  # -- Disable ServiceAccount token automount on configured ServiceAccounts and
+  # -- Pods under one shared values key. This renders two CEL MutatingPolicies:
+  # -- one for ServiceAccounts and one for Pods. The Pod policy uses Kyverno
+  # -- autogen to extend the same mutation to workload Pod templates. Resource
+  # -- names are interpreted as anchored RE2 regexes.
+  update-automountserviceaccounttokens-cel:
+    enabled: false
+    # -- Pinned to the kinds covered by the legacy ClusterPolicy. Override
+    # only if you also want DaemonSet / Job / CronJob template coverage.
+    autogenControllers: "Deployment,StatefulSet"
+#   namespaces:
+#     - namespace: istio-system
+#       serviceAccounts:
+#         - istiod
+#       pods:
+#         # Resource names are interpreted as RE2 regexes and auto-anchored
+#         # with `^` and `$`, so plain strings remain exact matches.
+#         allow:
+#           - istiod-[0-9]+
+#         deny:
+#           - istiod-debug-[0-9]+
+
+  # -- Disable automounting the API token on the default ServiceAccount in the
+  # listed namespaces (MutatingPolicy). -cel suffix avoids name collision with
+  # the CPol during migration
+  update-automountserviceaccounttokens-default-cel:
+    enabled: false
+    # -- Namespaces whose default ServiceAccount should have API token automounting
+    # disabled. Existing and future default ServiceAccounts are both patched.
+    namespaces: []
+#     - istio-system
+#     - istio-operator
+
+  # -- Set imagePullPolicy on tagged (non-digest-pinned) container images (MutatingPolicy)
+  # -cel suffix avoids name collision with the CPol during migration
+  update-image-pull-policy-cel:
+    enabled: false
+    parameters:
+      # -- List of imagePullPolicy rewrites applied to tagged images. An entry with
+      # an empty `from` rewrites every tagged image; a set `from` only rewrites
+      # containers whose current imagePullPolicy equals it. `to` must be one of
+      # Always, Never, or IfNotPresent. Later entries take precedence.
+      update:
+        - to: Always
+
+  # -- Rewrite an existing image registry to a new one in containers, e.g. a
+  # local proxy or approved mirror (MutatingPolicy). -cel suffix avoids name
+  # collision with the CPol during migration
+  update-image-registry-cel:
+    enabled: false
+    parameters:
+      # -- List of registry rewrites applied to every container image. `from` is
+      # an RE2 regex matched against the image; the matched text is replaced with
+      # the literal `to` (no capture-group references). Later entries see earlier
+      # rewrites, so they can be chained.
+      update: []
+      # - from: registry.to.replace
+      #   to: new.registry.to.use
+
+# -- Adds custom policies.  See https://kyverno.io/docs/introduction/quick-start/ .
+additionalPolicies:
+  # -- Name of the policy.  Addtional policies can be added by adding a key.
+  samplePolicy:
+    # -- Controls policy deployment
+    enabled: false
+    # -- Kind of policy.  Currently, "ClusterPolicy" and "Policy" are supported.
+    kind: ClusterPolicy
+    # -- If kind is "Policy", which namespace to target.  The namespace must already exist.
+    namespace: ""
+    # -- Policy annotations to add
+    annotations:
+      # -- Human readable name of policy
+      policies.kyverno.io/title: Sample Policy
+      # -- Category of policy.  Arbitrary.
+      policies.kyverno.io/category: Examples
+      # -- Severity of policy if a violation occurs.  Choose "critical", "high", "medium", "low".
+      policies.kyverno.io/severity: low
+      # -- Type of resource policy applies to (e.g. Pod, Service, Namespace)
+      policies.kyverno.io/subject: Pod
+      # -- Description of what the policy does, why it is important, and what items are allowed or unallowed.
+      policies.kyverno.io/description: >-
+        This sample policy blocks pods from deploying into the 'default' namespace.
+    # -- Policy specification.  See `kubectl explain clusterpolicies.spec`
+    spec:
+      # -- Policy rules.  At least one is required
+      rules:
+      - name: sample-rule
+        match:
+          any:
+          - resources:
+              kinds:
+              - Pods
+        validate:
+          message: "Using 'default' namespace is not allowed."
+          pattern:
+            metadata:
+              namespace: "!default"
+
+# -- Adds additional policyExceptions.  See https://kyverno.io/docs/policy-types/validating-policy/#exceptions
+additionalPolicyExceptions:
+  # # -- Name of the policy.  Addtional policyexceptions can be added by adding a key.
+  # samplepolicyexception:
+  #   # -- Which namespace to target.  The namespace must already exist.
+  #   metadata:
+  #     namespace: ""
+  #     # -- Policy annotations to add
+  #     annotations:
+  #       # -- Human readable name of policyException
+  #       policies.kyverno.io/title: Sample PolicyException
+  #       # -- Category of policy.  Arbitrary.
+  #       policies.kyverno.io/category: Examples
+  #       # -- Type of resource PolicyException applies to (e.g. Pod, Service, Namespace)
+  #       policies.kyverno.io/subject: Pod
+  #       # -- Description of why the PolicyException is necessary and what items are allowed or unallowed.
+  #       policies.kyverno.io/description: >-
+  #         This sample PolicyException allows pods from deploying busybox for debugging.
+  #   # -- PolicyException specification.  See `kubectl explain policyexceptions.spec`
+  #   spec:
+  #     exceptions:
+  #     # -- Name of Policy for exception
+  #     - policyName: samplePolicy
+  #       ruleNames:
+  #       - sample-rule
+  #     match:
+  #       any:
+  #       - resources:
+  #           kinds:
+  #           - Pod
+  #           names:
+  #           - important-tool*
+  #     conditions:
+  #       any:
+  #       - key: "{{ request.object.metadata.labels.app || '' }}"
+  #         operator: Equals
+  #         value: busybox
+
+
+# -- BigBang Istio Toggle and Configuration
+istio:
+  enabled: false
+
+# -- Reserved values for Big Bang test automation
+bbtests:
+  enabled: false
+  chainsawEnabled: false
+  kyvernoCliEnabled: true
+  legacyEnabled: true
+  scripts:
+    # VPol test scripts need kyverno, chainsaw, and jq — kubectl image lacks them
+    image: registry1.dso.mil/ironbank/big-bang/devops-tester:1.1
+    permissions:
+      apiGroups:
+        - ""
+      resources:
+        - configmaps
+        - namespaces
+      verbs:
+        - create
+        - delete
+        - list
+        - get
+    envs:
+      # Feeds 05_test-cpols.sh — the test pod needs the enabled set at runtime
+      ENABLED_CPOLS: '{{ $p := list }}{{ range $k, $v := .Values.policies }}{{ if $v.enabled }}{{ $p = append $p $k }}{{ end }}{{ end }}{{ join " " $p }}'
+      # Feeds 00_reset-cpols.sh — heals stale validationFailureAction between gluon re-runs.
+      # Precedence: global validationFailureAction wins over per-policy, matching the CPol
+      # templates (default returns its second arg when non-empty, first arg is fallback).
+      CPOL_ACTIONS: '{{ $pairs := list }}{{ range $k, $v := .Values.policies }}{{ if $v.enabled }}{{ $action := default (dig $k "validationFailureAction" "Audit" $.Values.policies) $.Values.validationFailureAction }}{{ $pairs = append $pairs (printf "%s=%s" $k $action) }}{{ end }}{{ end }}{{ join " " $pairs }}'
+      IMAGE_PULL_SECRET: '{{ .Values.bbtests.imagePullSecret }}'
+      CHAINSAW_ENABLED: '{{ .Values.bbtests.chainsawEnabled }}'
+      KYVERNO_CLI_TESTS_ENABLED: '{{ .Values.bbtests.kyvernoCliEnabled }}'
+      LEGACY_TESTS_ENABLED: '{{ .Values.bbtests.legacyEnabled }}'
+    additionalVolumeMounts:
+      - name: "kyverno-policies-bbtest-manifests"
+        mountPath: /yaml
+      - name: "kyverno-policies-bbtest-vpol"
+        mountPath: /vpol
+      - name: "kyverno-policies-bbtest-mpol"
+        mountPath: /mpol
+      - name: "kyverno-policies-bbtest-gpol"
+        mountPath: /gpol
+      - name: "kyverno-policies-bbtest-kube-cache"
+        mountPath: /.kube/cache
+      # chainsaw writes a temp kubeconfig under /tmp when running `script:` steps,
+      # and the container has readOnlyRootFilesystem: true
+      - name: "kyverno-policies-bbtest-tmp"
+        mountPath: /tmp
+    additionalVolumes:
+      - name: "kyverno-policies-bbtest-manifests"
+        configMap:
+          name: "kyverno-policies-bbtest-manifests"
+      - name: "kyverno-policies-bbtest-vpol"
+        configMap:
+          name: "kyverno-policies-bbtest-vpol"
+      - name: "kyverno-policies-bbtest-mpol"
+        configMap:
+          name: "kyverno-policies-bbtest-mpol"
+      - name: "kyverno-policies-bbtest-gpol"
+        configMap:
+          name: "kyverno-policies-bbtest-gpol"
+      - name: "kyverno-policies-bbtest-kube-cache"
+        emptyDir: {}
+      - name: "kyverno-policies-bbtest-tmp"
+        emptyDir: {}
+  imagePullSecret: private-registry
+
+waitJob:
+  enabled: true
+  kind: ClusterRole
+  permissions:
+    apiGroups:
+      - kyverno.io
+    resources:
+      - clusterpolicies
+      - policies

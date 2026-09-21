@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-host-ports-cel ValidatingPolicy
+templates:
+  - templates/pod-security-vpol/baseline/restrict-host-ports-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-host-ports-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should deny all host ports when allow is empty (default)
+    set:
+      celPoliciesBeta:
+        restrict-host-ports-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: restrict-host-ports-cel
+      - equal:
+          path: spec.variables[0].name
+          value: allowRanges
+      - equal:
+          path: spec.variables[0].expression
+          value: '[]'
+      - lengthEqual:
+          path: spec.validations
+          count: 1
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: no host ports are permitted
+
+  - it: should embed allow ranges when set
+    set:
+      celPoliciesBeta:
+        restrict-host-ports-cel:
+          enabled: true
+          parameters:
+            allow:
+              - min: 63999
+                max: 63999
+              - min: 64000
+                max: 64999
+              - min: 65001
+    asserts:
+      - equal:
+          path: spec.variables[0].expression
+          value: '[{"max":63999,"min":63999},{"max":64999,"min":64000},{"min":65001}]'
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: allowed ranges
+
+  - it: should fail when an allow entry has neither min nor max
+    set:
+      celPoliciesBeta:
+        restrict-host-ports-cel:
+          enabled: true
+          parameters:
+            allow:
+              - {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "must set min, max, or both"

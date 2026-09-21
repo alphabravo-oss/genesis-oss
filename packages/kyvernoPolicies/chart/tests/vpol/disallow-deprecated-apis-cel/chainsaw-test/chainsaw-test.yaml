@@ -1,0 +1,36 @@
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-deprecated-apis-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: ../policy.yaml
+    # No deprecated APIs have been scheduled for removal since v1.32, and
+    # every one on the policy's list has since been fully removed from the
+    # k8s versions we test on — so we can't exercise a rejection here.
+    # When a future k8s release schedules a new removal, add a fail-case
+    # fixture that submits that gvk and expects a deny.
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: ValidatingPolicy
+          metadata:
+            name: disallow-deprecated-apis-cel
+          spec:
+            validationActions:
+             - Deny
+            matchConditions:
+              - name: scope-to-test-ns
+                expression: (cel; "object.metadata.?namespace.orValue('') == '" + string(bindings.resolve("namespace")) + "'")
+    - assert:
+        file: policy-ready.yaml
+  - name: step-02
+    try:
+    - apply:
+        dryRun: true
+        file: ingress-good.yaml

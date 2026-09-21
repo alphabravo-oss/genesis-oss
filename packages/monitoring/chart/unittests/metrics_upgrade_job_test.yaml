@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: Monitoring metrics upgrade job
+templates:
+  - templates/bigbang/jobs/metrics-upgrade-job.yaml
+release:
+  name: monitoring
+values:
+  - values/metrics-upgrade-job.yaml
+tests:
+  - it: renders nothing when cleanUpgrade is disabled
+    set:
+      cleanUpgrade.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders 4 resources when cleanUpgrade is enabled
+    asserts:
+      - hasDocuments:
+          count: 4
+      - containsDocument:
+          apiVersion: v1
+          kind: ServiceAccount
+          any: true
+      - containsDocument:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          any: true
+      - containsDocument:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          any: true
+      - containsDocument:
+          apiVersion: batch/v1
+          kind: Job
+          any: true
+
+  - it: includes sha256 digest in image when sha is set
+    set:
+      cleanUpgrade.image.sha: "abc123def456"
+    documentIndex: 3
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "@sha256:abc123def456$"
+
+  - it: uses tag-only image format when sha is empty
+    documentIndex: 3
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ":2\\.1\\.0$"
+
+  - it: has pre-upgrade hook annotations on all resources
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: "pre-upgrade"
+
+  - it: role grants correct RBAC permissions
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: rules[0].apiGroups[0]
+          value: "apps"
+      - equal:
+          path: rules[0].resources[0]
+          value: "statefulsets"
+      - contains:
+          path: rules[0].verbs
+          content: "delete"
+      - equal:
+          path: rules[1].resources[0]
+          value: "deployments"

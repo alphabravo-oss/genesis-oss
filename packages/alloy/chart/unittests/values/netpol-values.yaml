@@ -1,0 +1,24 @@
+cluster:
+  name: my-cluster
+
+networkPolicies:
+  enabled: true
+
+upstream:
+  cluster:
+    name: my-cluster
+  collectors:
+    alloy-logs:
+      enabled: true
+      presets:
+        - daemonset
+        - filesystem-log-reader
+  destinations:
+    loki:
+      type: loki
+      url: http://logging-loki-write.logging.svc.cluster.local:3100/loki/api/v1/push
+  podLogsViaLoki:
+    enabled: true
+    destinations:
+      - loki
+    collector: alloy-logs

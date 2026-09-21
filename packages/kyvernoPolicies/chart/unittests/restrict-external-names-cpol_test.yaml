@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+# Legacy parity test: this file exists to document the old CPol's render-time
+# behavior for ambiguous falsey `allow` inputs so the CEL migration can stay
+# aligned where possible. Once the legacy CPols are removed at the end of Epic
+# 578, this file can be deleted safely.
+suite: restrict-external-names ClusterPolicy
+templates:
+  - templates/restrict-external-names.yaml
+
+tests:
+  - it: "allow: omitted preserves legacy no-input behavior"
+    set:
+      enabled: true
+      policies:
+        restrict-external-names:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.rules[0].validate.pattern.spec.externalName
+          value: ""
+
+  - it: "allow: empty list preserves legacy no-input behavior"
+    set:
+      enabled: true
+      policies:
+        restrict-external-names:
+          enabled: true
+          parameters:
+            allow: []
+    asserts:
+      - equal:
+          path: spec.rules[0].validate.pattern.spec.externalName
+          value: ""
+
+  - it: "allow: null preserves legacy no-input behavior"
+    set:
+      enabled: true
+      policies:
+        restrict-external-names:
+          enabled: true
+          parameters:
+            allow: null
+    asserts:
+      - equal:
+          path: spec.rules[0].validate.pattern.spec.externalName
+          value: ""
+
+  - it: "allow: empty string preserves legacy no-input behavior"
+    set:
+      enabled: true
+      policies:
+        restrict-external-names:
+          enabled: true
+          parameters:
+            allow: ""
+    asserts:
+      - equal:
+          path: spec.rules[0].validate.pattern.spec.externalName
+          value: ""

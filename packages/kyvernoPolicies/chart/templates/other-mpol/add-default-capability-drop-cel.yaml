@@ -1,0 +1,86 @@
+{{- $name := "add-default-capability-drop-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Add Default Capability Drop
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.17.0
+    policies.kyverno.io/description: >-
+      This policy mutates all containers in pods to drop `ALL` capabilities by default.
+    policies.bigbang.dev/lifecycle: beta
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  failurePolicy: {{ include "bb-kyverno-policies.mpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- /* This policy must use JSONPatch because capabilities.drop is an atomic list
+         (ApplyConfiguration may not mutate atomic arrays), and Kyverno autogen does not
+         rewrite JSONPatch for controllers. So the policy matches controllers directly
+         (matchConstraints below) and a kind-aware expression targets spec.template.spec. */}}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+      {{- include "bb-kyverno-policies.cel-controllerResourceRules" (merge (dict "name" $name) .) | nindent 6 }}
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) }}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta }}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+    - name: prefix
+      expression: >-
+        has(object.spec.jobTemplate) ? "/spec/jobTemplate/spec/template/spec" : (has(object.spec.template) ? "/spec/template/spec" : "/spec")
+    - name: podSpec
+      expression: >-
+        has(object.spec.jobTemplate) ? object.spec.jobTemplate.spec.template.spec : (has(object.spec.template) ? object.spec.template.spec : object.spec)
+  mutations:
+  {{- /* Only containers that do not already drop ALL are patched. The three-way
+         ternary adds the drop at the deepest existing securityContext level so an
+         existing securityContext (runAsUser etc.) is not clobbered. */ -}}
+  {{- include "add-default-capability-drop-cel.mutation" (dict "field" "containers"          "guard" false) }}
+  {{- include "add-default-capability-drop-cel.mutation" (dict "field" "initContainers"      "guard" true) }}
+  {{- include "add-default-capability-drop-cel.mutation" (dict "field" "ephemeralContainers" "guard" true) }}
+{{- end -}}
+{{- define "add-default-capability-drop-cel.mutation" -}}
+{{- $body := `variables.podSpec.FIELD.map(c,
+  !c.?securityContext.?capabilities.?drop.orValue([]).exists(d, d == "ALL")
+  ? (
+      has(c.securityContext) && has(c.securityContext.capabilities)
+      ? JSONPatch{op: "add", path: variables.prefix + "/FIELD/" + string(variables.podSpec.FIELD.indexOf(c)) + "/securityContext/capabilities/drop", value: ["ALL"]}
+      : has(c.securityContext)
+      ? JSONPatch{op: "add", path: variables.prefix + "/FIELD/" + string(variables.podSpec.FIELD.indexOf(c)) + "/securityContext/capabilities", value: {"drop": ["ALL"]}}
+      : JSONPatch{op: "add", path: variables.prefix + "/FIELD/" + string(variables.podSpec.FIELD.indexOf(c)) + "/securityContext", value: {"capabilities": {"drop": ["ALL"]}}}
+    )
+  : null
+).filter(p, p != null)` -}}
+{{- $expr := $body | replace "FIELD" .field -}}
+{{- if .guard -}}
+{{- $expr = printf "has(variables.podSpec.%s) ? (%s) : []" .field $expr -}}
+{{- end -}}
+{{- $expr = regexReplaceAll "\\s+" $expr " " | trim }}
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          {{ $expr }}
+{{- end -}}

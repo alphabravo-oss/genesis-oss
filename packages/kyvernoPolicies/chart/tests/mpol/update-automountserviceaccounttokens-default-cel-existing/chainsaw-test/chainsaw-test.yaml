@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: update-automountserviceaccounttokens-default-cel-existing
+spec:
+  timeouts:
+    assert: 90s
+    cleanup: 2m
+  steps:
+  # Policy must be ready before the namespace exists: a default SA created while
+  # the policy is absent is never retrofitted (policy-create does not trigger).
+  - name: step-01
+    try:
+    - apply:
+        file: ../policy.yaml
+    - assert:
+        file: policy-ready.yaml
+  # Creating the namespaces makes the kube SA controller create their default
+  # SAs, which is the trigger. The configured namespace's default SA is patched
+  # (async); the unconfigured one is left alone.
+  - name: step-02
+    try:
+    - apply:
+        file: namespace.yaml
+    - assert:
+        file: sa-default-mutated.yaml
+    - assert:
+        file: sa-default-other-unchanged.yaml
+  # Re-enable automounting on the default SA. The admission half is CREATE-only
+  # so it ignores this UPDATE; only this mutate-existing policy reverts it, which
+  # is what isolates this policy when both are deployed.
+  - name: step-03
+    try:
+    - apply:
+        file: sa-default-true.yaml
+    - assert:
+        file: sa-default-mutated.yaml

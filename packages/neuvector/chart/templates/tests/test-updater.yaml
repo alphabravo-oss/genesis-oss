@@ -1,0 +1,54 @@
+{{- if and .Values.bbtests.enabled .Values.bbtests.updater.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  # why: keep the pod name under `neuvector-updater-pod-*`. Big Bang's
+  # Kyverno policy mutates matching updater pods to mount their service account
+  # token. A previous manual test used a different name, missed that mutation,
+  # and produced a false-negative `401 Unauthorized` from the Kubernetes API.
+  name: neuvector-updater-pod-helm-test
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation
+    sidecar.istio.io/inject: "false"
+    {{- with .Values.upstream.cve.updater.podAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    app: neuvector-updater-pod
+    helm-test: enabled
+spec:
+  restartPolicy: Never
+  {{- if .Values.upstream.imagePullSecrets }}
+  imagePullSecrets:
+    - name: {{ .Values.upstream.imagePullSecrets }}
+  {{- end }}
+  {{- if .Values.upstream.leastPrivilege }}
+  serviceAccountName: updater
+  serviceAccount: updater
+  {{- else }}
+  serviceAccountName: {{ .Values.upstream.serviceAccount }}
+  serviceAccount: {{ .Values.upstream.serviceAccount }}
+  {{- end }}
+  containers:
+    - name: neuvector-updater-pod-helm-test
+      image: "{{ .Values.upstream.cve.updater.image.registry }}/{{ .Values.upstream.cve.updater.image.repository }}:{{ .Values.upstream.cve.updater.image.tag }}"
+      imagePullPolicy: {{ .Values.upstream.cve.updater.image.imagePullPolicy }}
+      command:
+        - /bin/sh
+        - -c
+        - |
+          status=$(/usr/bin/curl -ksS -o /dev/null -w '%{http_code}' -X PATCH \
+            -H "Authorization:Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+            -H "Content-Type:application/strategic-merge-patch+json" \
+            -d '{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"'`date +%Y-%m-%dT%H:%M:%S%z`'"}}}}}' \
+            'https://kubernetes.default/apis/apps/v1/namespaces/{{ .Release.Namespace }}/deployments/neuvector-scanner-pod')
+
+          if [ "${status}" = "200" ]; then
+            echo "PASS: updater can restart the scanner deployment through the Kubernetes API"
+          else
+            echo "FAIL: updater PATCH returned HTTP ${status}"
+            exit 1
+          fi
+{{- end }}

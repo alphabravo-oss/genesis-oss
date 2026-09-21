@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+#
+# Live coverage is intentionally small. The sibling `kyverno test` exercises
+# the container/init/ephemeral mutation cases offline; this suite proves the
+# mutation is applied end-to-end by the admission webhook.
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: add-default-capability-drop-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: ../policy.yaml
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: MutatingPolicy
+          metadata:
+            name: add-default-capability-drop-cel
+          spec:
+            matchConditions:
+              - name: scope-to-test-ns
+                expression: (cel; "object.metadata.namespace == '" + string(bindings.resolve("namespace")) + "'")
+    - assert:
+        file: policy-ready.yaml
+  - name: step-02
+    try:
+    - apply:
+        file: pod-bare.yaml
+    - assert:
+        file: pod-bare-mutated.yaml
+    - apply:
+        file: pod-all.yaml
+    - assert:
+        file: pod-all-mutated.yaml
+  - name: step-03
+    try:
+    - apply:
+        file: dep-bare.yaml
+    - assert:
+        file: dep-bare-mutated.yaml

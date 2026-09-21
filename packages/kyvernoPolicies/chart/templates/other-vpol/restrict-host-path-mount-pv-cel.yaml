@@ -1,0 +1,59 @@
+{{- $name := "restrict-host-path-mount-pv-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $allow := dig $name "parameters" "allow" (list) .Values.celPoliciesBeta -}}
+{{- $allowedPatterns := list -}}
+{{- range $path := $allow -}}
+  {{- $pattern := printf "^%s$" ((regexQuoteMeta $path) | replace "\\*" ".*") -}}
+  {{- $allowedPatterns = append $allowedPatterns $pattern -}}
+{{- end -}}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Restrict hostPath Volume Mountable Paths
+    policies.kyverno.io/category: Best Practices (Security)
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: PersistentVolume
+    policies.kyverno.io/description: >-
+      PersistentVolumes that use hostPath consume the underlying node's file system. If hostPath
+      volumes are not universally disabled, they should be restricted to only specific host paths
+      to prevent access to sensitive information. This policy ensures that PersistentVolume
+      spec.hostPath.path values are in the allowed list.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["persistentvolumes"]
+  {{- end }}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- with $userConditions }}
+  matchConditions:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  variables:
+    - name: allowedPathPatterns
+      expression: {{ $allowedPatterns | toJson | quote }}
+  validations:
+    - expression: >-
+        !object.spec.?hostPath.hasValue() ||
+        variables.allowedPathPatterns.exists(pattern,
+          object.spec.hostPath.path.matches(pattern))
+      message: >-
+        PersistentVolume spec.hostPath.path is restricted to the allowed list: {{ default "[]" (join ", " $allow) }}.
+{{- end -}}

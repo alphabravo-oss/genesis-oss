@@ -1,0 +1,338 @@
+global:
+  # -- Overrides the Docker registry globally for all images
+  imageRegistry: registry1.dso.mil
+
+  # To help compatibility with other charts which use global.imagePullSecrets.
+  # Allow either an array of {name: pullSecret} maps (k8s-style), or an array of strings (more common helm-style).
+  # Can be templated.
+  # global:
+  #   imagePullSecrets:
+  #   - name: pullSecret1
+  #   - name: pullSecret2
+  # or
+  # global:
+  #   imagePullSecrets:
+  #   - pullSecret1
+  #   - pullSecret2
+  imagePullSecrets: []
+
+openshift: false
+
+# -- Toggle creation of Enterprise License Secret
+# See https://docs-bigbang.dso.mil/latest/packages/grafana/docs/enterprise
+enterprise:
+  createSecret: false
+  license:
+
+
+## DO NOT CHANGE
+# -- kube-prometheus-stack dashboard backward-compatibility values
+alertmanager:
+  enabled: true
+coreDns:
+  enabled: true
+kubeEtcd:
+  enabled: true
+kubeApiServer:
+  enabled: true
+kubeControllerManager:
+  enabled: true
+kubeScheduler:
+  enabled: true
+kubeProxy:
+  enabled: true
+nodeExporter:
+  enabled: true
+  operatingSystems:
+    linux:
+      enabled: true
+    aix:
+      enabled: true
+    darwin:
+      enabled: true
+kubelet:
+  enabled: true
+windowsMonitoring:
+  enabled: true
+prometheusRemoteWriteDashboards: true
+grafana:
+  forceDeployDashboards: true
+  defaultDashboardsEnabled: true
+  operator:
+    dashboardsConfigMapRefEnabled: false
+    annotations: {}
+    matchLabels: {}
+  defaultDashboardsEditable: true
+  sidecar:
+    dashboards:
+      label: grafana_dashboard
+      labelValue: "1"
+      annotations: {}
+# -- [bb-common Network Policies configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/network-policies/README.md?ref_type=heads)
+networkPolicies:
+  enabled: true
+  prependReleaseName: true
+  egress:
+    from:
+      grafana:
+        to:
+          cidr:
+            0.0.0.0/0: true
+          definition:
+            kubeAPI: true
+  ingress:
+    to:
+      grafana:
+        from:
+          k8s:
+            # Allow Kiali to access Grafana (generates NetworkPolicy + AuthorizationPolicy)
+            kiali-service-account@kiali/kiali: true
+
+domain: dev.bigbang.mil
+
+autoRollingUpgrade:
+  # -- Enable BigBang specific autoRollingUpgrade support
+  enabled: true
+  image:
+    repository: registry1.dso.mil/ironbank/big-bang/base
+    tag: 2.1.0
+
+# -- [bb-common Istio configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/istio/README.md)
+istio:
+  # -- Prepends the release name to istio resources created by bb-common
+  prependReleaseName: true
+  enabled: false
+  # -- [bb-common Sidecar configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/istio/README.md#sidecar)
+  sidecar:
+    enabled: false
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+  mtls:
+    # Note that setting this to STRICT requires additional configuration for Prometheus and monitors.
+    # Review `./docs/istio-mtls-metrics.md` for additional information.
+    mode: STRICT
+  # -- [bb-common ServiceEntry configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/istio/README.md#custom-serviceentries)
+  serviceEntries:
+    custom: []
+      # - name: "allow-google"
+      #   spec:
+      #     hosts:
+      #       - google.com
+      #     location: MESH_EXTERNAL
+      #     ports:
+      #       - number: 443
+      #         protocol: TLS
+      #         name: https
+      #     resolution: DNS
+  # -- [bb-common AuthorizationPolicy configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/authorization-policies/README.md)
+  authorizationPolicies:
+    enabled: true
+    generateFromNetpol: true
+    custom: []
+      # - name: "allow-nothing"
+      #   spec: {}
+
+# -- [bb-common Routes configuration](https://repo1.dso.mil/big-bang/product/packages/bb-common/-/blob/main/docs/routes/README.md)
+routes:
+  inbound:
+    grafana:
+      enabled: '{{ .Values.istio.enabled }}'
+      gateways:
+      - istio-gateway/public-ingressgateway
+      hosts:
+      - 'grafana.{{ .Values.domain }}'
+      # Custom HTTP routing to handle /metrics redirect
+      http:
+      - match:
+        - uri:
+            prefix: "/metrics"
+        redirect:
+          uri: "/"
+      - route:
+        - destination:
+            host: monitoring-grafana
+            port:
+              number: 80
+      selector:
+        app.kubernetes.io/name: grafana
+
+sso:
+  enabled: false
+
+bbtests:
+  enabled: false
+  cypress:
+    artifacts: true
+    envs:
+      cypress_grafana_url: 'http://grafana:80'
+    resources:
+      requests:
+        cpu: 2
+        memory: 2Gi
+      limits:
+        cpu: 2
+        memory: 2Gi
+  istio:
+    sidecar:
+      resources:
+        cpu:
+          requests: 100m
+          limits: 2000m
+        memory:
+          requests: 512Mi
+          limits: 2048Mi
+
+# -- Values to pass to [the upstream grafana chart](https://github.com/grafana-community/helm-charts/blob/main/charts/grafana/values.yaml)
+# @default -- Upstream chart values
+upstream:
+  fullnameOverride: "monitoring-grafana"
+  nameOverride: "grafana"
+
+  image:
+    registry: registry1.dso.mil
+    repository: ironbank/big-bang/grafana/grafana-plugins
+    # Overrides the Grafana image tag whose default is the chart appVersion
+    tag: "13.1.0"
+    pullPolicy: Always
+
+    pullSecrets:
+    - private-registry
+
+  testFramework:
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/bats/bats
+      tag: "1.14.0"
+    imagePullPolicy: Always
+
+  securityContext:
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+
+  downloadDashboardsImage:
+    registry: registry1.dso.mil
+    repository: ironbank/big-bang/base
+    tag: 2.1.0
+    #sha: ""
+    pullPolicy: Always
+
+  downloadDashboards:
+    resources:
+      limits:
+        cpu: 20m
+        memory: 20Mi
+      requests:
+        cpu: 20m
+        memory: 20Mi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  initChownData:
+    enabled: false
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/redhat/ubi/ubi9-minimal
+      tag: "9.8"
+      pullPolicy: Always
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  adminPassword: prom-operator
+
+  ## Grafana's primary configuration
+  ## NOTE: values in map will be converted to ini format
+  ## ref: http://docs.grafana.org/installation/configuration/
+  ##
+  grafana.ini:
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+    feature_toggles:
+      splashScreen: false
+    grafana_net:
+      url: https://grafana.net
+    server:
+      domain: "{{ if (and .Values.ingress.enabled .Values.ingress.hosts) }}{{ tpl (.Values.ingress.hosts | first) . }}{{ else }}''{{ end }}"
+    auth.generic_oauth:
+      enabled: false
+      client_id: grafana    #this is a sample client_id, review docs/KEYCLOAK.md
+      client_secret: secret #this is a sample secret, review docs/KEYCLOAK.md
+      scopes: Grafana       #this is a sample client scope, review docs/KEYCLOAK.md
+      auth_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/auth
+      token_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/token
+      api_url: https://login.dso.mil/auth/realms/baby-yoda/protocol/openid-connect/userinfo
+      allow_sign_up: true
+      role_attribute_path: Viewer
+      # tls_skip_verify_insecure: false
+      # tls_client_cert: ""
+      # tls_client_key: ""
+      # tls_client_ca : /etc/oidc/ca.pem
+      # allowed_domains: mycompany.com mycompany.org
+      # empty_scopes: false
+    plugin.grafana-piechart-panel:
+      path: /var/lib/bb-plugins/piechart-panel
+    plugin.grafana-polystat-panel:
+      path: /var/lib/bb-plugins/polystat-panel
+    plugin.redis-datasource:
+      path: /var/lib/bb-plugins/redis-datasource
+    security:
+      angular_support_enabled: false
+
+  ## Sidecars that collect the configmaps with specified label and stores the included files them into the respective folders
+  ## Requires at least Grafana 5 to work and can't be used together with parameters dashboardProviders, datasources and dashboards
+  sidecar:
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/kiwigrid/k8s-sidecar
+      tag: 2.10.1
+    imagePullPolicy: Always
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+    # Log level default for all sidecars. Can be one of: DEBUG, INFO, WARN, ERROR, CRITICAL. Defaults to INFO
+    # logLevel: INFO
+    dashboards:
+      enabled: true
+      # label that the configmaps with dashboards are marked with (can be templated)
+      # value of label that the configmaps with dashboards are set to
+      labelValue: "1"
+      # logLevel: INFO
+      searchNamespace: ALL
+      # Method to use to detect ConfigMap changes. With WATCH the sidecar will do a WATCH requests, with SLEEP it will list all ConfigMaps, then sleep for 60 seconds.
+      # search in configmap, secret or both
+      multicluster:
+        global:
+          enabled: true
+        etcd:
+          enabled: true
+    datasources:
+      enabled: true
+      # value of label that the configmaps with datasources are set to
+      labelValue: "1" #TODO: Confirm this value is used - Otherwise remove datasources section
+      # logLevel: INFO
+      # Method to use to detect ConfigMap changes. With WATCH the sidecar will do a WATCH requests, with SLEEP it will list all ConfigMaps, then sleep for 60 seconds.
+      # search in configmap, secret or both
+      ## Add a seperate remote image renderer deployment/service
+  imageRenderer:
+    # Use an existing secret containing the image renderer token under the `token` key.
+    image:
+      registry: registry1.dso.mil
+      repository: ironbank/opensource/grafana/grafana-image-renderer
+      tag: v5.12.1
+    service:
+      portName: 'http-web'
+
+  # assertNoLeakedSecrets is a helper function defined in _helpers.tpl that checks if secret
+  # values are not exposed in the rendered grafana.ini configmap. It is enabled by default.
+  #
+  # To pass values into grafana.ini without exposing them in a configmap, use variable expansion:
+  # https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#variable-expansion
+  #
+  # Alternatively, if you wish to allow secret values to be exposed in the rendered grafana.ini configmap,
+  # you can disable this check by setting assertNoLeakedSecrets to false.
+  assertNoLeakedSecrets: false

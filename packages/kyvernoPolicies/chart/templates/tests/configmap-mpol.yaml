@@ -1,0 +1,18 @@
+{{- if dig "bbtests" "enabled" false (merge .Values dict) }}
+{{- /* MPol test fixtures for gluon bbtest scripts.
+       Same packaging pattern as configmap-vpol.yaml — keys use __ as path separator. */ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "kyverno-policies.name" . }}-bbtest-mpol
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kyverno-policies.test-labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+data:
+  {{- range $path, $_ := $.Files.Glob "tests/mpol/**" }}
+  {{ $path | replace "/" "__" | quote }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+{{- end }}

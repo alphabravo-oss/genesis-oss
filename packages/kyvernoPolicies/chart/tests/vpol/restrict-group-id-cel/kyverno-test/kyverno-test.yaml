@@ -1,0 +1,49 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-group-id-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-group-id-cel
+  resources:
+  - badpod-pod-runasgroup
+  - badpod-container-runasgroup
+  - badpod-initcontainer-runasgroup
+  - badpod-ephemeralcontainer-runasgroup
+  - badpod-fsgroup
+  - badpod-supplementalgroups
+  - badpod-deny-pod-runasgroup
+  - badpod-deny-container-runasgroup
+  - badpod-deny-fsgroup
+  - badpod-deny-supplementalgroups
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-group-id-cel
+  resources:
+  - baddeployment-runasgroup
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-group-id-cel
+  resources:
+  - goodpod-no-securitycontext
+  - goodpod-pod-runasgroup
+  - goodpod-container-runasgroup
+  - goodpod-fsgroup
+  - goodpod-supplementalgroups
+  - goodpod-all-fields
+  - goodpod-just-below-deny
+  - goodpod-just-above-deny
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-group-id-cel
+  resources:
+  - gooddeployment-runasgroup
+  result: pass

@@ -1,0 +1,10 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: good-ingress
+spec:
+  defaultBackend:
+    service:
+      name: fake
+      port:
+        number: 80

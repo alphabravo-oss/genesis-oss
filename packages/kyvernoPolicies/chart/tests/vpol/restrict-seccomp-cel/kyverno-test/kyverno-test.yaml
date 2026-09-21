@@ -1,0 +1,39 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-seccomp-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-seccomp-cel
+  resources:
+  - badpod-pod-level-unconfined
+  - badpod-container-unconfined
+  - badpod-initcontainer-unconfined
+  - badpod-ephemeral-unconfined
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-seccomp-cel
+  resources:
+  - baddeployment-unconfined
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-seccomp-cel
+  resources:
+  - goodpod-no-seccomp
+  - goodpod-runtime-default
+  - goodpod-localhost
+  - goodpod-pod-level-runtime-default
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-seccomp-cel
+  resources:
+  - gooddeployment-runtime-default
+  result: pass

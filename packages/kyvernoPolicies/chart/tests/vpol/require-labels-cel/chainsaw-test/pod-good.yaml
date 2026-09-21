@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod
+  labels:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/component: frontend
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7

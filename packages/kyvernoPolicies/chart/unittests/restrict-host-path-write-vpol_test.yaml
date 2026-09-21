@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-host-path-write-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/restrict-host-path-write-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-host-path-write-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render with an empty allow pattern when allow list is empty
+    set:
+      celPoliciesBeta:
+        restrict-host-path-write-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: restrict-host-path-write-cel
+      - equal:
+          path: spec.variables[0].name
+          value: allowed
+      - equal:
+          path: spec.variables[0].expression
+          value: "''"
+
+  - it: should embed the allow list as an anchored regex alternation
+    set:
+      celPoliciesBeta:
+        restrict-host-path-write-cel:
+          enabled: true
+          parameters:
+            allow:
+              - /tmp/allowed
+              - /var/log/.*
+    asserts:
+      - equal:
+          path: spec.variables[0].expression
+          value: "'^(/tmp/allowed|/var/log/.*)$'"
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: '/tmp/allowed, /var/log/\.\*'

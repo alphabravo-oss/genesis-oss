@@ -1,0 +1,36 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-sysctls-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-sysctls-cel
+  resources:
+  - badpod-disallowed-sysctl
+  - badpod-mixed-sysctls
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-sysctls-cel
+  resources:
+  - baddeployment-disallowed-sysctl
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-sysctls-cel
+  resources:
+  - goodpod-no-sysctls
+  - goodpod-allowed-sysctl
+  - goodpod-multiple-allowed
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-sysctls-cel
+  resources:
+  - gooddeployment-allowed-sysctl
+  result: pass

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: all-pod
+spec:
+  containers:
+    - name: test
+      securityContext:
+        capabilities:
+          drop:
+            - ALL
+            - NET_RAW

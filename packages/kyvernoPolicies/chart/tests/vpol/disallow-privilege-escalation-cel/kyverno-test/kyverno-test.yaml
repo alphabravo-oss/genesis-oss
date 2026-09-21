@@ -1,0 +1,50 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-privilege-escalation-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-privilege-escalation-cel
+  resources:
+  - badpod01
+  - badpod02
+  - badpod03
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-privilege-escalation-cel
+  resources:
+  - goodpod01
+  - goodpod03
+  - goodpod06
+  - goodpod07
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-privilege-escalation-cel
+  resources:
+  - baddeployment01
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-privilege-escalation-cel
+  resources:
+  - gooddeployment01
+  result: pass
+- isValidatingPolicy: true
+  kind: CronJob
+  policy: disallow-privilege-escalation-cel
+  resources:
+  - badcronjob01
+  result: fail
+- isValidatingPolicy: true
+  kind: CronJob
+  policy: disallow-privilege-escalation-cel
+  resources:
+  - goodcronjob01
+  result: pass

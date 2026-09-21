@@ -1,0 +1,40 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-annotations-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-annotations-cel
+  resources:
+  - badpod-no-annotations
+  - badpod-missing-name
+  - badpod-wrong-version
+  - badpod-missing-version
+  - badpod-empty-name
+  - badpod-regex-no-match
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-annotations-cel
+  resources:
+  - baddeployment-no-annotations
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-annotations-cel
+  resources:
+  - goodpod-frontend
+  - goodpod-backend
+  - goodpod-with-extras
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-annotations-cel
+  resources:
+  - gooddeployment
+  result: pass

@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: disallow-image-tags-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/disallow-image-tags-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-image-tags-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - latest
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: disallow-image-tags-cel
+
+  - it: should not render when disabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-image-tags-cel:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        disallow-image-tags-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: emits the disallow list as a CEL list literal
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-image-tags-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - latest
+              - dev
+    asserts:
+      - equal:
+          path: spec.variables[0].name
+          value: disallowedTags
+      - equal:
+          path: spec.variables[0].expression
+          value: '["latest","dev"]'

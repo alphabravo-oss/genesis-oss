@@ -1,0 +1,38 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-host-path-mount-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-host-path-mount-cel
+  resources:
+  - badpod-hostpath-disallowed
+  - badpod-hostpath-mixed
+  - badpod-hostpath-prefix-bypass
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-host-path-mount-cel
+  resources:
+  - baddeployment-hostpath-disallowed
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-host-path-mount-cel
+  resources:
+  - goodpod-no-volumes
+  - goodpod-no-hostpath
+  - goodpod-hostpath-allowed
+  - goodpod-hostpath-allowed-regex
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-host-path-mount-cel
+  resources:
+  - gooddeployment-hostpath-allowed
+  result: pass

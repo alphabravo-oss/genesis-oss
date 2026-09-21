@@ -1,0 +1,149 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-no-securitycontext
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-rorootfs-false
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-initcontainer-no-rorootfs
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-initcontainer-rorootfs-false
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-ephemeral-no-rorootfs
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+  ephemeralContainers:
+  - name: debug01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-rorootfs
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-rorootfs-initcontainer
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-rorootfs-ephemeral
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+  ephemeralContainers:
+  - name: debug01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      readOnlyRootFilesystem: true
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-no-rorootfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-rorootfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+        securityContext:
+          readOnlyRootFilesystem: true

@@ -1,0 +1,28 @@
+# Important: Current test doesn't properly test deprecated APIs as the lastest k8s version v1.33 removed flowcontrol.apiserver.k8s.io/v1beta3.  
+# kyverno-policies-bbtest/expected: was set to pass to keep this test active as an example.  Normally, this test is expected to fail.  
+# So, that should be changed when this file is changed to test a deprecated api.
+# Future maintenance on tests is required when there are new deprecated APIs announced and tests can be created before the deprecated APIs is removed from k8s.  (refer Deprecated API Migration Guide and upstream policy updates)
+# Once removed, the pipeline would fail and the tests needs to be removed and a dummy test can be used to avoid pipeline failure.
+apiVersion: flowcontrol.apiserver.k8s.io/v1
+kind: FlowSchema
+metadata:
+  name: disallow-deprecated-apis
+  annotations:
+    kyverno-policies-bbtest/type: validate
+    kyverno-policies-bbtest/expected: pass
+spec:
+  matchingPrecedence: 1000
+  priorityLevelConfiguration:
+    name: exempt
+  rules:
+    - nonResourceRules:
+      - nonResourceURLs:
+          - "/healthz"
+          - "/livez"
+          - "/readyz"
+        verbs:
+          - "*"
+      subjects:
+        - kind: Group
+          group:
+            name: "system:unauthenticated"

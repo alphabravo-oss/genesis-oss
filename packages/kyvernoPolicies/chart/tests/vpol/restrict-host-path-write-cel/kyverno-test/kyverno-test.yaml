@@ -1,0 +1,43 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-host-path-write-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-host-path-write-cel
+  resources:
+  - badpod-hostpath-writable
+  - badpod-hostpath-writable-init
+  - badpod-hostpath-writable-ephemeral
+  - badpod-hostpath-mixed-ro-rw
+  - badpod-hostpath-multi-container-one-writable
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-host-path-write-cel
+  resources:
+  - baddeployment-hostpath-writable
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-host-path-write-cel
+  resources:
+  - goodpod-no-volumes
+  - goodpod-no-hostpath
+  - goodpod-hostpath-readonly
+  - goodpod-hostpath-readonly-all-container-types
+  - goodpod-hostpath-allowed-path-writable
+  - goodpod-hostpath-allowed-regex-writable
+  - goodpod-hostpath-declared-but-not-mounted
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-host-path-write-cel
+  resources:
+  - gooddeployment-hostpath-readonly
+  result: pass

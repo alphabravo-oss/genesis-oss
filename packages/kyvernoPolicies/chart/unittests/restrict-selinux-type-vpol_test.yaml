@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-selinux-type-cel ValidatingPolicy
+templates:
+  - templates/pod-security-vpol/baseline/restrict-selinux-type-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-selinux-type-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render when enabled
+    set:
+      celPoliciesBeta:
+        restrict-selinux-type-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: restrict-selinux-type-cel
+      - equal:
+          path: spec.variables[0].name
+          value: allowedTypes
+      - equal:
+          path: spec.variables[0].expression
+          value: '["container_t","container_init_t","container_kvm_t"]'
+      - lengthEqual:
+          path: spec.validations
+          count: 2
+
+  - it: should render custom allowed types
+    set:
+      celPoliciesBeta:
+        restrict-selinux-type-cel:
+          enabled: true
+          parameters:
+            allow:
+              - container_engine_t
+    asserts:
+      - equal:
+          path: spec.variables[0].expression
+          value: '["container_engine_t"]'
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: container_engine_t

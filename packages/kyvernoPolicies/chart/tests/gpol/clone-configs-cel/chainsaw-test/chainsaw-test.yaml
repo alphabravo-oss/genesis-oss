@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+#
+# Tests clone-configs-cel GeneratingPolicy on a live cluster.
+# Verifies that creating a namespace triggers cloning of a source ConfigMap.
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: clone-configs-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+    - name: step-01-setup
+      try:
+        # Source ConfigMap must exist before the GPol is applied
+        - apply:
+            file: source-configmap.yaml
+        - apply:
+            file: ../policy.yaml
+        - assert:
+            file: policy-ready.yaml
+    - name: step-02-trigger
+      try:
+        # Create a namespace to trigger the GPol. Chainsaw's auto-created
+        # namespace won't work — it's created before the policy is ready.
+        - apply:
+            resource:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: gpol-clone-target
+        - assert:
+            resource:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: clone-source
+                namespace: gpol-clone-target
+              data:
+                app: cloned-app
+                env: test
+    - name: step-03-cleanup
+      try:
+        - delete:
+            timeout: 2m
+            ref:
+              apiVersion: v1
+              kind: Namespace
+              name: gpol-clone-target

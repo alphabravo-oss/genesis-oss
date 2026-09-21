@@ -1,0 +1,44 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-non-root-user-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-non-root-user-cel
+  resources:
+  - badpod-no-context
+  - badpod-container-nonroot-false
+  - badpod-init-nonroot-false
+  - badpod-container-user-zero
+  - badpod-init-user-zero
+  - badpod-pod-both-bad
+  - badpod-partial
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-non-root-user-cel
+  resources:
+  - baddeployment-no-context
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-non-root-user-cel
+  resources:
+  - goodpod-nonroot-true
+  - goodpod-user-nonzero
+  - goodpod-container-nonroot
+  - goodpod-container-user
+  - goodpod-mixed
+  - goodpod-nonroot-false-user-ok
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-non-root-user-cel
+  resources:
+  - gooddeployment
+  result: pass

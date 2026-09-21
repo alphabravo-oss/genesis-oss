@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: disallow-annotations-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/disallow-annotations-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-annotations-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - key: owner
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: disallow-annotations-cel
+
+  - it: should not render when disabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-annotations-cel:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        disallow-annotations-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - key: owner
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails when disallow list is empty
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-annotations-cel:
+          enabled: true
+          parameters:
+            disallow: []
+    asserts:
+      - failedTemplate:
+          errorMessage: disallow-annotations-cel is enabled but celPoliciesBeta.disallow-annotations-cel.parameters.disallow is empty - disable the policy or provide a list of disallowed annotations
+
+  - it: generates one validation per disallow entry
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-annotations-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - key: owner
+              - key: app
+                value: production
+              - key: team
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 3

@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-capabilities-cel ValidatingPolicy
+templates:
+  - templates/pod-security-vpol/restricted/restrict-capabilities-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-capabilities-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render when enabled and embed the allow list
+    set:
+      celPoliciesBeta:
+        restrict-capabilities-cel:
+          enabled: true
+          parameters:
+            allow:
+              - NET_BIND_SERVICE
+              - CHOWN
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: restrict-capabilities-cel
+      - equal:
+          path: spec.variables[0].name
+          value: allowedCapabilities
+      - equal:
+          path: spec.variables[0].expression
+          value: '["NET_BIND_SERVICE","CHOWN"]'
+      - matchRegex:
+          path: spec.validations[0].expression
+          pattern: "(?s)securityContext.+capabilities.+add.+allowedCapabilities"
+
+  - it: should render an empty allow list (denies all added capabilities)
+    set:
+      celPoliciesBeta:
+        restrict-capabilities-cel:
+          enabled: true
+          parameters:
+            allow: []
+    asserts:
+      - equal:
+          path: spec.variables[0].expression
+          value: '[]'

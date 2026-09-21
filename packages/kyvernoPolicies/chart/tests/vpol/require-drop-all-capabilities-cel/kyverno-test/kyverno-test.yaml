@@ -1,0 +1,41 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-drop-all-capabilities-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-drop-all-capabilities-cel
+  resources:
+  - badpod-no-drop
+  - badpod-initcontainer-no-drop
+  - badpod-partial-drop
+  - badpod-initcontainer-partial-drop
+  - badpod-no-securitycontext
+  - badpod-ephemeral-no-drop
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-drop-all-capabilities-cel
+  resources:
+  - baddeployment-no-drop
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-drop-all-capabilities-cel
+  resources:
+  - goodpod-drop-all
+  - goodpod-drop-all-with-add
+  - goodpod-drop-all-initcontainer
+  - goodpod-drop-all-ephemeral
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-drop-all-capabilities-cel
+  resources:
+  - gooddeployment-drop-all
+  result: pass

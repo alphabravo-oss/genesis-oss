@@ -1,0 +1,13 @@
+{{- if dig "bbtests" "enabled" false (merge .Values dict) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kyverno.name" . }}-bbtest-manifest
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kyverno.test-labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+data:
+  {{ (.Files.Glob "tests/manifests/*").AsConfig | nindent 2 }}
+{{- end }}

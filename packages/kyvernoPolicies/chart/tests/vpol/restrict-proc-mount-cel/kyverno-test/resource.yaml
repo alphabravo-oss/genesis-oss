@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-container-unmasked
+spec:
+  hostUsers: false
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      procMount: Unmasked
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-initcontainer-unmasked
+spec:
+  hostUsers: false
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      procMount: Unmasked
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-ephemeral-unmasked
+spec:
+  hostUsers: false
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  ephemeralContainers:
+  - name: debug01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      procMount: Unmasked
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-no-procmount
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-default-procmount
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      procMount: Default
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-initcontainer-default
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    securityContext:
+      procMount: Default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-unmasked
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      hostUsers: false
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+        securityContext:
+          procMount: Unmasked
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-no-procmount
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal

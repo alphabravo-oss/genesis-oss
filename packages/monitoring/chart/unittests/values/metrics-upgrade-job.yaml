@@ -1,0 +1,28 @@
+cleanUpgrade:
+  enabled: true
+  image:
+    registry: registry1.dso.mil
+    repository: ironbank/big-bang/base
+    tag: 2.1.0
+    sha: ""
+    imagePullSecrets:
+      - name: private-registry
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 100m
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+
+networkPolicies:
+  enabled: true
+  controlPlaneCidr: "0.0.0.0/0"
+
+global:
+  imagePullSecrets:
+    - name: private-registry

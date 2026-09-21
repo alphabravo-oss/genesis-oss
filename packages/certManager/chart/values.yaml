@@ -1,0 +1,336 @@
+bb-common:
+  istio:
+    enabled: true
+    mtls:
+      mode: STRICT
+    sidecar:
+      enabled: true
+      outboundTrafficPolicyMode: REGISTRY_ONLY
+    authorizationPolicies:
+      enabled: true
+      generateFromNetpol: true
+
+  networkPolicies:
+    enabled: true
+    ingress:
+      definitions:
+        # Big Bang umbrella provides this ingress definition in global NetworkPolicy values and will overwrite this.
+        # Keep the same definition here so standalone chart rendering still works.
+        kubeAPI:
+          from:
+            - ipBlock:
+                cidr: 10.0.0.0/8
+            - ipBlock:
+                cidr: 172.16.0.0/12
+            - ipBlock:
+                cidr: 192.168.0.0/16
+      to:
+        cert-manager-webhook:10250:
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: webhook
+              app.kubernetes.io/instance: "{{ .Release.Name }}"
+          from:
+            definition:
+              kubeAPI: true
+        cert-manager-metrics:9402:
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: "{{ .Release.Name }}"
+          from:
+            k8s:
+              monitoring-monitoring-kube-prometheus@monitoring/prometheus: true
+    egress:
+      from:
+        cert-manager-controller:
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: controller
+              app.kubernetes.io/instance: "{{ .Release.Name }}"
+          to:
+            definition:
+              kubeAPI: true
+        cert-manager-webhook:
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: webhook
+              app.kubernetes.io/instance: "{{ .Release.Name }}"
+          to:
+            definition:
+              kubeAPI: true
+        cert-manager-cainjector:
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: cainjector
+              app.kubernetes.io/instance: "{{ .Release.Name }}"
+          to:
+            definition:
+              kubeAPI: true
+        cert-manager-startupapicheck:
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: startupapicheck
+              app.kubernetes.io/instance: "{{ .Release.Name }}"
+          to:
+            definition:
+              kubeAPI: true
+
+  routes:
+    outbound: {}
+
+# Optional Helm-managed issuers. Both issuer types are disabled by default.
+issuers:
+  selfSigned:
+    enabled: false
+    # Set true only when the cert-manager webhook is already ready during install.
+    # The safe default creates the issuer on upgrade after the webhook is ready.
+    createOnInstall: false
+    # Supported scopes are Issuer and ClusterIssuer.
+    scope: Issuer
+    # Defaults to <release-name>-selfsigned.
+    name: ""
+    labels: {}
+    annotations: {}
+  letsEncrypt:
+    enabled: false
+    # Set true only when the cert-manager webhook is already ready during install.
+    # The safe default creates the issuer on upgrade after the webhook is ready.
+    createOnInstall: false
+    # Supported scopes are Issuer and ClusterIssuer.
+    scope: Issuer
+    # Defaults to <release-name>-letsencrypt-<environment>, or
+    # <release-name>-letsencrypt-custom when server is set.
+    name: ""
+    labels: {}
+    annotations: {}
+    # Supported environments are staging and production. Staging is the safe default.
+    environment: staging
+    email: ""
+    # Overrides the endpoint selected by environment.
+    server: ""
+    # Defaults to <issuer-name>-account-key.
+    privateKeySecretName: ""
+    # Raw cert-manager ACME solvers. Reference provider credential Secrets here;
+    # do not put credential values in chart values.
+    solvers: []
+    networking:
+      controllerEgress:
+        # Allows TCP 443 and UDP/TCP 53 for all ACME solvers, plus TCP 80 for HTTP-01.
+        # Requires bb-common.networkPolicies.enabled.
+        enabled: true
+        # Kubernetes NetworkPolicy is not FQDN-aware. Tighten these CIDRs when
+        # the ACME directory and DNS provider address ranges are known. Add an
+        # IPv6 entry for IPv6-only or dual-stack destinations. Each except entry
+        # must be contained by its corresponding CIDR.
+        cidrs:
+          - cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+      serviceEntry:
+        enabled: true
+
+upstream:
+  fullnameOverride: cert-manager
+  crds:
+    enabled: true
+    keep: true
+  global:
+    imagePullSecrets:
+      - name: "private-registry"
+    priorityClassName: system-cluster-critical
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  replicaCount: 2
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+  automountServiceAccountToken: false
+  serviceAccount:
+    automountServiceAccountToken: false
+  volumes:
+    - name: serviceaccount-token
+      projected:
+        defaultMode: 0444
+        sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              name: kube-root-ca.crt
+              items:
+                - key: ca.crt
+                  path: ca.crt
+          - downwardAPI:
+              items:
+                - path: namespace
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+  volumeMounts:
+    - name: serviceaccount-token
+      mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      readOnly: true
+  image:
+    repository: registry1.dso.mil/ironbank/jetstack/cert-manager-controller
+    tag: "v1.20.3"
+  webhook:
+    replicaCount: 3
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    automountServiceAccountToken: false
+    serviceAccount:
+      automountServiceAccountToken: false
+    volumes:
+      - name: serviceaccount-token
+        projected:
+          defaultMode: 0444
+          sources:
+            - serviceAccountToken:
+                expirationSeconds: 3607
+                path: token
+            - configMap:
+                name: kube-root-ca.crt
+                items:
+                  - key: ca.crt
+                    path: ca.crt
+            - downwardAPI:
+                items:
+                  - path: namespace
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.namespace
+    volumeMounts:
+      - name: serviceaccount-token
+        mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        readOnly: true
+    podAnnotations:
+      ambient.istio.io/bypass-inbound-capture: "true"
+      traffic.sidecar.istio.io/excludeInboundPorts: "10250"
+    image:
+      repository: registry1.dso.mil/ironbank/jetstack/cert-manager-webhook
+      tag: "v1.20.3"
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+  cainjector:
+    replicaCount: 2
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+    automountServiceAccountToken: false
+    serviceAccount:
+      automountServiceAccountToken: false
+    volumes:
+      - name: serviceaccount-token
+        projected:
+          defaultMode: 0444
+          sources:
+            - serviceAccountToken:
+                expirationSeconds: 3607
+                path: token
+            - configMap:
+                name: kube-root-ca.crt
+                items:
+                  - key: ca.crt
+                    path: ca.crt
+            - downwardAPI:
+                items:
+                  - path: namespace
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.namespace
+    volumeMounts:
+      - name: serviceaccount-token
+        mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        readOnly: true
+    image:
+      repository: registry1.dso.mil/ironbank/jetstack/cert-manager-cainjector
+      tag: "v1.20.3"
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+  acmesolver:
+    image:
+      repository: registry1.dso.mil/ironbank/opensource/jetstack/cert-manager-acmesolver
+      tag: "v1.20.3"
+  startupapicheck:
+    automountServiceAccountToken: false
+    serviceAccount:
+      automountServiceAccountToken: false
+    volumes:
+      - name: serviceaccount-token
+        projected:
+          defaultMode: 0444
+          sources:
+            - serviceAccountToken:
+                expirationSeconds: 3607
+                path: token
+            - configMap:
+                name: kube-root-ca.crt
+                items:
+                  - key: ca.crt
+                    path: ca.crt
+            - downwardAPI:
+                items:
+                  - path: namespace
+                    fieldRef:
+                      apiVersion: v1
+                      fieldPath: metadata.namespace
+    volumeMounts:
+      - name: serviceaccount-token
+        mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        readOnly: true
+    podAnnotations:
+      sidecar.istio.io/inject: "false"
+    podLabels:
+      istio.io/dataplane-mode: none
+    image:
+      repository: registry1.dso.mil/ironbank/opensource/cleanstart/cert-manager-startupapicheck
+      # We eventually want to use an multi-architecture tag for this.
+      tag: "1.20.3-amd64"
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: true
+      endpointAdditionalProperties:
+        scheme: https
+        enableHttp2: false
+        tlsConfig:
+          caFile: /etc/prom-certs/root-cert.pem
+          certFile: /etc/prom-certs/cert-chain.pem
+          keyFile: /etc/prom-certs/key.pem
+          insecureSkipVerify: true
+    podmonitor:
+      enabled: false
+bbtests:
+  enabled: false
+  scripts:
+    enabled: false
+    # The runtime script must use the Helm-managed issuer after an upgrade
+    # when the self-signed issuer feature is enabled.
+    envs:
+      NAMESPACE: "{{ .Release.Namespace }}"
+      INSTANCE_NAME: "{{ .Release.Name }}"
+      WEBHOOK_SERVICE: "{{ include \"cert-manager.webhookServiceName\" . }}"
+      WEBHOOK_CA_SECRET: "{{ include \"cert-manager.webhookServiceName\" . }}-ca"
+      REQUIRE_BUILTIN_ISSUER: "{{ and .Release.IsUpgrade .Values.issuers.selfSigned.enabled }}"
+      BUILTIN_ISSUER_NAME: "{{ include \"cert-manager.selfSignedIssuerName\" . }}"
+      BUILTIN_ISSUER_KIND: "{{ .Values.issuers.selfSigned.scope }}"
+    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.34

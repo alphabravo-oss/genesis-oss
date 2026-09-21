@@ -1,0 +1,58 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-non-root-group-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+# runAsGroup failures
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-non-root-group-cel
+  resources:
+  - badpod-pod-group-zero
+  - badpod-container-override-zero
+  - badpod-init-override-zero
+  - badpod-no-group-anywhere
+  - badpod-partial-containers
+  result: fail
+# fsGroup failure
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-non-root-group-cel
+  resources:
+  - badpod-fsgroup-zero
+  result: fail
+# supplementalGroups failure
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-non-root-group-cel
+  resources:
+  - badpod-supplemental-zero
+  result: fail
+# autogen failure
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-non-root-group-cel
+  resources:
+  - baddeployment-no-group
+  result: fail
+# good pods
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-non-root-group-cel
+  resources:
+  - goodpod-all-fields
+  - goodpod-pod-group-only
+  - goodpod-container-level
+  - goodpod-container-override
+  result: pass
+# autogen pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-non-root-group-cel
+  resources:
+  - gooddeployment
+  result: pass

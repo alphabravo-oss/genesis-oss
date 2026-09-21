@@ -1,0 +1,44 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsIstioCore := mergeOverwrite (deepCopy .Values.flux) .Values.istiod.flux -}}
+{{- if .Values.istiod.enabled }}
+{{- if not .Values.istioCRDs.enabled }}
+{{- fail "istiod requires istioCRDs to be enabled" }}
+{{- end }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: istiod
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: istiod
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/istiod/values.yaml") . | sha256sum }}
+spec:
+  releaseName: istiod
+  targetNamespace: istio-system
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "istiod" "package" .Values.istiod "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsIstioCore | nindent 2 }}
+
+  {{- if .Values.istiod.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.istiod.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "istiod" "root" .) | nindent 2 }}
+
+  dependsOn:
+    - name: istio-crds
+      namespace: {{ .Release.Namespace }}
+  {{- if or .Values.gatekeeper.enabled .Values.kyvernoPolicies.enabled }}
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,156 @@
+domain: dev.bigbang.mil
+
+routes:
+  inbound:
+    kiali:
+      enabled: true
+      gateways:
+        - istio-gateway/public-ingressgateway
+      hosts:
+        - kiali.{{ .Values.domain }}
+      service: kiali.kiali.svc.cluster.local
+      port: 20001
+
+istio:
+  enabled: false
+
+  ambient:
+    enabled: false
+
+  sidecar:
+    enabled: false
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+
+  serviceEntries:
+    custom: []
+
+  authorizationPolicies:
+    enabled: false
+    custom: []
+
+  # Default kiali peer authentication
+  mtls:
+    # STRICT = Allow only mutual TLS traffic
+    # PERMISSIVE = Allow both plain text and mutual TLS traffic
+    mode: STRICT
+
+monitoring:
+  enabled: true
+
+networkPolicies:
+  enabled: false
+  egress:
+    from:
+      "*":
+        to:
+          definition:
+            kubeAPI: true
+  additionalPolicies: []
+
+bbtests:
+  enabled: false
+  cypress:
+    artifacts: true
+    envs:
+      cypress_url: "http://kiali:20001"
+      pod_monitor_name: "monitoring-monitoring-kube-istio-envoy"
+      cypress_ambient_enabled: '{{ .Values.istio.ambient.enabled }}'
+
+waitJob:
+  enabled: true
+  image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.8
+  permissions:
+    apiGroups:
+      - apps
+      - kiali.io
+      - kiali.io/v1alpha1
+    resources:
+      - deployments
+      - kialis
+
+upstream:
+  nameOverride: "kiali-operator"
+
+  image:
+    repo: registry1.dso.mil/ironbank/opensource/kiali/kiali-operator
+    tag: v2.31.0
+    pullPolicy: IfNotPresent
+    pullSecrets:
+      - private-registry
+
+  # Deployment options for the operator pod.
+  securityContext:
+    #BB values for securityContext override
+    capabilities:
+      drop:
+        - ALL
+    allowPrivilegeEscalation: false
+    privileged: false
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    runAsGroup: 2001
+    runAsUser: 2001
+
+  # allowAdHocKialiImage tells the operator to allow a user to be able to install a custom Kiali image as opposed
+  # to the image the operator will install by default. In other words, it will allow the
+  # Kiali CR spec.deployment.image_name and spec.deployment.image_version to be configured by the user.
+  # You may want to disable this if you do not want users to install their own Kiali images.
+  allowAdHocKialiImage: true
+
+  # allowSecurityContextOverride tells the operator to allow a user to be able to fully override the Kiali
+  # container securityContext. If this is false, certain securityContext settings must exist on the Kiali
+  # container and any attempt to override them will be ignored.
+  allowSecurityContextOverride: true
+
+  # For what a Kiali CR spec can look like, see: https://kiali.io/docs/configuration/kialis.kiali.io/
+  cr:
+    create: true
+    spec:
+      server:
+        port: 20001
+      auth:
+        strategy: "anonymous"
+      deployment:
+        network_policy:
+          enabled: false
+        image_name: registry1.dso.mil/ironbank/opensource/kiali/kiali
+        image_version: v2.31.0
+        image_pull_secrets:
+          - private-registry
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            memory: "1Gi"
+        security_context:
+          capabilities:
+            drop:
+              - ALL
+          allowPrivilegeEscalation: false
+          privileged: false
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          runAsGroup: 1001
+          runAsUser: 1001
+
+      external_services:
+        # https://kiali.io/documentation/latest/runtimes-monitoring/
+        prometheus:
+          url: http://monitoring-monitoring-kube-prometheus.monitoring.svc.cluster.local:9090
+        grafana:
+          internal_url: "http://monitoring-grafana.monitoring.svc.cluster.local:80"
+          external_url: "https://grafana.dev.bigbang.mil"
+          auth:
+            username: "admin"
+            password: "prom-operator"
+            type: basic
+        tracing:
+          enabled: true
+          external_url: "https://grafana.dev.bigbang.mil"
+          internal_url: "http://tempo-tempo.tempo.svc.cluster.local:3200"
+          use_grpc: false
+          whitelist_istio_system: ["istio"]
+          provider: tempo
+          tempo_config:
+            datasource_uid: tempo

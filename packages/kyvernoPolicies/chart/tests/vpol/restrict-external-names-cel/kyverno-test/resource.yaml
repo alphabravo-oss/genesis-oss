@@ -1,0 +1,36 @@
+###### Services - Bad
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bad-disallowed-name
+spec:
+  type: ExternalName
+  selector:
+    app: test
+  ports:
+  - port: 80
+  externalName: disallowed.example.com
+---
+###### Services - Good
+apiVersion: v1
+kind: Service
+metadata:
+  name: good-allowed-name
+spec:
+  type: ExternalName
+  selector:
+    app: test
+  ports:
+  - port: 80
+  externalName: app.allowed.internal
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: good-clusterip-service
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80

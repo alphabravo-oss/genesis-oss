@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: cert-manager prometheus servicemonitor defaults
+templates:
+  - charts/upstream/templates/servicemonitor.yaml
+release:
+  name: cert-manager
+  namespace: cert-manager
+tests:
+  - it: renders ServiceMonitor by default
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: spec.endpoints[0].scheme
+          value: https
+      - equal:
+          path: spec.endpoints[0].enableHttp2
+          value: false
+      - equal:
+          path: spec.endpoints[0].tlsConfig.caFile
+          value: /etc/prom-certs/root-cert.pem
+      - equal:
+          path: spec.endpoints[0].tlsConfig.certFile
+          value: /etc/prom-certs/cert-chain.pem
+      - equal:
+          path: spec.endpoints[0].tlsConfig.keyFile
+          value: /etc/prom-certs/key.pem
+      - equal:
+          path: spec.endpoints[0].tlsConfig.insecureSkipVerify
+          value: true
+
+  - it: does not render ServiceMonitor when disabled
+    set:
+      upstream.prometheus.servicemonitor.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

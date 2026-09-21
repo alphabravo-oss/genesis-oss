@@ -1,0 +1,170 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod01
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: true
+---
+# second container bad — proves all() not any()
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod02
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: false
+  - name: container02
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: true
+---
+# bad initContainer — proves initContainers are checked
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod03
+spec:
+  initContainers:
+  - name: initcontainer01
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: true
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: false
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod01
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod03
+spec:
+  initContainers:
+  - name: initcontainer01
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: false
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      allowPrivilegeEscalation: false
+---
+# no securityContext (field undefined) — passes
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod06
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+# securityContext present, allowPrivilegeEscalation undefined — passes
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod07
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext: {}
+---
+###### Deployments — one bad + one good to prove autogen
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename
+        securityContext:
+          allowPrivilegeEscalation: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename
+        securityContext:
+          allowPrivilegeEscalation: false
+---
+###### CronJobs — one bad + one good to prove autogen
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: badcronjob01
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: container01
+            image: dummyimagename
+            securityContext:
+              allowPrivilegeEscalation: true
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: goodcronjob01
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: container01
+            image: dummyimagename
+            securityContext:
+              allowPrivilegeEscalation: false

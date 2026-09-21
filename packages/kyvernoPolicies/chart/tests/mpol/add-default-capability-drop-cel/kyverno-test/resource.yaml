@@ -1,0 +1,148 @@
+# Mutation-oriented input fixtures for offline `kyverno test`.
+# The sibling Chainsaw test asserts the explicit post-mutation object shape.
+# No securityContext.capabilities.drop — should get ["ALL"]
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bare-pod
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+# Existing drop list without ALL — should be replaced with ["ALL"]
+apiVersion: v1
+kind: Pod
+metadata:
+  name: partial-pod
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+      securityContext:
+        capabilities:
+          drop: ["NET_RAW"]
+---
+# Existing ALL entry must be preserved as-is
+apiVersion: v1
+kind: Pod
+metadata:
+  name: full-pod
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+      securityContext:
+        capabilities:
+          drop: ["ALL", "NET_RAW"]
+---
+# initContainers participate too
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-pod
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+      securityContext:
+        capabilities:
+          drop: ["ALL"]
+  initContainers:
+    - name: init
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+# ephemeralContainers participate too
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ephemeral-pod
+  namespace: default
+spec:
+  containers:
+    - name: test
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+      securityContext:
+        capabilities:
+          drop: ["ALL"]
+  ephemeralContainers:
+    - name: debug
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+      targetContainerName: test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bare-deployment
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: bare-replicaset
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: bare-daemonset
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bare-statefulset
+  namespace: default
+spec:
+  serviceName: bare
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7

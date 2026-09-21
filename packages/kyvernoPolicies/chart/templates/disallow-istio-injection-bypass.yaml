@@ -1,0 +1,43 @@
+{{- $name := "disallow-istio-injection-bypass" }}
+{{- $failureAction := default (dig $name "validationFailureAction" nil .Values.policies) .Values.validationFailureAction  }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.policies) }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    {{- with .Values.autogenControllers }}
+    pod-policies.kyverno.io/autogen-controllers: {{ . }}
+    {{- end }}
+    policies.kyverno.io/title: Disallow Istio Injection Bypass
+    policies.kyverno.io/category: Best Practices (Security)
+    policies.kyverno.io/severity: {{ default "low" (dig $name "severity" nil .Values.policies) }}
+    policies.kyverno.io/subject: Pods
+    policies.kyverno.io/description: >-
+      The Istio service mesh uses a sidecar to encrypt traffic.  Unless an application is
+      managing its own encrypted traffic, Istio should be used.  This policy validates
+      that the pods do not have the sidecar.istio.io/inject label set to false.
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "kyverno-policies.webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  validationFailureAction: {{ $failureAction }}
+  background: {{ .Values.background }}
+  failurePolicy: {{ default .Values.failurePolicy (include "setFailurePolicy" $failureAction) }}
+  rules:
+  - name: istio-on-pods
+    {{- include "kyverno-policies.exclude" (merge (dict "name" $name) .) | indent 4 }}
+    {{- include "kyverno-policies.match" (merge (dict "name" $name "kinds" (list "Pod")) .) | nindent 4 }}
+    {{- with index .Values "policyPreconditions" $name }}
+    preconditions:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    validate:
+      message: >-
+        The sidecar.istio.io/inject label or annotation cannot be false.
+      pattern:
+        metadata:
+          =(labels):
+            =(sidecar.istio.io/inject): "!false"
+          =(annotations):
+            =(sidecar.istio.io/inject): "!false"
+{{- end -}}

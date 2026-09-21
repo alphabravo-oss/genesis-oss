@@ -1,0 +1,44 @@
+{{- $name := "require-istio-on-namespaces" }}
+{{- $failureAction := default (dig $name "validationFailureAction" nil .Values.policies) .Values.validationFailureAction }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.policies) }}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    {{- with .Values.autogenControllers }}
+    pod-policies.kyverno.io/autogen-controllers: {{ . }}
+    {{- end }}
+    policies.kyverno.io/title: Require Istio on Namespace
+    policies.kyverno.io/category: Best Practices (Security)
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.policies) }}
+    policies.kyverno.io/subject: Namespace
+    policies.kyverno.io/description: >-
+      The Istio service mesh encrypts traffic using either a sidecar proxy or ambient mode.
+      Unless an application is managing its own encrypted traffic, Istio should be used.
+      This policy validates that namespaces have either `istio-injection: enabled` (sidecar mode)
+      or `istio.io/dataplane-mode: ambient` (ambient mode) label.
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "kyverno-policies.webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  validationFailureAction: {{ $failureAction }}
+  background: {{ .Values.background }}
+  failurePolicy: {{ default .Values.failurePolicy (include "setFailurePolicy" $failureAction) }}
+  rules:
+  - name: istio-on-namespace
+    {{- include "kyverno-policies.exclude" (merge (dict "name" $name) .) | indent 4 }}
+    {{- include "kyverno-policies.match" (merge (dict "name" $name "kinds" (list "Namespace")) .) | nindent 4 }}
+    {{- with index .Values "policyPreconditions" $name }}
+    preconditions:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    validate:
+      message: "Namespaces must have either `istio-injection: enabled` or `istio.io/dataplane-mode: ambient` label."
+      anyPattern:
+      - metadata:
+          labels:
+            istio-injection: "enabled"
+      - metadata:
+          labels:
+            istio.io/dataplane-mode: "ambient"
+{{- end -}}

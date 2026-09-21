@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+#
+# Policy-specific tests only. Shared helper tests are in
+# vpol-shared-helpers_test.yaml.
+suite: require-memory-limit-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/require-memory-limit-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-memory-limit-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: require-memory-limit-cel
+
+  - it: should contain the CEL memory-limit validation
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-memory-limit-cel:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.validations
+          content:
+            expression: "variables.allContainers.all(container, container.?resources.?limits.?memory.hasValue())"
+            message: "Memory limits are required for all containers."
+
+  - it: "severity: defaults to medium"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-memory-limit-cel:
+          enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["policies.kyverno.io/severity"]
+          value: "medium"
+
+  # ── maxMemory ─────────────────────────────────────────────────────────────
+
+  - it: "maxMemory: no upper-bound validation when maxMemory is empty"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-memory-limit-cel:
+          enabled: true
+          parameters:
+            maxMemory: ""
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 1
+
+  - it: "maxMemory: defaults to 64Gi (matches CPol default)"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-memory-limit-cel:
+          enabled: true
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 2
+      - contains:
+          path: spec.validations
+          content:
+            expression: |-
+              variables.allContainers.all(container,
+                !container.?resources.?limits.?memory.hasValue() ||
+                quantity(container.resources.limits.memory).compareTo(quantity('64Gi')) <= 0)
+            message: "Memory limits must not exceed 64Gi."
+
+  - it: "maxMemory: adds upper-bound validation when set"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-memory-limit-cel:
+          enabled: true
+          parameters:
+            maxMemory: "64Gi"
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 2
+      - contains:
+          path: spec.validations
+          content:
+            expression: |-
+              variables.allContainers.all(container,
+                !container.?resources.?limits.?memory.hasValue() ||
+                quantity(container.resources.limits.memory).compareTo(quantity('64Gi')) <= 0)
+            message: "Memory limits must not exceed 64Gi."
+
+  - it: "maxMemory: works with Mi values"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-memory-limit-cel:
+          enabled: true
+          parameters:
+            maxMemory: "512Mi"
+    asserts:
+      - contains:
+          path: spec.validations
+          content:
+            expression: |-
+              variables.allContainers.all(container,
+                !container.?resources.?limits.?memory.hasValue() ||
+                quantity(container.resources.limits.memory).compareTo(quantity('512Mi')) <= 0)
+            message: "Memory limits must not exceed 512Mi."

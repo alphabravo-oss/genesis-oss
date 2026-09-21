@@ -1,0 +1,7 @@
+issuers:
+  letsEncrypt:
+    enabled: true
+    email: platform@example.com
+    solvers:
+      - dns01:
+          route53: null

@@ -1,0 +1,36 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-istio-injection-bypass-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-istio-injection-bypass-cel
+  resources:
+  - badpod-label-false
+  - badpod-annotation-false
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-istio-injection-bypass-cel
+  resources:
+  - baddeployment-annotation-false
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-istio-injection-bypass-cel
+  resources:
+  - goodpod-label-true
+  - goodpod-annotation-true
+  - goodpod-no-istio-key
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-istio-injection-bypass-cel
+  resources:
+  - gooddeployment
+  result: pass

@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+#
+# Policy-specific tests only. Shared helper tests (validationActions, failurePolicy,
+# background, webhookTimeoutSeconds, autogenControllers, matchConstraints,
+# matchConditions, excludeNamespaces, excludeContainers) are in
+# vpol-shared-helpers_test.yaml.
+suite: disallow-privileged-containers-cel ValidatingPolicy
+templates:
+  - templates/pod-security-vpol/baseline/disallow-privileged-containers-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-privileged-containers-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: disallow-privileged-containers-cel
+
+  - it: should contain the CEL privileged-mode validation
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-privileged-containers-cel:
+          enabled: true
+    asserts:
+      - contains:
+          path: spec.validations
+          content:
+            expression: "variables.allContainers.all(container, container.?securityContext.?privileged.orValue(false) == false)"
+            message: "Privileged mode is disallowed. All containers must set the securityContext.privileged field to `false` or unset the field."
+
+  - it: "severity: defaults to high"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-privileged-containers-cel:
+          enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["policies.kyverno.io/severity"]
+          value: "high"
+
+  - it: "severity: per-policy override"
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-privileged-containers-cel:
+          enabled: true
+          severity: medium
+    asserts:
+      - equal:
+          path: metadata.annotations["policies.kyverno.io/severity"]
+          value: "medium"

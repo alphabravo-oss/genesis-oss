@@ -1,0 +1,43 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-user-id-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-user-id-cel
+  resources:
+  - badpod-pod-runasuser
+  - badpod-container-runasuser
+  - badpod-initcontainer-runasuser
+  - badpod-ephemeralcontainer-runasuser
+  - badpod-deny-pod-runasuser
+  - badpod-deny-container-runasuser
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-user-id-cel
+  resources:
+  - baddeployment-container-runasuser
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-user-id-cel
+  resources:
+  - goodpod-no-runasuser
+  - goodpod-pod-runasuser
+  - goodpod-container-runasuser
+  - goodpod-all-container-types
+  - goodpod-just-below-deny
+  - goodpod-just-above-deny
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-user-id-cel
+  resources:
+  - gooddeployment-container-runasuser
+  result: pass

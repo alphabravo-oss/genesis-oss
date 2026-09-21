@@ -1,0 +1,45 @@
+{{- include "cert-manager.validateLetsEncryptIssuer" . -}}
+{{- include "cert-manager.validateIssuerNames" . -}}
+{{- with .Values.issuers.letsEncrypt }}
+{{- if and .enabled (or .createOnInstall $.Release.IsUpgrade) }}
+apiVersion: cert-manager.io/v1
+kind: {{ include "cert-manager.issuerKind" . }}
+metadata:
+  name: {{ include "cert-manager.letsEncryptIssuerName" $ | quote }}
+  {{- include "cert-manager.issuerNamespace" (dict "scope" .scope "root" $) | nindent 2 }}
+  labels:
+    {{- include "cert-manager.issuerLabels" (dict "root" $ "labels" .labels) | nindent 4 }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  acme:
+    email: {{ .email | quote }}
+    server: {{ include "cert-manager.letsEncryptServer" $ | quote }}
+    privateKeySecretRef:
+      name: {{ include "cert-manager.letsEncryptAccountSecretName" $ | quote }}
+    solvers:
+      {{- range .solvers }}
+      {{- $solver := deepCopy . }}
+      {{- if hasKey $solver "http01" }}
+      {{- $http := default dict (get $solver "http01") }}
+      {{- $routeKey := ternary "ingress" "gatewayHTTPRoute" (hasKey $http "ingress") }}
+      {{- $route := default dict (get $http $routeKey) }}
+       {{- if hasKey $http "ingress" }}
+       {{- $podTemplate := deepCopy (default dict (get $route "podTemplate")) }}
+       {{- $metadata := deepCopy (default dict (get $podTemplate "metadata")) }}
+       {{- $labels := mergeOverwrite (dict "istio.io/dataplane-mode" "none") (deepCopy (default dict (get $metadata "labels"))) }}
+       {{- $annotations := mergeOverwrite (dict "sidecar.istio.io/inject" "false") (deepCopy (default dict (get $metadata "annotations"))) }}
+       {{- $_ := set $metadata "labels" $labels }}
+       {{- $_ := set $metadata "annotations" $annotations }}
+       {{- $_ := set $podTemplate "metadata" $metadata }}
+       {{- $_ := set $route "podTemplate" $podTemplate }}
+       {{- end }}
+      {{- $_ := set $http $routeKey $route }}
+      {{- $_ := set $solver "http01" $http }}
+      {{- end }}
+      {{- toYaml (list $solver) | nindent 6 }}
+      {{- end }}
+{{- end }}
+{{- end }}

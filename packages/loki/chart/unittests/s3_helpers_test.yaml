@@ -1,0 +1,134 @@
+suite: S3 storage config helper null-credential tests
+templates:
+  - templates/config.yaml
+
+tests:
+  # ---------------------------------------------------------------------------
+  # loki.lokiStorageConfig.s3 — standard S3 path (no thanos)
+  # ---------------------------------------------------------------------------
+  - it: should not render access_key_id or secret_access_key when not set (standard S3)
+    set:
+      deploymentMode: SingleBinary
+      loki.commonConfig.replication_factor: 1
+      loki.storage.type: s3
+      loki.storage.bucketNames.chunks: loki-chunks
+      loki.storage.bucketNames.ruler: loki-ruler
+      loki.storage.s3.endpoint: "s3.us-east-1.amazonaws.com"
+      loki.storage.s3.region: "us-east-1"
+      # accessKeyId and secretAccessKey intentionally omitted (IRSA / instance profile)
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "access_key_id"
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "secret_access_key"
+
+  - it: should render access_key_id and secret_access_key when explicitly set (standard S3)
+    set:
+      deploymentMode: SingleBinary
+      loki.commonConfig.replication_factor: 1
+      loki.storage.type: s3
+      loki.storage.bucketNames.chunks: loki-chunks
+      loki.storage.bucketNames.ruler: loki-ruler
+      loki.storage.s3.endpoint: "s3.us-east-1.amazonaws.com"
+      loki.storage.s3.region: "us-east-1"
+      loki.storage.s3.accessKeyId: "AKIAIOSFODNN7EXAMPLE"
+      loki.storage.s3.secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "access_key_id"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "secret_access_key"
+
+  - it: should not render s3forcepathstyle when not explicitly set (standard S3)
+    set:
+      deploymentMode: SingleBinary
+      loki.commonConfig.replication_factor: 1
+      loki.storage.type: s3
+      loki.storage.bucketNames.chunks: loki-chunks
+      loki.storage.bucketNames.ruler: loki-ruler
+      loki.storage.s3.endpoint: "s3.us-east-1.amazonaws.com"
+      loki.storage.s3.region: "us-east-1"
+      # s3ForcePathStyle intentionally omitted
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "s3forcepathstyle"
+
+  - it: should render s3forcepathstyle when explicitly set to true (standard S3)
+    set:
+      deploymentMode: SingleBinary
+      loki.commonConfig.replication_factor: 1
+      loki.storage.type: s3
+      loki.storage.bucketNames.chunks: loki-chunks
+      loki.storage.bucketNames.ruler: loki-ruler
+      loki.storage.s3.endpoint: "minio.example.svc:9000"
+      loki.storage.s3.region: "us-east-1"
+      loki.storage.s3.s3ForcePathStyle: true
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "s3forcepathstyle: true"
+
+  # ---------------------------------------------------------------------------
+  # loki.thanosStorageConfig — thanos object store path
+  # ---------------------------------------------------------------------------
+  - it: should not render null credential keys when not set (thanos S3)
+    set:
+      deploymentMode: SingleBinary
+      loki.commonConfig.replication_factor: 1
+      loki.storage.use_thanos_objstore: true
+      loki.storage.bucketNames.chunks: loki-chunks
+      loki.storage.object_store.type: s3
+      loki.storage.object_store.storage_prefix: ""
+      loki.storage.object_store.s3.insecure: false
+      # access_key_id, secret_access_key, endpoint, region intentionally omitted (IRSA)
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "access_key_id"
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "secret_access_key"
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "endpoint: null"
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: "region: null"
+
+  - it: should render credentials when explicitly set (thanos S3)
+    set:
+      deploymentMode: SingleBinary
+      loki.commonConfig.replication_factor: 1
+      loki.storage.use_thanos_objstore: true
+      loki.storage.bucketNames.chunks: loki-chunks
+      loki.storage.object_store.type: s3
+      loki.storage.object_store.storage_prefix: ""
+      loki.storage.object_store.s3.endpoint: "s3.us-east-1.amazonaws.com"
+      loki.storage.object_store.s3.region: "us-east-1"
+      loki.storage.object_store.s3.access_key_id: "AKIAIOSFODNN7EXAMPLE"
+      loki.storage.object_store.s3.secret_access_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+      loki.storage.object_store.s3.insecure: false
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "access_key_id"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "secret_access_key"

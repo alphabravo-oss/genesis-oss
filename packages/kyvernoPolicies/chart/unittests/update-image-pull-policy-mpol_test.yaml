@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: update-image-pull-policy-cel MutatingPolicy
+templates:
+  - templates/other-mpol/update-image-pull-policy-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        update-image-pull-policy-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render a MutatingPolicy when enabled
+    set:
+      celPoliciesBeta:
+        update-image-pull-policy-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: MutatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: update-image-pull-policy-cel
+      - equal:
+          path: metadata.annotations["policies.kyverno.io/severity"]
+          value: "low"
+      - equal:
+          path: spec.failurePolicy
+          value: Fail
+      - notExists:
+          path: spec.validationActions
+
+  - it: default renders three mutations writing Always to every tagged container list
+    set:
+      celPoliciesBeta:
+        update-image-pull-policy-cel:
+          enabled: true
+    asserts:
+      - lengthEqual:
+          path: spec.mutations
+          count: 3
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: 'object\.spec\.containers\.filter'
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: 'imagePullPolicy: "Always"'
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: '!c\.image\.contains\("@"\)'
+
+  - it: a set from only rewrites containers whose current policy matches
+    set:
+      celPoliciesBeta:
+        update-image-pull-policy-cel:
+          enabled: true
+          parameters:
+            update:
+              - from: IfNotPresent
+                to: Never
+    asserts:
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: 'c\.\?imagePullPolicy\.orValue\(""\) == "IfNotPresent"'
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: 'imagePullPolicy: "Never"'
+
+  - it: multiple update entries render three mutations each
+    set:
+      celPoliciesBeta:
+        update-image-pull-policy-cel:
+          enabled: true
+          parameters:
+            update:
+              - to: Always
+              - from: Always
+                to: IfNotPresent
+    asserts:
+      - lengthEqual:
+          path: spec.mutations
+          count: 6
+
+  - it: should fail when an update entry omits to
+    set:
+      celPoliciesBeta:
+        update-image-pull-policy-cel:
+          enabled: true
+          parameters:
+            update:
+              - from: Always
+    asserts:
+      - failedTemplate:
+          errorPattern: "each parameters.update entry must set 'to'"
+
+  - it: should fail when to is not a valid pull policy
+    set:
+      celPoliciesBeta:
+        update-image-pull-policy-cel:
+          enabled: true
+          parameters:
+            update:
+              - to: Sometimes
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be one of Always, Never, IfNotPresent"

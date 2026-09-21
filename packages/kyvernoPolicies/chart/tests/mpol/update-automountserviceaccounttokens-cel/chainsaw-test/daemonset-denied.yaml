@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: api-access-denied-daemon
+  namespace: update-automountserviceaccounttokens-2
+spec:
+  selector:
+    matchLabels:
+      app: api-access-denied-daemon
+  template:
+    metadata:
+      labels:
+        app: api-access-denied-daemon
+    spec:
+      automountServiceAccountToken: true
+      terminationGracePeriodSeconds: 0
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: test
+          image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+          command: ["true"]
+          securityContext:
+            capabilities:
+              drop:
+                - ALL

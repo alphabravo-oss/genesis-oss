@@ -1,0 +1,42 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-rbac-on-default-serviceaccounts-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: RoleBinding
+  policy: disallow-rbac-on-default-serviceaccounts-cel
+  resources:
+  - disallow-rbac-on-default-serviceaccounts-bad-default-rolebinding
+  - disallow-rbac-on-default-serviceaccounts-bad-group-rolebinding
+  result: fail
+- isValidatingPolicy: true
+  kind: ClusterRoleBinding
+  policy: disallow-rbac-on-default-serviceaccounts-cel
+  resources:
+  - disallow-rbac-on-default-serviceaccounts-bad-default-clusterrolebinding
+  - disallow-rbac-on-default-serviceaccounts-bad-group-clusterrolebinding
+  result: fail
+- isValidatingPolicy: true
+  kind: RoleBinding
+  policy: disallow-rbac-on-default-serviceaccounts-cel
+  resources:
+  - disallow-rbac-on-default-serviceaccounts-good-nondefault-rolebinding
+  - disallow-rbac-on-default-serviceaccounts-good-empty-subjects-rolebinding
+  result: pass
+- isValidatingPolicy: true
+  kind: ClusterRoleBinding
+  policy: disallow-rbac-on-default-serviceaccounts-cel
+  resources:
+  - disallow-rbac-on-default-serviceaccounts-good-nondefault-clusterrolebinding
+  result: pass
+- isValidatingPolicy: true
+  kind: ClusterRoleBinding
+  policy: disallow-rbac-on-default-serviceaccounts-cel
+  resources:
+  - system:service-account-issuer-discovery
+  result: skip

@@ -1,0 +1,117 @@
+{{- $name := "disallow-deprecated-apis-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $deprecated := dict
+  "v1.22" (list
+    (dict "group" "admissionregistration.k8s.io" "version" "v1beta1" "kind" "ValidatingWebhookConfiguration" "resource" "validatingwebhookconfigurations")
+    (dict "group" "admissionregistration.k8s.io" "version" "v1beta1" "kind" "MutatingWebhookConfiguration" "resource" "mutatingwebhookconfigurations")
+    (dict "group" "apiextensions.k8s.io" "version" "v1beta1" "kind" "CustomResourceDefinition" "resource" "customresourcedefinitions")
+    (dict "group" "apiregistration.k8s.io" "version" "v1beta1" "kind" "APIService" "resource" "apiservices")
+    (dict "group" "authentication.k8s.io" "version" "v1beta1" "kind" "TokenReview" "resource" "tokenreviews")
+    (dict "group" "authorization.k8s.io" "version" "v1beta1" "kind" "SubjectAccessReview" "resource" "subjectaccessreviews")
+    (dict "group" "authorization.k8s.io" "version" "v1beta1" "kind" "LocalSubjectAccessReview" "resource" "localsubjectaccessreviews")
+    (dict "group" "authorization.k8s.io" "version" "v1beta1" "kind" "SelfSubjectAccessReview" "resource" "selfsubjectaccessreviews")
+    (dict "group" "certificates.k8s.io" "version" "v1beta1" "kind" "CertificateSigningRequest" "resource" "certificatesigningrequests")
+    (dict "group" "coordination.k8s.io" "version" "v1beta1" "kind" "Lease" "resource" "leases")
+    (dict "group" "networking.k8s.io" "version" "v1beta1" "kind" "Ingress" "resource" "ingresses")
+    (dict "group" "networking.k8s.io" "version" "v1beta1" "kind" "IngressClass" "resource" "ingressclasses")
+    (dict "group" "rbac.authorization.k8s.io" "version" "v1beta1" "kind" "ClusterRole" "resource" "clusterroles")
+    (dict "group" "rbac.authorization.k8s.io" "version" "v1beta1" "kind" "ClusterRoleBinding" "resource" "clusterrolebindings")
+    (dict "group" "rbac.authorization.k8s.io" "version" "v1beta1" "kind" "Role" "resource" "roles")
+    (dict "group" "rbac.authorization.k8s.io" "version" "v1beta1" "kind" "RoleBinding" "resource" "rolebindings")
+    (dict "group" "scheduling.k8s.io" "version" "v1beta1" "kind" "PriorityClass" "resource" "priorityclasses")
+    (dict "group" "storage.k8s.io" "version" "v1beta1" "kind" "CSIDriver" "resource" "csidrivers")
+    (dict "group" "storage.k8s.io" "version" "v1beta1" "kind" "CSINode" "resource" "csinodes")
+    (dict "group" "storage.k8s.io" "version" "v1beta1" "kind" "StorageClass" "resource" "storageclasses")
+    (dict "group" "storage.k8s.io" "version" "v1beta1" "kind" "VolumeAttachment" "resource" "volumeattachments")
+  )
+  "v1.25" (list
+    (dict "group" "batch" "version" "v1beta1" "kind" "CronJob" "resource" "cronjobs")
+    (dict "group" "discovery.k8s.io" "version" "v1beta1" "kind" "EndpointSlice" "resource" "endpointslices")
+    (dict "group" "events.k8s.io" "version" "v1beta1" "kind" "Event" "resource" "events")
+    (dict "group" "autoscaling" "version" "v2beta1" "kind" "HorizontalPodAutoscaler" "resource" "horizontalpodautoscalers")
+    (dict "group" "policy" "version" "v1beta1" "kind" "PodDisruptionBudget" "resource" "poddisruptionbudgets")
+    (dict "group" "node.k8s.io" "version" "v1beta1" "kind" "RuntimeClass" "resource" "runtimeclasses")
+  )
+  "v1.26" (list
+    (dict "group" "flowcontrol.apiserver.k8s.io" "version" "v1beta1" "kind" "FlowSchema" "resource" "flowschemas")
+    (dict "group" "flowcontrol.apiserver.k8s.io" "version" "v1beta1" "kind" "PriorityLevelConfiguration" "resource" "prioritylevelconfigurations")
+    (dict "group" "autoscaling" "version" "v2beta2" "kind" "HorizontalPodAutoscaler" "resource" "horizontalpodautoscalers")
+  )
+  "v1.27" (list
+    (dict "group" "storage.k8s.io" "version" "v1beta1" "kind" "CSIStorageCapacity" "resource" "csistoragecapacities")
+  )
+  "v1.29" (list
+    (dict "group" "flowcontrol.apiserver.k8s.io" "version" "v1beta2" "kind" "FlowSchema" "resource" "flowschemas")
+    (dict "group" "flowcontrol.apiserver.k8s.io" "version" "v1beta2" "kind" "PriorityLevelConfiguration" "resource" "prioritylevelconfigurations")
+  )
+  "v1.32" (list
+    (dict "group" "flowcontrol.apiserver.k8s.io" "version" "v1beta3" "kind" "FlowSchema" "resource" "flowschemas")
+    (dict "group" "flowcontrol.apiserver.k8s.io" "version" "v1beta3" "kind" "PriorityLevelConfiguration" "resource" "prioritylevelconfigurations")
+  )
+-}}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Disallow Deprecated APIs
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: {{ default "low" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Kubernetes APIs
+    policies.kyverno.io/description: >-
+      Kubernetes APIs are sometimes deprecated and removed after a few releases.
+      As a best practice, older API versions should be replaced with newer versions.
+      This policy validates for APIs that are deprecated or scheduled for removal.
+      Note that checking for some of these resources may require modifying the Kyverno
+      ConfigMap to remove filters.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  matchConstraints:
+    {{- $byGroup := dict -}}
+    {{- range $k8sVersion, $entries := $deprecated -}}
+      {{- range $entries -}}
+        {{- $existing := default (list) (get $byGroup .group) -}}
+        {{- if not (has .resource $existing) -}}
+          {{- $_ := set $byGroup .group (append $existing .resource) -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end }}
+    resourceRules:
+    {{- range $g := keys $byGroup | sortAlpha }}
+      - apiGroups:   [{{ $g | quote }}]
+        apiVersions: ["*"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   [{{ range $i, $r := get $byGroup $g }}{{ if $i }}, {{ end }}{{ $r | quote }}{{ end }}]
+    {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+    - name: gvk
+      expression: "object.apiVersion + '/' + object.kind"
+  validations:
+    {{- range $k8sVersion, $entries := $deprecated }}
+    {{- $quoted := list -}}
+    {{- range $entries }}{{ $quoted = append $quoted (printf "'%s/%s/%s'" .group .version .kind) }}{{ end }}
+    - expression: >-
+        !(variables.gvk in [{{ join ", " $quoted }}])
+      messageExpression: >-
+        variables.gvk + ' is deprecated and will be removed in {{ $k8sVersion }}. See: https://kubernetes.io/docs/reference/using-api/deprecation-guide/'
+    {{- end }}
+{{- end -}}

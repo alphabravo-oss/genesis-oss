@@ -1,0 +1,88 @@
+{{- $name := "add-default-securitycontext-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Add Default securityContext
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: {{ default "high" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.17.0
+    policies.kyverno.io/description: >-
+      A Pod securityContext entry defines fields such as the user and group which should be used
+      to run the Pod. Sometimes choosing default values for users rather than blocking is a better
+      alternative to not impede such Pod definitions. This policy will mutate a Pod to set
+      runAsNonRoot, runAsUser, runAsGroup, and fsGroup fields within the Pod securityContext
+      if they are not already set.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://github.com/kyverno/policies/blob/main/other-mpol/add-default-securitycontext/add-default-securitycontext.yaml
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  failurePolicy: {{ include "bb-kyverno-policies.mpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  {{- /* Existing securityContext fields are never overwritten. Each field uses a ternary that
+         returns the existing value when present, or the configured default when absent.
+         The optional.of()/optional.none() pattern was tested and found to strip existing fields
+         on real clusters (Kyverno 1.17.1) — do not use it for "add only if not present" semantics. */ -}}
+  {{- $params := dig $name "parameters" dict .Values.celPoliciesBeta }}
+  {{- $defaults := dict
+    "runAsNonRoot" (dig "runAsNonRoot" true $params)
+    "runAsUser"    (dig "runAsUser"    65534 $params)
+    "runAsGroup"   (dig "runAsGroup"   65534 $params)
+    "fsGroup"      (dig "fsGroup"      65534 $params)
+  }}
+  mutations:
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object.spec{
+              securityContext: Object.spec.securityContext{
+                runAsNonRoot:
+                  has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot)
+                  ? object.spec.securityContext.runAsNonRoot
+                  : {{ $defaults.runAsNonRoot }},
+                runAsUser:
+                  has(object.spec.securityContext) && has(object.spec.securityContext.runAsUser)
+                  ? object.spec.securityContext.runAsUser
+                  : {{ $defaults.runAsUser }},
+                runAsGroup:
+                  has(object.spec.securityContext) && has(object.spec.securityContext.runAsGroup)
+                  ? object.spec.securityContext.runAsGroup
+                  : {{ $defaults.runAsGroup }},
+                fsGroup:
+                  has(object.spec.securityContext) && has(object.spec.securityContext.fsGroup)
+                  ? object.spec.securityContext.fsGroup
+                  : {{ $defaults.fsGroup }}
+              }
+            }
+          }
+{{- end -}}

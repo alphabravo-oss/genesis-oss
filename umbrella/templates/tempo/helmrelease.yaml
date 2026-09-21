@@ -1,0 +1,50 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsTempo := mergeOverwrite (deepCopy .Values.flux) .Values.tempo.flux -}}
+{{- if .Values.tempo.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tempo
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: tempo
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/tempo/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: tempo
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "tempo" "package" .Values.tempo "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsTempo | nindent 2 }}
+
+  postRenderers:
+  {{ include "tempo.promPortsPostRenderers" . | nindent 2 }}
+  {{- if .Values.tempo.postRenderers }}
+  {{- with .Values.tempo.postRenderers }}
+  {{ toYaml . | nindent 2 }}
+  {{- end }}
+  {{- end }}
+  {{- if and .Values.monitoring.enabled $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "mtls" "mode" "STRICT" .Values.tempo.values) "STRICT") }}
+  {{ include "tempo.serviceMonitorPostRenderers" . | nindent 2 }}
+  {{- end }}
+  {{- if and .Values.tempo.objectStorage.accessKey .Values.tempo.objectStorage.accessSecret }}
+  {{ include "tempo.objectStoragePostRenderers" . | nindent 2 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "tempo" "root" .) | nindent 2 }}
+  {{- if or .Values.monitoring.enabled .Values.tempo.sso.enabled $istioEnabled }}
+  dependsOn:
+    {{- if  .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.tempo.sso.enabled }}
+    - name: authservice
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- end }}

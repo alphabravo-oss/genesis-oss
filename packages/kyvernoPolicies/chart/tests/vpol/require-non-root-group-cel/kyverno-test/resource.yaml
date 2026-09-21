@@ -1,0 +1,200 @@
+###### Pods - Bad (runAsGroup)
+---
+# pod-level runAsGroup=0, no container override
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-pod-group-zero
+spec:
+  securityContext:
+    runAsGroup: 0
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+# pod-level runAsGroup=1000, container overrides to 0
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-container-override-zero
+spec:
+  securityContext:
+    runAsGroup: 1000
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      runAsGroup: 0
+---
+# pod-level runAsGroup=1000, initContainer overrides to 0
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-init-override-zero
+spec:
+  securityContext:
+    runAsGroup: 1000
+  containers:
+  - name: container01
+    image: dummyimagename
+  initContainers:
+  - name: init01
+    image: dummyimagename
+    securityContext:
+      runAsGroup: 0
+---
+# no pod-level runAsGroup, no container-level either (defaults to 0)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-no-group-anywhere
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+# no pod-level runAsGroup, one container has it, other doesn't
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-partial-containers
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      runAsGroup: 1000
+  - name: container02
+    image: dummyimagename
+---
+###### Pods - Bad (fsGroup)
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-fsgroup-zero
+spec:
+  securityContext:
+    runAsGroup: 1000
+    fsGroup: 0
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+###### Pods - Bad (supplementalGroups)
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-supplemental-zero
+spec:
+  securityContext:
+    runAsGroup: 1000
+    supplementalGroups: [1000, 0]
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+###### Pods - Good
+---
+# all fields set properly
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-all-fields
+spec:
+  securityContext:
+    runAsGroup: 1000
+    fsGroup: 1000
+    supplementalGroups: [1001, 1002]
+  containers:
+  - name: container01
+    image: dummyimagename
+  initContainers:
+  - name: init01
+    image: dummyimagename
+---
+# pod-level runAsGroup, no fsGroup/supplemental (optional fields)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-pod-group-only
+spec:
+  securityContext:
+    runAsGroup: 1000
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+# no pod-level, container-level runAsGroup set
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-container-level
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      runAsGroup: 1000
+  initContainers:
+  - name: init01
+    image: dummyimagename
+    securityContext:
+      runAsGroup: 1000
+---
+# container override > 0 when pod is also > 0
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-container-override
+spec:
+  securityContext:
+    runAsGroup: 1000
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext:
+      runAsGroup: 2000
+---
+###### Deployments - Bad
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-no-group
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename
+---
+###### Deployments - Good
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      securityContext:
+        runAsGroup: 1000
+      containers:
+      - name: container01
+        image: dummyimagename

@@ -1,0 +1,88 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-container-disallowed
+spec:
+  containers:
+  - name: container01
+    image: docker.io/library/nginx:latest
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-initcontainer-disallowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  initContainers:
+  - name: initcontainer01
+    image: registry.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-ephemeral-disallowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  ephemeralContainers:
+  - name: debug01
+    image: ghcr.io/some-org/debug:latest
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-all-containers-allowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  initContainers:
+  - name: initcontainer01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+  ephemeralContainers:
+  - name: debug01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-disallowed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: docker.io/library/nginx:latest
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-allowed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal

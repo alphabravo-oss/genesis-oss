@@ -1,0 +1,7 @@
+issuers:
+  letsEncrypt:
+    enabled: true
+    createOnInstall: true
+    email: platform@example.com
+    solvers:
+      - dns01: {}

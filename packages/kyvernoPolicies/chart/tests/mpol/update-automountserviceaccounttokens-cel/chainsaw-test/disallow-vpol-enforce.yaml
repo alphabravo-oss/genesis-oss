@@ -1,0 +1,29 @@
+# Stand-in for the disallow-auto-mount-service-account-token-cel ValidatingPolicy
+# that ships in the chart, patched to Deny and scoped to the test namespace so the
+# allow-pods exception has something to be exempted from. Uses the real policy name
+# because the PolicyException's policyRefs targets it by name.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: disallow-auto-mount-service-account-token-cel
+spec:
+  validationActions:
+    - Deny
+  failurePolicy: Fail
+  evaluation:
+    background:
+      enabled: false
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: scope-to-test-ns
+      expression: request.namespace == "update-automountserviceaccounttokens-2"
+  validations:
+    - expression: "object.spec.?automountServiceAccountToken.orValue(false) == false"
+      message: >-
+        Automount Kubernetes API Credentials is explicitly turned on. The field
+        spec.automountServiceAccountToken must be undefined or set to false.

@@ -1,0 +1,828 @@
+suite: cert-manager managed issuers
+templates:
+  - templates/bigbang/issuers/selfsigned.yaml
+  - templates/bigbang/issuers/letsencrypt.yaml
+  - templates/bigbang/issuers/networking.yaml
+release:
+  name: cert-manager
+  namespace: cert-manager
+tests:
+  - it: renders no managed issuer or ACME networking resources by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: creates a namespaced self-signed issuer when initial creation is enabled
+    template: templates/bigbang/issuers/selfsigned.yaml
+    set:
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.createOnInstall: true
+    asserts:
+      - isKind:
+          of: Issuer
+      - equal:
+          path: metadata.name
+          value: cert-manager-selfsigned
+      - equal:
+          path: metadata.namespace
+          value: cert-manager
+      - equal:
+          path: spec.selfSigned
+          value: {}
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: skips self-signed issuer during install when createOnInstall is false
+    template: templates/bigbang/issuers/selfsigned.yaml
+    set:
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.createOnInstall: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: skips self-signed issuer during a clean install by default
+    template: templates/bigbang/issuers/selfsigned.yaml
+    set:
+      issuers.selfSigned.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: creates self-signed issuer on upgrade with the safe default
+    template: templates/bigbang/issuers/selfsigned.yaml
+    release:
+      upgrade: true
+    set:
+      issuers.selfSigned.enabled: true
+    asserts:
+      - isKind:
+          of: Issuer
+
+  - it: renders a cluster-scoped self-signed issuer without a namespace
+    template: templates/bigbang/issuers/selfsigned.yaml
+    set:
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.createOnInstall: true
+      issuers.selfSigned.scope: ClusterIssuer
+      issuers.selfSigned.name: root-bootstrap
+    asserts:
+      - isKind:
+          of: ClusterIssuer
+      - equal:
+          path: metadata.name
+          value: root-bootstrap
+      - notExists:
+          path: metadata.namespace
+
+  - it: preserves the self-signed suffix for a long release name
+    template: templates/bigbang/issuers/selfsigned.yaml
+    release:
+      name: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx
+      namespace: cert-manager
+    set:
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.createOnInstall: true
+    asserts:
+      - equal:
+          path: metadata.name
+          value: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx-selfsigned
+
+  - it: quotes a numeric self-signed issuer name
+    template: templates/bigbang/issuers/selfsigned.yaml
+    set:
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.createOnInstall: true
+      issuers.selfSigned.name: "123"
+    asserts:
+      - equal:
+          path: metadata.name
+          value: "123"
+
+  - it: renders staging ACME defaults
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - isKind:
+          of: Issuer
+      - equal:
+          path: metadata.name
+          value: cert-manager-letsencrypt-staging
+      - equal:
+          path: spec.acme.server
+          value: https://acme-staging-v02.api.letsencrypt.org/directory
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: cert-manager-letsencrypt-staging-account-key
+      - equal:
+          path: spec.acme.solvers[0].http01.ingress.podTemplate.metadata.annotations["sidecar.istio.io/inject"]
+          value: "false"
+      - equal:
+          path: spec.acme.solvers[0].http01.ingress.podTemplate.metadata.labels["istio.io/dataplane-mode"]
+          value: none
+
+  - it: preserves staging suffixes in generated names for a long release
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    release:
+      name: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx
+      namespace: cert-manager
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - equal:
+          path: metadata.name
+          value: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx-letsencrypt-staging
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx-letsencrypt-staging-account-key
+
+  - it: preserves production suffixes in generated names for a long release
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    release:
+      name: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx
+      namespace: cert-manager
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.environment: production
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - equal:
+          path: metadata.name
+          value: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx-letsencrypt-production
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx-letsencrypt-production-account-key
+
+  - it: preserves custom suffixes in generated names for a long release
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    release:
+      name: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx
+      namespace: cert-manager
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.server: https://acme.example.mil/directory
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - equal:
+          path: metadata.name
+          value: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx-letsencrypt-custom
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzx-letsencrypt-custom-account-key
+
+  - it: renders production and all supported overrides
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.scope: ClusterIssuer
+      issuers.letsEncrypt.environment: production
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.name: public-ca
+      issuers.letsEncrypt.server: https://acme.example.mil/directory
+      issuers.letsEncrypt.privateKeySecretName: public-ca-key
+      issuers.letsEncrypt.labels:
+        owner: platform
+        app.kubernetes.io/instance: overridden
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            cloudflare:
+              apiTokenSecretRef:
+                name: cloudflare-token
+                key: token
+          selector:
+            dnsZones:
+              - example.mil
+    asserts:
+      - isKind:
+          of: ClusterIssuer
+      - notExists:
+          path: metadata.namespace
+      - equal:
+          path: metadata.name
+          value: public-ca
+      - equal:
+          path: metadata.labels.owner
+          value: platform
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: cert-manager
+      - equal:
+          path: spec.acme.server
+          value: https://acme.example.mil/directory
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: public-ca-key
+      - equal:
+          path: spec.acme.solvers[0].dns01.cloudflare.apiTokenSecretRef.name
+          value: cloudflare-token
+      - equal:
+          path: spec.acme.solvers[0].selector.dnsZones[0]
+          value: example.mil
+
+  - it: preserves long explicit issuer and account Secret names
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.name: very-long-explicit-issuer-name-that-exceeds-sixty-three-characters-001
+      issuers.letsEncrypt.privateKeySecretName: very-long-explicit-acme-account-secret-name-that-exceeds-sixty-three-characters-001
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - equal:
+          path: metadata.name
+          value: very-long-explicit-issuer-name-that-exceeds-sixty-three-characters-001
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: very-long-explicit-acme-account-secret-name-that-exceeds-sixty-three-characters-001
+
+  - it: derives the account Secret from a long explicit issuer name
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.name: very-long-explicit-issuer-name-that-exceeds-sixty-three-characters-001
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: very-long-explicit-issuer-name-that-exceeds-sixty-three-characters-001-account-key
+
+  - it: quotes numeric ACME issuer and account Secret names
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.name: "123"
+      issuers.letsEncrypt.privateKeySecretName: "456"
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - equal:
+          path: metadata.name
+          value: "123"
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: "456"
+
+  - it: supports Gateway API extra args without unsupported pod metadata
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      upstream.extraArgs:
+        - --enable-gateway-api=true
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            gatewayHTTPRoute:
+              parentRefs:
+                - name: public
+                  namespace: istio-gateway
+    asserts:
+      - equal:
+          path: spec.acme.solvers[0].http01.gatewayHTTPRoute.parentRefs[0].name
+          value: public
+      - notExists:
+          path: spec.acme.solvers[0].http01.gatewayHTTPRoute.podTemplate
+
+  - it: rejects a disabling Gateway API argument over config enablement
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      upstream.config.enableGatewayAPI: true
+      upstream.extraArgs:
+        - --enable-gateway-api=false
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            gatewayHTTPRoute:
+              parentRefs:
+                - name: public
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0] uses gatewayHTTPRoute but Gateway API is not enabled
+
+  - it: skips Let's Encrypt issuer during a clean install by default
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: skips ACME networking during a clean install when issuer creation is deferred
+    template: templates/bigbang/issuers/networking.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: creates Let's Encrypt issuer on upgrade with the safe default
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    release:
+      upgrade: true
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - isKind:
+          of: Issuer
+
+  - it: renders ACME egress and HTTP-01 ingress networking
+    template: templates/bigbang/issuers/networking.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-controller-egress
+        equal:
+          path: spec.egress[0].to[0].ipBlock
+          value:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-controller-egress
+        equal:
+          path: spec.egress[0].ports[1].port
+          value: 80
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-controller-egress
+        equal:
+          path: spec.egress[0].ports[2]
+          value:
+            port: 53
+            protocol: UDP
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-controller-egress
+        equal:
+          path: spec.egress[0].ports[3]
+          value:
+            port: 53
+            protocol: TCP
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-directory
+        equal:
+          path: spec.hosts[0]
+          value: acme-staging-v02.api.letsencrypt.org
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-directory
+        equal:
+          path: spec.exportTo[0]
+          value: "."
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-controller-egress
+        equal:
+          path: spec.egress[1].to[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"]
+          value: kube-system
+
+  - it: renders DNS egress and omits HTTP-01 networking for DNS-only solvers
+    template: templates/bigbang/issuers/networking.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-controller-egress
+        equal:
+          path: spec.egress[0].ports[1]
+          value:
+            port: 53
+            protocol: UDP
+      - documentSelector:
+          path: metadata.name
+          value: cert-manager-acme-controller-egress
+        equal:
+          path: spec.egress[0].ports[2]
+          value:
+            port: 53
+            protocol: TCP
+
+  - it: normalizes an uppercase custom ACME hostname
+    template: templates/bigbang/issuers/networking.yaml
+    documentSelector:
+      path: metadata.name
+      value: cert-manager-acme-directory
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.server: https://ACME.EXAMPLE/directory
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53: {}
+    asserts:
+      - equal:
+          path: spec.hosts[0]
+          value: acme.example
+
+  - it: omits ACME NetworkPolicies when common network policies are disabled
+    template: templates/bigbang/issuers/networking.yaml
+    set:
+      bb-common.networkPolicies.enabled: false
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ServiceEntry
+
+  - it: omits the sidecar ServiceEntry in ambient mode
+    template: templates/bigbang/issuers/networking.yaml
+    set:
+      bb-common.istio.ambient.enabled: true
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: NetworkPolicy
+
+  - it: renders exceptions only for their associated egress CIDR
+    template: templates/bigbang/issuers/networking.yaml
+    documentSelector:
+      path: metadata.name
+      value: cert-manager-acme-controller-egress
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53:
+              region: us-gov-west-1
+      issuers.letsEncrypt.networking.controllerEgress.cidrs:
+        - cidr: 192.0.2.0/24
+          except:
+            - 192.0.2.10/32
+        - cidr: 198.51.100.10/32
+    asserts:
+      - equal:
+          path: spec.egress[0].to
+          value:
+            - ipBlock:
+                cidr: 192.0.2.0/24
+                except:
+                  - 192.0.2.10/32
+            - ipBlock:
+                cidr: 198.51.100.10/32
+
+  - it: rejects empty controller egress CIDRs
+    template: templates/bigbang/issuers/networking.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.createOnInstall: true
+      issuers.letsEncrypt.networking.controllerEgress.cidrs: []
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.networking.controllerEgress.cidrs must contain at least one CIDR when controller egress is enabled
+
+  - it: rejects an unsupported self-signed scope
+    template: templates/bigbang/issuers/selfsigned.yaml
+    set:
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.scope: Namespace
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.selfSigned.scope must be Issuer or ClusterIssuer
+
+  - it: rejects an unsupported ACME scope
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.scope: Namespace
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.scope must be Issuer or ClusterIssuer
+
+  - it: rejects an unsupported environment
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.environment: test
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.environment must be staging or production
+
+  - it: requires an ACME email
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.email is required when Let's Encrypt is enabled
+
+  - it: rejects an empty DNS-01 solver
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    values:
+      - values/empty-dns01.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].dns01 must contain exactly one provider configuration
+
+  - it: rejects DNS-01 options without a provider
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            cnameStrategy: Follow
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].dns01 must contain exactly one provider configuration
+
+  - it: rejects multiple DNS-01 providers
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            cloudflare: {}
+            route53: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].dns01 must contain exactly one provider configuration
+
+  - it: rejects a null DNS-01 provider
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    values:
+      - values/null-dns-provider.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].dns01.route53 must be an object
+
+  - it: rejects a custom ACME server without HTTPS port 443
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.server: https://acme.example.mil:8443/directory
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.server must use HTTPS with a hostname on port 443
+
+  - it: rejects a custom ACME server with URL userinfo
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.server: https://user@acme.example.mil/directory
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.server must use HTTPS with a hostname on port 443
+
+  - it: requires at least one ACME solver
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers must contain at least one HTTP-01 or DNS-01 solver
+
+  - it: rejects a solver with neither challenge type
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - selector:
+            dnsZones:
+              - example.com
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0] must contain exactly one of http01 or dns01
+
+  - it: rejects a solver with both challenge types
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress: {}
+          dns01:
+            route53: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0] must contain exactly one of http01 or dns01
+
+  - it: rejects incompatible HTTP-01 route types
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress: {}
+            gatewayHTTPRoute: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].http01 must contain exactly one of ingress or gatewayHTTPRoute
+
+  - it: rejects an unselectable Gateway API solver
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      upstream.config.enableGatewayAPI: true
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            gatewayHTTPRoute: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].http01.gatewayHTTPRoute must set parentRefs or labels
+
+  - it: rejects incompatible ingress selection options
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+              class: nginx
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].http01.ingress must set exactly one of ingressClassName, class, or name
+
+  - it: rejects explicitly empty incompatible ingress selection options
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+              class: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].http01.ingress must set exactly one of ingressClassName, class, or name
+
+  - it: rejects a classless HTTP-01 ingress solver
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0].http01.ingress must set exactly one of ingressClassName, class, or name
+
+  - it: rejects reserved HTTP-01 pod labels
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+              podTemplate:
+                metadata:
+                  labels:
+                    acme.cert-manager.io/http01-solver: "false"
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0] may not override reserved acme.cert-manager.io/http-* labels
+
+  - it: rejects duplicate managed issuer identities
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.selfSigned.enabled: true
+      issuers.selfSigned.name: shared
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.name: shared
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.selfSigned and issuers.letsEncrypt must not use the same scope and name
+
+  - it: rejects an overlong generated ACME account Secret name
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.name: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      issuers.letsEncrypt.solvers:
+        - dns01:
+            route53: {}
+    asserts:
+      - failedTemplate:
+          errorMessage: the generated Let's Encrypt account Secret name exceeds 253 characters; set issuers.letsEncrypt.privateKeySecretName
+
+  - it: rejects the unsupported legacy Gateway API key
+    template: templates/bigbang/issuers/letsencrypt.yaml
+    set:
+      upstream.config.gatewayAPI.enabled: true
+      issuers.letsEncrypt.enabled: true
+      issuers.letsEncrypt.email: platform@example.com
+      issuers.letsEncrypt.solvers:
+        - http01:
+            gatewayHTTPRoute:
+              parentRefs:
+                - name: public
+    asserts:
+      - failedTemplate:
+          errorMessage: issuers.letsEncrypt.solvers[0] uses gatewayHTTPRoute but Gateway API is not enabled

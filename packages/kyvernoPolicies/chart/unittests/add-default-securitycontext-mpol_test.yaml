@@ -1,0 +1,117 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: add-default-securitycontext-cel MutatingPolicy
+templates:
+  - templates/other-mpol/add-default-securitycontext-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render a MutatingPolicy when enabled
+    set:
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: MutatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: add-default-securitycontext-cel
+
+  - it: "severity: defaults to high"
+    set:
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["policies.kyverno.io/severity"]
+          value: "high"
+
+  - it: contains CEL mutation with ternary defaults
+    set:
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+    asserts:
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: ": true,"
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: ": 65534"
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: "object\\.spec\\.securityContext\\.runAsNonRoot"
+
+  - it: custom securityContext values flow into CEL expression
+    set:
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+          parameters:
+            runAsNonRoot: false
+            runAsUser: 1000
+            runAsGroup: 2000
+            fsGroup: 3000
+    asserts:
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: ": false,"
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: ": 1000,"
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: ": 2000,"
+      - matchRegex:
+          path: spec.mutations[0].applyConfiguration.expression
+          pattern: ": 3000"
+
+  - it: "failurePolicy: defaults to Fail (mpol-failurePolicy, no auto-derive)"
+    set:
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.failurePolicy
+          value: Fail
+
+  - it: "failurePolicy: per-policy override"
+    set:
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+          failurePolicy: Ignore
+    asserts:
+      - equal:
+          path: spec.failurePolicy
+          value: Ignore
+
+  - it: has no validationActions (MPol does not validate)
+    set:
+      celPoliciesBeta:
+        add-default-securitycontext-cel:
+          enabled: true
+    asserts:
+      - notExists:
+          path: spec.validationActions

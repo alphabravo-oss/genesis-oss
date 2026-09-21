@@ -1,0 +1,69 @@
+{
+  "baseBranchPatterns": [
+    "main"
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Renovate: Update Istio Gateway Package Dependencies",
+  "draftPR": true,
+  "labels": [
+    "istioGateway",
+    "Big Bang Core",
+    "kind::maintenance",
+    "renovate",
+    "team::Package Maintenance"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker",
+        "helm"
+      ],
+      "matchManagers": [
+        "custom.regex",
+        "helmv3"
+      ],
+      "groupName": "Istio Gateway",
+      "postUpgradeTasks": {
+        "commands": [
+          "match-chart-yaml-appversion",
+          "bump-changelog '{{#each upgrades}}- {{depName}} {{currentVersion}} -> {{newVersion}}\\n{{/each}}'",
+          "regenerate-helm-docs"
+        ],
+        "fileFilters": [
+          "chart/Chart.yaml",
+          "README.md",
+          "CHANGELOG.md"
+        ],
+        "executionMode": "branch"
+      }
+    }
+  ],
+  "postUpdateOptions": [
+    "helmUpdateSubChartArchives"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update chart appVersion to match upstream",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "appVersion:[^\\S\\r\\n]+(?<currentValue>.+)"
+      ],
+      "depNameTemplate": "gateway",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://istio-release.storage.googleapis.com/charts"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "image:[^\\S\\r\\n]+(?<depName>.+):(?<currentValue>.+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

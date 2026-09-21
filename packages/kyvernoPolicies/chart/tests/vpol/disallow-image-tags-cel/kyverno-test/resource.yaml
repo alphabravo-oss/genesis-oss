@@ -1,0 +1,93 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-no-tag
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-latest-tag
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:latest
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-latest-init
+spec:
+  initContainers:
+  - name: init01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:latest
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-latest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:latest
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-versioned
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-multiple
+spec:
+  initContainers:
+  - name: init01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7
+  - name: container02
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.6
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-versioned
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-micro:9.7

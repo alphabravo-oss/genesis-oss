@@ -1,0 +1,33 @@
+########################
+# Required for package #
+########################
+certManager:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+monitoring:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+grafana:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+kyvernoReporter:
+  enabled: true
+  values:
+    bbtests:
+      enabled: true
+kyverno:
+  enabled: true
+  values:
+    bbtests:
+      enabled: true
+kyvernoPolicies:
+  enabled: true
+  values:
+    bbtests:
+      enabled: true

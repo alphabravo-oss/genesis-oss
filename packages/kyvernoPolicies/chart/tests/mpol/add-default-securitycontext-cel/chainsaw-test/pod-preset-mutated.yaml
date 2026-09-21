@@ -1,0 +1,11 @@
+# Assert that existing securityContext fields are preserved (not overwritten)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: preset-pod
+spec:
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 1000
+    runAsGroup: 2000
+    fsGroup: 3000

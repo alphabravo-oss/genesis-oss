@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: require-annotations-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/require-annotations-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-annotations-cel:
+          enabled: true
+          parameters:
+            require:
+              - key: owner
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - equal:
+          path: metadata.name
+          value: require-annotations-cel
+
+  - it: should not render when disabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-annotations-cel:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        require-annotations-cel:
+          enabled: true
+          parameters:
+            require:
+              - key: owner
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails when require list is empty
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-annotations-cel:
+          enabled: true
+          parameters:
+            require: []
+    asserts:
+      - failedTemplate:
+          errorMessage: require-annotations-cel is enabled but celPoliciesBeta.require-annotations-cel.parameters.require is empty - disable the policy or provide a list of required annotations
+
+  - it: generates one validation per require entry
+    set:
+      enabled: true
+      celPoliciesBeta:
+        require-annotations-cel:
+          enabled: true
+          parameters:
+            require:
+              - key: owner
+              - key: app
+                value: production
+              - key: team
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 3

@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: add-default-capability-drop-cel MutatingPolicy
+templates:
+  - templates/other-mpol/add-default-capability-drop-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render a MutatingPolicy when enabled
+    set:
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: MutatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: add-default-capability-drop-cel
+
+  - it: "severity: defaults to medium"
+    set:
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+    asserts:
+      - equal:
+          path: metadata.annotations["policies.kyverno.io/severity"]
+          value: "medium"
+
+  - it: "failurePolicy: defaults to Fail (mpol-failurePolicy, no auto-derive)"
+    set:
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+    asserts:
+      - equal:
+          path: spec.failurePolicy
+          value: Fail
+
+  - it: "failurePolicy: per-policy override"
+    set:
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+          failurePolicy: Ignore
+    asserts:
+      - equal:
+          path: spec.failurePolicy
+          value: Ignore
+
+  - it: has no validationActions (MPol does not validate)
+    set:
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+    asserts:
+      - notExists:
+          path: spec.validationActions
+
+  - it: matches controllers directly, so Kyverno autogen does not apply (JSONPatch can't autogen)
+    set:
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+    asserts:
+      # Two resourceRules (pods + controllers) means CanAutoGen is false, so no
+      # autogen field is needed and none is rendered.
+      - notExists:
+          path: spec.autogen
+      - lengthEqual:
+          path: spec.matchConstraints.resourceRules
+          count: 2
+      - equal:
+          path: spec.matchConstraints.resourceRules[0].resources
+          value: [pods]
+      - equal:
+          path: spec.matchConstraints.resourceRules[1].apiGroups
+          value: [apps]
+      - equal:
+          path: spec.matchConstraints.resourceRules[1].resources
+          value: [deployments, replicasets, daemonsets, statefulsets]
+      - equal:
+          path: spec.variables[0].name
+          value: prefix
+      - matchRegex:
+          path: spec.mutations[0].jsonPatch.expression
+          pattern: 'variables\.podSpec\.containers'
+
+  - it: only renders the pods rule when autogenControllers is none
+    set:
+      celPoliciesBeta:
+        add-default-capability-drop-cel:
+          enabled: true
+          autogenControllers: none
+    asserts:
+      - lengthEqual:
+          path: spec.matchConstraints.resourceRules
+          count: 1
+      - equal:
+          path: spec.matchConstraints.resourceRules[0].resources
+          value: [pods]

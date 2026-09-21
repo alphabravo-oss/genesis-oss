@@ -1,0 +1,97 @@
+alloy:
+  enabled: true
+  alloyLogs:
+    enabled: true
+  values:
+    k8s-monitoring:
+      destinations:
+        - name: loki
+          type: loki
+          url: http://logging-loki-write.logging.svc.cluster.local:3100/loki/api/v1/push
+    bbtests:
+      enabled: false
+certManager:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+loki:
+  enabled: true
+  strategy: scalable
+  values:
+    # MinIO required for Loki Scalable
+    minio:
+      enabled: true
+    # Re-enable VirtualService for CI tests (alloy script test queries via VS)
+    routes:
+      inbound:
+        loki:
+          enabled: true
+    bbtests:
+      enabled: true
+      scripts:
+        envs:
+          LOKI_URL: 'http://logging-loki-write.logging.svc:3100'
+    # CI single-node: 1 replica per component validates the SimpleScalable architecture
+    # (separate read/write/backend paths, MinIO storage, inter-component routing) without
+    # the resource overhead or false redundancy of 3 co-located replicas on one node.
+    # affinity: {} clears the chart's default hard node anti-affinity as a safeguard.
+    # experimentalMode bypasses the BB validate.yaml guard (backend.replicas >= 2) which
+    # is intentionally relaxed here since single-replica is unsupported only in production.
+    experimentalMode:
+      enabled: true
+    read:
+      replicas: 1
+      affinity: {}
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 200m
+          memory: 512Mi
+    write:
+      replicas: 1
+      affinity: {}
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 200m
+          memory: 512Mi
+    backend:
+      replicas: 1
+      affinity: {}
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 200m
+          memory: 512Mi
+    gateway:
+      affinity: {}
+grafana:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+monitoring:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+certManager:
+  enabled: true
+kyverno:
+  values:
+    bbtests:
+      enabled: false
+kyvernoPolicies:
+  values:
+    bbtests:
+      enabled: false
+addons:
+  minioOperator:
+    enabled: true

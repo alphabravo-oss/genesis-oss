@@ -1,0 +1,62 @@
+{
+  "baseBranchPatterns": [
+    "main"
+  ],
+  "configWarningReuseIssue": false,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Renovate: Upgrade Grafana Package Dependencies",
+  "draftPR": true,
+  "enabledManagers": [
+    "custom.regex",
+    "helm-values",
+    "helmv3"
+  ],
+  "ignorePaths": [
+    "chart/charts/**"
+  ],
+  "labels": [
+    "renovate",
+    "kind::maintenance",
+    "team::Package Maintenance",
+    "grafana"
+  ],
+  "postUpdateOptions": [
+    "helmUpdateSubChartArchives"
+  ],
+  "separateMajorMinor": false,
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker",
+        "helm"
+      ],
+      "groupName": "Ironbank",
+      "postUpgradeTasks": {
+        "commands": [
+          "bump-chart-bb-suffix",
+          "regenerate-helm-docs",
+          "bump-changelog '{{#each upgrades}}- {{replace \"registry1.dso.mil/\" \"\" depName}} updated from {{currentVersion}} to {{newVersion}}\\n{{/each}}'"
+        ],
+        "executionMode": "branch",
+        "fileFilters": [
+          "chart/Chart.yaml",
+          "README.md",
+          "CHANGELOG.md"
+        ]
+      }
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update docker image references",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "image:[^\\S\\r\\n]+(?<depName>.+):(?<currentValue>.+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

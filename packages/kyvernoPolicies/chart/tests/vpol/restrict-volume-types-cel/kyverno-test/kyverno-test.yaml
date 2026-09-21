@@ -1,0 +1,37 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restrict-volume-types-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-volume-types-cel
+  resources:
+  - badpod-hostpath
+  - badpod-nfs
+  - badpod-mixed
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-volume-types-cel
+  resources:
+  - baddeployment-hostpath
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: restrict-volume-types-cel
+  resources:
+  - goodpod-no-volumes
+  - goodpod-configmap
+  - goodpod-multiple-allowed
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: restrict-volume-types-cel
+  resources:
+  - gooddeployment-emptydir
+  result: pass

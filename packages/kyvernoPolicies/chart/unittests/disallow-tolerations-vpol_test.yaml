@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: disallow-tolerations-cel ValidatingPolicy
+templates:
+  - templates/other-vpol/disallow-tolerations-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should render both Pod and RuntimeClass VPols when enabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-tolerations-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - key: 'node-role\.kubernetes\.io/master'
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: disallow-tolerations-cel
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: disallow-tolerations-cel-runtimeclass
+        documentIndex: 1
+      - equal:
+          path: spec.matchConstraints.resourceRules[0].resources[0]
+          value: pods
+        documentIndex: 0
+      - equal:
+          path: spec.matchConstraints.resourceRules[0].resources[0]
+          value: runtimeclasses
+        documentIndex: 1
+
+  - it: should not render when disabled
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-tolerations-cel:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        disallow-tolerations-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails when disallow is empty
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-tolerations-cel:
+          enabled: true
+          parameters:
+            disallow: []
+    asserts:
+      - failedTemplate:
+          errorMessage: "disallow-tolerations-cel is enabled but celPoliciesBeta.disallow-tolerations-cel.parameters.disallow is empty - disable the policy or provide a list of disallowed taint patterns"
+
+  - it: emits one validation per disallow entry on each VPol
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-tolerations-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - key: 'a'
+              - key: 'b'
+                effect: 'NoSchedule'
+    asserts:
+      - lengthEqual:
+          path: spec.validations
+          count: 2
+        documentIndex: 0
+      - lengthEqual:
+          path: spec.validations
+          count: 2
+        documentIndex: 1
+
+  - it: combines key/value/effect with && when multiple fields are set
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-tolerations-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - key: 'k'
+                value: 'v'
+                effect: 'NoSchedule'
+    asserts:
+      - matchRegex:
+          path: spec.validations[0].expression
+          pattern: "key.*&&.*value.*&&.*effect"
+        documentIndex: 0
+
+  - it: rejects a disallow entry with no fields
+    set:
+      enabled: true
+      celPoliciesBeta:
+        disallow-tolerations-cel:
+          enabled: true
+          parameters:
+            disallow:
+              - {}
+    asserts:
+      - failedTemplate:
+          errorMessage: "disallow-tolerations-cel: parameters.disallow entry must set at least one of key, value, effect"

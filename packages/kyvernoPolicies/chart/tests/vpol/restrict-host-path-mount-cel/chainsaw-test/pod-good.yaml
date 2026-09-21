@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-hostpath-allowed
+spec:
+  containers:
+  - name: container01
+    image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal
+    volumeMounts:
+    - name: host
+      mountPath: /allowed
+  volumes:
+  - name: host
+    hostPath:
+      path: /tmp/allowed

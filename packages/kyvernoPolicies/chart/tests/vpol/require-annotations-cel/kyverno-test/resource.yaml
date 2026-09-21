@@ -1,0 +1,156 @@
+###### Pods - Bad
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-no-annotations
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-missing-name
+  annotations:
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/component: frontend
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-wrong-version
+  annotations:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: v2
+    app.kubernetes.io/component: frontend
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-missing-version
+  annotations:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/component: backend
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-empty-name
+  annotations:
+    app.kubernetes.io/name: ""
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/component: frontend
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-regex-no-match
+  annotations:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/component: middleware
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-frontend
+  annotations:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/component: frontend
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-backend
+  annotations:
+    app.kubernetes.io/name: otherapp
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/component: backend
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-with-extras
+  annotations:
+    app.kubernetes.io/name: myapp
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/component: frontend
+    extra: irrelevant
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-no-annotations
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+      annotations:
+        app.kubernetes.io/name: myapp
+        app.kubernetes.io/version: v1
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+      - name: container01
+        image: dummyimagename

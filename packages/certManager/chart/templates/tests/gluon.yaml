@@ -1,0 +1,23 @@
+{{- include "gluon.tests.script-configmap.overrides" (list . "cert-manager.script-configmap") }}
+{{- define "cert-manager.script-configmap" }}
+metadata:
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    kyverno-policies-bbtest/test: required
+    kyverno-policies-bbtest/required: "true"
+{{- end }}
+---
+{{- include "gluon.tests.script-runner.overrides" (list . "cert-manager.script-runner") -}}
+{{- define "cert-manager.script-runner" -}}
+metadata:
+  labels:
+    app: cert-manager
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    kyverno-policies-bbtest/test: required
+    kyverno-policies-bbtest/required: "true"
+{{- end }}

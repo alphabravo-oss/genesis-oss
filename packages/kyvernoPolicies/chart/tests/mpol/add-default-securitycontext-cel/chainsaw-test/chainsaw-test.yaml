@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+#
+# Upstream: kyverno/policies other-mpol/add-default-securitycontext
+# BB divergences:
+#   - images swapped to registry1 ubi9-micro:9.7 (Iron Bank requirement)
+#   - asserts mutated pod state rather than pass/fail admission
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  creationTimestamp: null
+  name: add-default-securitycontext-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: ../policy.yaml
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: MutatingPolicy
+          metadata:
+            name: add-default-securitycontext-cel
+          spec:
+            matchConditions:
+              - name: scope-to-test-ns
+                expression: (cel; "object.metadata.namespace == '" + string(bindings.resolve("namespace")) + "'")
+    - assert:
+        file: policy-ready.yaml
+  - name: step-02
+    try:
+    - apply:
+        file: pod-bare.yaml
+    - assert:
+        file: pod-bare-mutated.yaml
+    - apply:
+        file: pod-preset.yaml
+    - assert:
+        file: pod-preset-mutated.yaml

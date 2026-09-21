@@ -1,0 +1,108 @@
+{{- define "restrict-group-id-cel.matches" -}}
+{{- printf "%s.exists(r, (!has(r.min) || %s >= r.min) && (!has(r.max) || %s <= r.max))" .list .gid .gid -}}
+{{- end -}}
+{{- define "restrict-group-id-cel.allowed" -}}
+{{- $allowExpr := include "restrict-group-id-cel.matches" (dict "gid" .gid "list" "variables.allowRanges") -}}
+{{- $denyExpr := include "restrict-group-id-cel.matches" (dict "gid" .gid "list" "variables.denyRanges") -}}
+{{- printf "(variables.allowRanges.size() == 0 || %s) && !(%s)" $allowExpr $denyExpr -}}
+{{- end -}}
+{{- $name := "restrict-group-id-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $allow := dig $name "parameters" "allow" (list) .Values.celPoliciesBeta -}}
+{{- $deny := dig $name "parameters" "deny" (list) .Values.celPoliciesBeta -}}
+{{- if and (not $allow) (not $deny) -}}
+  {{- fail (printf "%s is enabled but both celPoliciesBeta.%s.parameters.allow and .deny are empty - disable the policy or provide at least one range" $name $name) -}}
+{{- end -}}
+{{- range $r := $allow -}}
+  {{- if and (not (hasKey $r "min")) (not (hasKey $r "max")) -}}
+    {{- fail (printf "%s: each parameters.allow entry must set min, max, or both" $name) -}}
+  {{- end -}}
+{{- end -}}
+{{- range $r := $deny -}}
+  {{- if and (not (hasKey $r "min")) (not (hasKey $r "max")) -}}
+    {{- fail (printf "%s: each parameters.deny entry must set min, max, or both" $name) -}}
+  {{- end -}}
+{{- end -}}
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Restrict Group IDs
+    policies.kyverno.io/category: Best Practices (Security)
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Processes inside a pod can be given group permissions by setting `runAsGroup` or `supplementalGroups`.
+      Volume mounts can be mounted as a specific group using `fsGroup`.  Group IDs below 1000 are generally
+      reserved for system accounts, services, and special accounts.  This policy will restrict IDs to the
+      allowed list of values.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  {{- include "bb-kyverno-policies.validationActions" (merge (dict "name" $name) .) | indent 2 }}
+  failurePolicy: {{ include "bb-kyverno-policies.vpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  variables:
+  - name: allowRanges
+    expression: {{ $allow | toJson | quote }}
+  - name: denyRanges
+    expression: {{ $deny | toJson | quote }}
+  - name: allContainers
+    expression: >-
+      {{ include "bb-kyverno-policies.vpol-allContainers" (merge (dict "name" $name) .) }}
+  validations:
+    - expression: >-
+        !object.spec.?securityContext.?runAsGroup.hasValue() ||
+        ({{ include "restrict-group-id-cel.allowed" (dict "gid" "object.spec.securityContext.runAsGroup") }})
+      message: >-
+        Setting runAsGroup to an ID outside of the allowed ranges is not allowed.
+        spec.securityContext.runAsGroup must either be undefined or set to an allowed value.
+    - expression: >-
+        variables.allContainers.all(c,
+          !c.?securityContext.?runAsGroup.hasValue() ||
+          ({{ include "restrict-group-id-cel.allowed" (dict "gid" "c.securityContext.runAsGroup") }}))
+      message: >-
+        Setting runAsGroup to an ID outside of the allowed ranges is not allowed.
+        spec.containers[*].securityContext.runAsGroup, spec.initContainers[*].securityContext.runAsGroup,
+        and spec.ephemeralContainers[*].securityContext.runAsGroup must either be undefined or set to an allowed value.
+    - expression: >-
+        !object.spec.?securityContext.?fsGroup.hasValue() ||
+        ({{ include "restrict-group-id-cel.allowed" (dict "gid" "object.spec.securityContext.fsGroup") }})
+      message: >-
+        Setting fsGroup to an ID outside of the allowed ranges is not allowed.
+        spec.securityContext.fsGroup must either be undefined or set to an allowed value.
+    - expression: >-
+        object.spec.?securityContext.?supplementalGroups.orValue([]).all(gid,
+          {{ include "restrict-group-id-cel.allowed" (dict "gid" "gid") }})
+      message: >-
+        Setting supplementalGroups to an ID outside of the allowed ranges is not allowed.
+        spec.securityContext.supplementalGroups[*] must either be undefined or set to allowed values.
+{{- end -}}

@@ -1,0 +1,11 @@
+certManager:
+  enabled: true
+  values:
+    issuers:
+      selfSigned:
+        enabled: true
+        createOnInstall: false
+    bbtests:
+      enabled: true
+      scripts:
+        enabled: true

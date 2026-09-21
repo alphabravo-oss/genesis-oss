@@ -1,0 +1,194 @@
+{
+  "extends": [
+    "local>platform-one/big-bang/pipeline-templates/renovate-runner"
+  ],
+  "enabledManagers": [
+    "helmv3",
+    "custom.regex"
+  ],
+  "labels": [
+    "cert-manager",
+    "kind::maintenance",
+    "team::Package Maintenance",
+    "renovate"
+  ],
+  "packageRules": [
+    {
+      "description": "Group every Renovate update for this package into one MR",
+      "matchManagers": ["helmv3", "custom.regex"],
+      "groupName": "cert-manager and dependencies",
+      "groupSlug": "cert-manager-and-dependencies",
+      "separateMajorMinor": false,
+      "separateMinorPatch": false,
+      "separateMultipleMajor": false
+    },
+    {
+      "matchManagers": ["helmv3"],
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
+      "prPriority": 10
+    },
+    {
+      "matchManagers": ["custom.regex"],
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
+      "prPriority": 10
+    }
+  ],
+  "postUpdateOptions": [
+    "helmUpdateSubChartArchives"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update chart version to match upstream; append -bb.0",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "version:\\s+(?<currentValue>.+)-bb\\.\\d+"
+      ],
+      "autoReplaceStringTemplate": "version: {{newValue}}-bb.0",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update chart appVersion to match upstream",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "appVersion:\\s+(?<currentValue>.+)"
+      ],
+      "autoReplaceStringTemplate": "appVersion: {{newValue}}",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update upstream dependency version in Chart.yaml",
+      "managerFilePatterns": [
+        "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "name: cert-manager\\s+version: \"(?<currentValue>.+)\"\\s+repository: \"https://charts\\.jetstack\\.io\""
+      ],
+      "autoReplaceStringTemplate": "name: cert-manager\n    version: \"{{newValue}}\"\n    repository: \"https://charts.jetstack.io\"",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update big bang application versions",
+      "managerFilePatterns": [
+        "/^chart/Chart.yaml$/"
+      ],
+      "matchStrings": [
+        "- cert-manager:\\s+(?<currentValue>.+)"
+      ],
+      "autoReplaceStringTemplate": "- cert-manager: {{newValue}}",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update cert-manager-controller image to match upstream",
+      "managerFilePatterns": [
+        "/^chart/Chart.yaml$/"
+      ],
+      "matchStrings": [
+        "image: registry1.dso.mil\\/ironbank\\/jetstack\\/cert-manager-controller:(?<currentValue>.+)"
+      ],
+      "autoReplaceStringTemplate": "image: registry1.dso.mil/ironbank/jetstack/cert-manager-controller:{{newValue}}",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update cert-manager-webhook image to match upstream",
+      "managerFilePatterns": [
+        "/^chart/Chart.yaml$/"
+      ],
+      "matchStrings": [
+        "image: registry1.dso.mil\\/ironbank\\/jetstack\\/cert-manager-webhook:(?<currentValue>.+)"
+      ],
+      "autoReplaceStringTemplate": "image: registry1.dso.mil/ironbank/jetstack/cert-manager-webhook:{{newValue}}",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update cert-manager-cainjector image to match upstream",
+      "managerFilePatterns": [
+        "/^chart/Chart.yaml$/"
+      ],
+      "matchStrings": [
+        "image: registry1.dso.mil\\/ironbank\\/jetstack\\/cert-manager-cainjector:(?<currentValue>.+)"
+      ],
+      "autoReplaceStringTemplate": "image: registry1.dso.mil/ironbank/jetstack/cert-manager-cainjector:{{newValue}}",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update cert-manager-acmesolver image to match upstream",
+      "managerFilePatterns": [
+        "/^chart/Chart.yaml$/"
+      ],
+      "matchStrings": [
+        "image: registry1.dso.mil\\/ironbank\\/opensource\\/jetstack\\/cert-manager-acmesolver:(?<currentValue>.+)"
+      ],
+      "autoReplaceStringTemplate": "image: registry1.dso.mil/ironbank/opensource/jetstack/cert-manager-acmesolver:{{newValue}}",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update cert-manager-ctl image to match upstream",
+      "managerFilePatterns": [
+        "/^chart/Chart.yaml$/"
+      ],
+      "matchStrings": [
+        "image: registry1.dso.mil\\/ironbank\\/jetstack\\/cert-manager-ctl:(?<currentValue>.+)"
+      ],
+      "autoReplaceStringTemplate": "image: registry1.dso.mil/ironbank/jetstack/cert-manager-ctl:{{newValue}}",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    },
+    {
+      "customType": "regex",
+      "description": "Update the controller image tag in values to match upstream",
+      "managerFilePatterns": [
+        "/^chart/values.yaml$/"
+      ],
+      "matchStrings": [
+        "repository:\\s+registry1\\.dso\\.mil/ironbank/jetstack/cert-manager-controller\\s+tag:\\s+\"(?<currentValue>.+)\""
+      ],
+      "autoReplaceStringTemplate": "repository: registry1.dso.mil/ironbank/jetstack/cert-manager-controller\n    tag: \"{{newValue}}\"",
+      "depNameTemplate": "cert-manager",
+      "datasourceTemplate": "helm",
+      "registryUrlTemplate": "https://charts.jetstack.io"
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": [
+      "bump-chart-bb-suffix",
+      "regenerate-helm-docs",
+      "bump-changelog '{{#each upgrades}}- {{depName}} updated from {{currentVersion}} to {{newVersion}}\\n{{/each}}'"
+    ],
+    "executionMode": "branch",
+    "fileFilters": [
+      "chart/Chart.yaml",
+      "README.md",
+      "CHANGELOG.md"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-ro-rootfs-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-ro-rootfs-cel
+  resources:
+  - badpod-no-securitycontext
+  - badpod-rorootfs-false
+  - badpod-initcontainer-no-rorootfs
+  - badpod-initcontainer-rorootfs-false
+  - badpod-ephemeral-no-rorootfs
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-ro-rootfs-cel
+  resources:
+  - baddeployment-no-rorootfs
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-ro-rootfs-cel
+  resources:
+  - goodpod-rorootfs
+  - goodpod-rorootfs-initcontainer
+  - goodpod-rorootfs-ephemeral
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-ro-rootfs-cel
+  resources:
+  - gooddeployment-rorootfs
+  result: pass

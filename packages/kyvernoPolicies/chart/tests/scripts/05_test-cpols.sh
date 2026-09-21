@@ -1,0 +1,325 @@
+#!/bin/bash
+# No `set -euo pipefail` — this script uses a PASS/FAIL counter pattern
+# that needs kubectl apply to return non-zero for denied resources without
+# aborting. Gluon's wrapper set -e applies to the parent process, not here.
+
+source "$(dirname "$0")/_helpers.sh"
+
+if [[ "${LEGACY_TESTS_ENABLED:-true}" != "true" ]]; then
+  echo "Legacy CPol tests disabled via bbtests.legacyEnabled=false; skipping."
+  exit 0
+fi
+
+echo "05_test-cpols.sh env:"
+echo "  LEGACY_TESTS_ENABLED=${LEGACY_TESTS_ENABLED:-unset}"
+echo "  KYVERNO_CLI_TESTS_ENABLED=${KYVERNO_CLI_TESTS_ENABLED:-unset}"
+echo "  CHAINSAW_ENABLED=${CHAINSAW_ENABLED:-unset}"
+echo "  ENABLED_CPOLS=${ENABLED_CPOLS:-}"
+echo "05_test-cpols.sh policy counts:"
+echo "  cpol=$(kubectl get cpol --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+echo "  vpol=$(kubectl get validatingpolicies --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+echo "  mpol=$(kubectl get mutatingpolicies --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+echo "  gpol=$(kubectl get generatingpolicies --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+
+# Colors
+RED='\033[0;31m'
+GRN='\033[0;32m'
+YEL='\033[0;33m'
+CYN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Count passes and fails.  FAIL is used as exit code.
+PASS=0
+FAIL=0
+
+# test-values.yaml sets ENABLED_CPOLS as an environmental variable
+POLICIES=($ENABLED_CPOLS)
+
+# Ensure deployed VPols and MPols can't interfere with CPol enforce/audit testing
+quiet_vpols
+quiet_mpols
+trap 'restore_mpols; restore_vpols' EXIT
+
+#######################################
+
+# Test for disabled cluster policies for package level only
+if [[ $PACKAGE_LEVEL_TEST == "true" ]]; then
+  echo -e "${CYN}Test: Disabled cluster policies are not deployed${NC}"
+  echo -n "- enabled policies >= deployed policies: "
+  DEPLOYED_POLICIES=( $(kubectl get cpol --no-headers -o custom-columns=":metadata.name") )
+  # Get deployed policies that are not in our enabled policies list
+  DELTA=( $(echo ${POLICIES[@]} ${POLICIES[@]} ${DEPLOYED_POLICIES[@]} | tr ' ' '\n' | sort | uniq -u) )
+  if [ -z $DELTA ]; then
+    echo -e "${GRN}PASS${NC}"
+    ((PASS+=1))
+  else
+    echo -e "${RED}FAIL${NC}"
+    echo "Policies causing failure: ${DELTA[@]}"
+    ((FAIL+=1))
+  fi
+fi
+
+#######################################
+
+# Set all policies to Audit so we can test them one at a time
+echo ---
+echo -e "${CYN}Setup: Set all policies to Audit${NC}"
+POLICY_FAILACTIONS=()
+for POLICY in "${POLICIES[@]}"; do
+
+  # Save current validation failure action for restoring
+  POLICY_FAILACTIONS+=($(kubectl get cpol $POLICY -o jsonpath="{.spec.validationFailureAction}"))
+
+  # Patch policy validation failure action
+  if [ "${POLICY_FAILACTIONS[-1]}" != "Audit" ]; then
+    kubectl patch cpol $POLICY -p '{"spec":{"validationFailureAction":"Audit"}}' --type=merge
+  fi
+done
+
+#######################################
+
+# Get initial status of deployed policies
+READY=$(kubectl get cpol -o jsonpath='{.items[?(.status.conditions[0].status=="True")].metadata.name}')
+
+# Test each policy individually
+for POLICY in "${POLICIES[@]}"; do
+  echo ---
+  echo -e "${CYN}Test: $POLICY${NC}"
+
+  # Initialize variables
+  ACTUAL_RESULTS=()
+  EXPECTED_RESULTS=()
+  TESTTYPE="UNK"
+  ATTEMPT=0
+  ALLOWED=()
+
+  # Read in YAML file into an array for each resource
+  IFS=? YAMLS=( $(cat /yaml/$POLICY.yaml | sed -e 's/?/ /g' -e 's/---/?/g') )
+
+  # Create an array with expected results
+  # Format is "resource_kind;resource_namespace;resource_name;test_type;expected_result"
+  for YAML in "${YAMLS[@]}"; do
+    TESTTYPE=$(echo "$YAML" | sed -n 's/.*kyverno-policies-bbtest\/type: //p' | head -1)
+    KIND=$(echo "$YAML" | sed -n 's/^kind: //p' | head -1)
+    NAME=$(echo "$YAML" | sed -n 's/^  name: //p' | head -1)
+    NAMESPACE=$(echo "$YAML" | sed -n 's/^  namespace: //p' | head -1)
+    EXPECTED=$(echo "$YAML" | sed -n 's/.*kyverno-policies-bbtest\/expected: //p' | head -1)
+    EXPECTED_RESULTS+=("$KIND;$NAMESPACE;$NAME;$TESTTYPE;$EXPECTED")
+  done
+
+  if [ "$TESTTYPE" == "validate" ]; then
+    # Patch policy under test to Enforce
+    echo -n "Setting policy to Enforce: "
+    kubectl patch cpol $POLICY -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge
+  fi
+
+  # Verify policy is ready
+  echo -n "- Policy deployed and ready: "
+  while [ "$ATTEMPT" -le 240 ] && ! echo $READY | grep $POLICY > /dev/null; do
+    ((ATTEMPT+=1))
+    sleep 1
+    READY=$(kubectl get cpol -o jsonpath='{.items[?(.status.conditions[0].status=="True")].metadata.name}')
+  done
+  if [ "$ATTEMPT" -gt 240 ]; then
+    echo -e "${RED}FAIL${NC}"
+    ((FAIL+=1))
+    kubectl get cpol $POLICY
+  else
+    echo -e "${GRN}PASS${NC}"
+    ((PASS+=1))
+  fi
+
+  # Apply test vectors and verify no errors
+  echo -n "- Test vectors deployed: "
+  DEPLOYS=$(kubectl apply --wait --timeout=10s -f /yaml/$POLICY.yaml 2>&1)
+
+  # Verify resources were deployed
+  NUM_DEPLOYS=$(echo $DEPLOYS | grep -oE "created$|configured$|denied" | wc -l)
+  if [ "${#EXPECTED_RESULTS[@]}" -eq "$NUM_DEPLOYS" ]; then
+    echo -e "${GRN}PASS${NC}"
+    ((PASS+=1))
+  else
+    echo -e "${RED}FAIL${NC}"
+    ((FAIL+=1))
+    echo "Deployment results:"
+    echo $DEPLOYS
+  fi
+
+  echo -n "- At least two test vectors: "
+  # Count unique results from array that contain the policy name
+  UNIQ_RESULTS=$(printf -- '%s\n' "${EXPECTED_RESULTS[@]}" | sed "/$POLICY/!d" | sed 's/.*;//' | uniq)
+  if [ -z "$UNIQ_RESULTS" ]; then
+    echo -e "${RED}FAIL${NC}"
+    ((FAIL+=1))
+  else
+    echo -e "${GRN}PASS${NC}"
+    ((PASS+=1))
+  fi
+
+  for EXPECTED_RESULT in "${EXPECTED_RESULTS[@]}"; do
+    # Split the values
+    unset NSOPT
+    IFS=';' read KIND NAMESPACE MANIFEST TESTTYPE EXPECTED <<< $EXPECTED_RESULT
+    if [ -n "$NAMESPACE" ]; then
+      NSOPT="-n"
+    fi
+    if [ "$TESTTYPE" != "ignore" ]; then
+      echo -n "- Test vector $MANIFEST ($TESTTYPE): "
+    fi
+
+    #######################################
+    ##### Validate Test
+    if [ "$TESTTYPE" == "validate" ]; then
+      ALLOW=$(echo $DEPLOYS | grep -o "$MANIFEST created" | grep -o "$MANIFEST")
+      BLOCK=$(echo $DEPLOYS | grep -o "$MANIFEST.*was blocked")
+      if [ "$EXPECTED" == "pass" ]; then
+        # Verify manifest is in the allowed list and not in the blocked list
+        if [ -n "$ALLOW" ] && [ -z "$BLOCK" ]; then
+          echo -e "${GRN}PASS${NC}"
+          ((PASS+=1))
+        else
+          echo -e "${RED}FAIL${NC} (Expected allowed, but was blocked)"
+          ((FAIL+=1))
+        fi
+      elif [ "$EXPECTED" == "fail" ]; then
+        # Verify manifest is in the blocked list and not in the allowed list
+        if [ -z "$ALLOW" ] && [ -n "$BLOCK" ]; then
+          echo -e "${GRN}PASS${NC}"
+          ((PASS+=1))
+        else
+          echo -e "${RED}FAIL${NC} (Expected blocked, but was allowed)"
+          ((FAIL+=1))
+        fi
+      fi
+
+    #######################################
+    ##### Generate Test
+    elif [ "$TESTTYPE" == "generate" ]; then
+      # Get more information from the test annotations
+      TARGET=$(kubectl get $KIND $MANIFEST $NSOPT $NAMESPACE -o jsonpath='{range .metadata.annotations}{@.kyverno-policies-bbtest/kind};{@.kyverno-policies-bbtest/name};{@.kyverno-policies-bbtest/namespace}{end}')
+      IFS=';' read TARGKIND TARGNAME TARGNS <<< $TARGET
+
+      ATTEMPT=0
+      ACTUAL=$(kubectl get $TARGKIND $TARGNAME -n $TARGNS --ignore-not-found)
+      while [ -z "$ACTUAL" ] && [ "$ATTEMPT" -le 60 ]; do
+        ((ATTEMPT+=1))
+        sleep 1
+        ACTUAL=$(kubectl get $TARGKIND $TARGNAME -n $TARGNS --ignore-not-found)
+      done
+
+      # Resource not found
+      if [ -z "$ACTUAL" ]; then
+        if [ "$EXPECTED" != "ignore" ]; then
+          echo -e "${RED}FAIL${NC} (Could not find $TARGKIND/$TARGNAME in namespace $TARGNS)"
+          ((FAIL +=1))
+        else
+          echo -e "${GRN}PASS${NC}"
+          ((PASS +=1))
+        fi
+
+      # Resource found
+      else
+        if [ "$EXPECTED" == "ignore" ]; then
+          echo -e "${RED}FAIL${NC} (Found $TARGKIND/$TARGNAME in namespace $TARGNS, but did not expect it)"
+          ((FAIL +=1))
+        else
+          echo -e "${GRN}PASS${NC}"
+          ((PASS +=1))
+        fi
+      fi
+
+    #######################################
+    ##### Mutate Test
+    elif [ "$TESTTYPE" == "mutate" ]; then
+      # Get more information from the test annotations
+      TARGET=$(kubectl get $KIND $MANIFEST $NSOPT $NAMESPACE -o jsonpath='{range .metadata.annotations}{@.kyverno-policies-bbtest/key};{@.kyverno-policies-bbtest/value};{@.kyverno-policies-bbtest/kind};{@.kyverno-policies-bbtest/name};{@.kyverno-policies-bbtest/namespace}{end}')
+      IFS=';' read TARGKEY TARGVALUE TARGKIND TARGNAME TARGNS <<< $TARGET
+
+      # Override default target if annotations defined a different one
+      if [ -n "$TARGKIND" ]; then KIND=$TARGKIND; fi
+      if [ -n "$TARGNAME" ]; then MANIFEST=$TARGNAME; fi
+      if [ -n "$TARGNS" ]; then NAMESPACE=$TARGNS; NSOPT="-n"; fi
+
+      # Retrieve values to check if they are mutated
+      ATTEMPT=0
+      ACTUAL=$(kubectl get $KIND $MANIFEST $NSOPT $NAMESPACE -o jsonpath="{$TARGKEY}")
+      while [ -z "$ACTUAL" ] && [ "$ATTEMPT" -le 60 ]; do
+        ((ATTEMPT+=1))
+        sleep 1
+        ACTUAL=$(kubectl get $KIND $MANIFEST $NSOPT $NAMESPACE -o jsonpath="{$TARGKEY}")
+      done
+
+      # Key not found
+      if [ -z "$ACTUAL" ]; then
+        if [ "$EXPECTED" != "ignore" ]; then
+          echo -e "${RED}FAIL${NC} (Could not find $TARGKEY in $KIND/$MANIFEST)"
+          ((FAIL +=1))
+        else
+          echo -e "${GRN}PASS${NC}"
+          ((PASS +=1))
+        fi
+
+      # Key found, but value did not match
+      elif [ "$ACTUAL" != "$TARGVALUE" ]; then
+        if [ "$EXPECTED" != "ignore" ]; then
+          echo -e "${RED}FAIL${NC} (In $KIND/$MANIFEST, $TARGKEY is $ACTUAL, but expected it to be $TARGVALUE)"
+          ((FAIL +=1))
+        else
+          echo -e "${GRN}PASS${NC}"
+          ((PASS +=1))
+        fi
+
+      # Key found and value matched
+      else
+        if [ "$EXPECTED" == "ignore" ]; then
+          echo -e "${RED}FAIL${NC} (In $KIND/$MANIFEST, did not expect $TARGKEY to be $ACTUAL)"
+          ((FAIL +=1))
+        else
+          echo -e "${GRN}PASS${NC}"
+          ((PASS +=1))
+        fi
+      fi
+
+    #######################################
+    ##### Unknown Test
+    elif [ "$TESTTYPE" != "ignore" ]; then
+      echo -e "${RED}FAIL${NC} (Invalid test type)"
+      ((FAIL +=1))
+    fi
+  done
+
+  if [ "$TESTTYPE" == "validate" ]; then
+    # Unpatch policy
+    echo -n "Setting policy to Audit: "
+    kubectl patch cpol $POLICY -p '{"spec":{"validationFailureAction":"Audit"}}' --type=merge
+  fi
+
+  echo "Cleaning up Test Resources"
+  kubectl delete -f /yaml/$POLICY.yaml --force 2>/dev/null
+done
+
+#######################################
+
+# Restore policy settings
+echo ---
+echo -e "${CYN}Cleanup: Restore policy's validation failure action${NC}"
+for POLICY in "${POLICIES[@]}"; do
+
+  # Patch policy validation failure action
+  if [ "${POLICY_FAILACTIONS[0]}" != "Audit" ]; then
+    kubectl patch cpol $POLICY -p "{\"spec\":{\"validationFailureAction\":\"${POLICY_FAILACTIONS[0]}\"}}" --type=merge
+  fi
+
+  # Remove first element from array
+  POLICY_FAILACTIONS=("${POLICY_FAILACTIONS[@]:1}")
+done
+
+#######################################
+##### Summary
+echo ---
+((TOTAL=PASS+FAIL))
+echo -e "${CYN}Test Summary:${NC}"
+echo -e "  Passing: $PASS"
+echo -e "  Failing: $FAIL"
+echo -e "  Total  : $TOTAL"
+exit $FAIL

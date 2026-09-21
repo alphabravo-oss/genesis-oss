@@ -1,0 +1,34 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-auto-mount-service-account-token-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-auto-mount-service-account-token-cel
+  resources:
+  - badpod-automount-true
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-auto-mount-service-account-token-cel
+  resources:
+  - baddeployment-automount-true
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-auto-mount-service-account-token-cel
+  resources:
+  - goodpod-automount-false
+  - goodpod-automount-undefined
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-auto-mount-service-account-token-cel
+  resources:
+  - gooddeployment-automount-false
+  result: pass

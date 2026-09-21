@@ -1,0 +1,43 @@
+domain: dev.bigbang.mil
+
+flux:
+  interval: 1m
+  rollback:
+    cleanupOnFail: false
+
+istiod:
+  enabled: true
+  values:
+    hardened:
+      enabled: true
+
+istioCRDs:
+  enabled: true
+
+istioGateway:
+  enabled: true
+
+networkPolicies:
+  enabled: true
+
+kyverno:
+  enabled: true
+
+kyvernoPolicies:
+  enabled: true
+
+monitoring:
+  enabled: true
+  values:
+    crds:
+      enabled: false
+
+grafana:
+  enabled: true
+
+prometheusOperatorCRDs:
+  enabled: true
+  git:
+    repo: https://repo1.dso.mil/big-bang/product/packages/prometheus-operator-crds.git
+    tag: null
+    branch: renovate/ironbank

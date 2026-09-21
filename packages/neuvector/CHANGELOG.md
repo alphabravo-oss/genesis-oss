@@ -1,0 +1,734 @@
+# Changelog
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [2.11.1-bb.0] (2026-09-04)
+### Changed
+- bb-common 1.4.0 -> 1.5.0
+- core 2.11.0 -> 2.11.1
+- crd 2.11.0 -> 2.11.1
+- gluon 1.1.3 -> 1.1.7
+- monitor 2.11.0 -> 2.11.1
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.6.0 -> 5.6.1
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.6.0 -> 5.6.1
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.6.0 -> 5.6.1
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.9 -> v0.2.10
+
+## [2.11.0-bb.4] (2026-09-04)
+
+### Changed
+
+- Updated Cypress test to support SSO integration
+- Added SSO test file
+
+## [2.11.0-bb.3] (2026-09-03)
+
+### Changed
+
+- Added Cypress test for compliance check
+- Added test script to check prometheues sevice monitor connectivity.
+
+## [2.11.0-bb.2] (2026-07-30)
+### Changed
+- bb-common 1.2.0 -> 1.4.0
+- gluon 1.1.2 -> 1.1.3
+
+## [2.11.0-bb.1] (2026-07-23)
+
+### Changed
+- Removed duplicate and unused values from package values file
+
+## [2.11.0-bb.0] (2026-07-21)
+
+### Changed
+- bb-common 1.1.0 -> 1.2.0
+- core 2.10.3 -> 2.11.0
+- crd 2.10.3 -> 2.11.0
+- monitor 2.10.3 -> 2.11.0
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.5.3 -> 5.6.0
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.5.3 -> 5.6.0
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.5.3 to 5.6.0
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.8 -> v0.2.9
+
+## [2.10.3-bb.1] (2026-07-11)
+### Changed
+- bb-common 1.0.2 -> 1.1.0
+- gluon 1.1.1 -> 1.1.2
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.7 -> v0.2.8
+
+## [2.10.3-bb.0] (2026-06-23)
+
+### Changed
+
+- bb-common 0.15.0 -> 1.0.2
+- core 2.10.2 -> 2.10.3
+- crd 2.10.2 -> 2.10.3
+- gluon 1.1.0 -> 1.1.1
+- monitor 2.10.2 -> 2.10.3
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.5.2 -> 5.5.3
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.5.2 -> 5.5.3
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.5.2 -> 5.5.3
+
+## [2.10.2-bb.0] (2026-06-02)
+
+### Changed
+
+- bb-common 0.14.2 -> 0.15.0
+- core 2.8.13 -> 2.10.2
+- crd 2.8.13 -> 2.10.2
+- gluon 1.0.1 -> 1.1.0
+- monitor 2.8.13 -> 2.10.2
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.5.1 -> 5.5.2
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.5.1 -> 5.5.2
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.5.1 -> 5.5.2
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.6 -> v0.2.7
+
+## [2.8.13-bb.1] (2026-04-30)
+
+### Changed
+
+- Removed the unnecessary Big Bang-specific updater CronJob override introduced in `2.8.13-bb.0`; the upstream `neuvector-updater-pod` CronJob remains the package updater path.
+- Clarified maintainer validation for manual updater jobs so test jobs preserve the `neuvector-updater-pod-*` Kyverno exception pattern.
+- Added a Helm test hook that verifies the updater can restart the scanner deployment through the Kubernetes API.
+
+## [2.8.13-bb.0] (2026-04-25)
+
+### Added
+
+- Added a Big Bang-specific full-template override for `neuvector-updater-pod` to restore `automountServiceAccountToken: true`, which the upstream updater requires for its in-cluster scanner restart PATCH call.
+
+### Changed
+
+- bb-common 0.14.1 -> 0.14.2
+- core 2.8.12 -> 2.8.13
+- crd 2.8.12 -> 2.8.13
+- gluon 0.9.8 -> 1.0.1
+- monitor 2.8.12 -> 2.8.13
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.5.0 -> 5.5.1
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.5.0 -> 5.5.1
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.5.0 -> 5.5.1
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.4 -> v0.2.6
+
+## [2.8.12-bb.0] (2026-03-20)
+
+### Changed
+
+- bb-common 0.14.0 -> 0.14.1
+- core 2.8.11 -> 2.8.12
+- crd 2.8.11 -> 2.8.12
+- monitor 2.8.11 -> 2.8.12
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.9 -> 5.5.0
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.9 -> 5.5.0
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.9 -> 5.5.0
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.3 -> v0.2.4
+
+## [2.8.11-bb.0] (2026-02-13)
+
+### Changed
+
+- core 2.8.10 -> 2.8.11
+- crd 2.8.10 -> 2.8.11
+- monitor 2.8.10 -> 2.8.11
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.8 -> 5.4.9
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.8 -> 5.4.9
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.8 -> 5.4.9
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.2 -> v0.2.3
+
+## [2.8.10-bb.4] (2026-02-12)
+
+### Changed
+
+- bb-common 0.13.0 -> 0.14.0
+- gluon 0.9.7 -> 0.9.8
+- Migrated Cypress tests from Cypress.env() to cy.env() for Cypress 15.10.0 compatibility
+
+## [2.8.10-bb.3] (2026-02-04)
+
+### Changed
+
+- Fixed an invalid reference to iron bank's registry-adapter image.
+- Added a netpol to allow registry-adapter to communicate with kube-api.
+- Fixed registry-adapter's pod annotations to allow cert-upgrader to communicate with its healthz endpoint.
+
+## [2.8.10-bb.2] (2026-01-26)
+
+### Changed
+
+- update bb-common 0.11.1 -> 0.13.0
+- update core 2.8.9 -> 2.8.10
+- update crd  2.8.9 -> 2.8.10
+- update gluon 0.9.6 -> 0.9.7
+- update monitor 2.8.9 -> 2.8.10
+
+## [2.8.10-bb.1] (2026-01-15)
+
+### Changed
+
+- Update renovate.json to combine MRs on images and helm chart updates
+
+## [2.8.10-bb.0] (2026-01-08)
+
+### Changed
+
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.7 -> 5.4.8
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.7 -> 5.4.8
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.7 -> 5.4.8
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter 0.2.1 -> 0.2.2
+
+## [2.8.9-bb.1] (2025-12-1)
+
+### Changed
+
+- Generate Istio resources with bb-common
+- Generate Network Policy resources with bb-common
+
+## [2.8.9-bb.0] (2025-11-04)
+
+### Changed
+
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.6 -> 5.4.7
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.6 -> 5.4.7
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.6 -> 5.4.7
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter 0.1.9 -> 0.2.1
+- Updated gluon subchart  v0.9.0 -> v0.9.6
+
+## [2.8.8-bb.3] (2025-10-15)
+
+### Changed
+
+- Updated the egress-kube-api network policies template to allow setting vpcCidr
+
+## [2.8.8-bb.2] (2025-09-26)
+
+### Changed
+
+- update condition part of helm.sh/images
+
+## [2.8.8-bb.1] (2025-09-25)
+
+### Changed
+
+- Updated Cypress health check test to use a deterministic fallback password.
+
+## [2.8.8-bb.0] (2025-09-05)
+
+### Changed
+
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.5 -> 5.4.6
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.5 -> 5.4.6
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.5 -> 5.4.6
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter 0.1.8 -> 0.1.9
+- Updated gluon subchart  v0.6.2 -> v0.9.0
+
+## [2.8.7-bb.1] (2025-08-27)
+
+### Changed
+
+- Cleaned up README.md
+
+## [2.8.7-bb.0] (2025-08-01)
+
+### Changed
+
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.4 -> 5.4.5
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.4 -> 5.4.5
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.4 -> 5.4.5
+
+## [2.8.6-bb.2] (2025-06-11)
+
+### Changed
+
+- Refactored chart to follow pass-through pattern.
+- Updated gluon subchart v0.5.19 -> v0.6.2
+
+## [2.8.6-bb.1] (2025-07-18)
+
+### Changed
+
+- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter 0.1.7 -> 0.1.8
+
+## [2.8.6-bb.0] (2025-05-15)
+
+### Changed
+
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.3 -> 5.4.4
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.3 -> 5.4.4
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.3 -> 5.4.4
+- update gluon subchart to v0.5.19
+- update monitor subchart to v2.8.6
+
+## [2.8.6-bb.0] (2025-05-15)
+
+### Changed
+
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.3 -> 5.4.4
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.3 -> 5.4.4
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.3 -> 5.4.4
+- update gluon subchart to v0.5.19
+- update monitor subchart to v2.8.6
+
+## [2.8.5-bb.1] (2025-05-12)
+
+### Changed
+
+- update renovate.json for migrate renovate config
+
+## [2.8.5-bb.0] (2025-04-09)
+
+### Changed
+
+- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.4.1 -> 5.4.3
+- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.4.1 -> 5.4.3
+- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.4.1 -> 5.4.3
+- registry1.dso.mil/ironbank/neuvector/neuvector/scanner 5 -> 6
+- remove monitor chart dependency and add monitor subchart
+- update monitor subchart to v2.8.5
+- update gluon subchart to v0.5.15
+
+### Added
+
+- Added `monitor` subchart
+- Added Istio annotations `traffic.sidecar.istio.io/excludeOutboundPorts: "18500"` to allow the cert-updater pod to communicate with the NeuVector healthcheck endpoints. See [issue #179](https://repo1.dso.mil/big-bang/product/packages/neuvector/-/issues/179) for more details.
+
+## [2.8.3-bb.1] - 2025-02-12
+
+### Changed
+
+- Updated istio ingress and egress network policies to be more dynamic
+
+## [2.8.3-bb.0] - 2024-12-03
+
+### Changed
+
+- updated gluon from `0.5.2` -> `0.5.12`
+- Updated chart version from  `2.8.2` to `2.8.3`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/controller from `5.4.0` to `5.4.1`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/enforcer from `5.4.0` to `5.4.1`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/manager from `5.4.0` to `5.4.1`
+- Added the maintenance track annotation and badge
+
+## [2.8.2-bb.2] - 2024-11-18
+
+### Fixed
+
+- Fixed indentation error
+
+## [2.8.2-bb.1] - 2024-11-13
+
+### Changed
+
+- Added an initContainer to fix the cert permissions until an upstream fix comes in
+
+## [2.8.2-bb.0] - 2024-10-17
+
+### Changed
+
+- Updated chart version to `2.8.0`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/controller from `5.3.4` to `5.4.0`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/enforcer from `5.3.4` to `5.4.0`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/manager from `5.3.4` to `5.4.0`
+
+## [2.7.8-bb.4] - 2024-09-20
+
+### Changed
+
+- Updated gluon to `0.5.2`
+
+## [2.7.8-bb.3] - 2024-09-14
+
+### Changed
+
+- Removed previous kiali label epic changes in `2.7.7-bb.3` and updated to new pattern.
+
+## [2.7.8-bb.2] - 2024-08-21
+
+### Changed
+
+- Changed reference to `docker.io` in values.yaml to `registry1.dso.mil/ironbank/neuvector/neuvector`
+- Update from gluon 0.5.0 to 0.5.2
+
+## [2.7.8-bb.1] - 2024-08-20
+
+### Changed
+
+- Changed cypress tests to support retries
+
+## [2.7.8-bb.0] - 2024-06-24
+
+### Changed
+
+- Updated chart version to `2.7.8`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/controller from `5.3.3` to `5.3.4`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/enforcer from `5.3.3` to `5.3.4`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/manager from `5.3.3` to `5.3.4`
+
+## [2.7.7-bb.3] - 2024-07-24
+
+### Changed
+
+- Added `version` pod label to deployments and daemonset to conform to Kiali requirements
+- Updated `docs/DEVELOPMENT_MAINTENANCE.md` [Modifications made to upstream chart](https://repo1.dso.mil/big-bang/product/packages/neuvector/-/blob/main/docs/DEVELOPMENT_MAINTENANCE.md?ref_type=heads#modifications-made-to-upstream-chart) section to reflect changes
+
+## [2.7.7-bb.2] - 2024-07-13
+
+### Changed
+
+- Removed redundant entries in package test-values.yaml already in package values.yaml
+- Updated cypress resources to standard 2 cpu and 4 Gi memory
+
+## [2.7.7-bb.1] - 2024-07-02
+
+### Changed
+
+- Rename and remove istio authorization policies
+
+## [2.7.7-bb.0] - 2024-06-24
+
+### Changed
+
+- Updated chart version to `2.7.7`
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/controller from 5.3.2 to 5.3.3
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/enforcer from 5.3.2 to 5.3.3
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/manager from 5.3.2 to 5.3.3
+
+## [2.7.6-bb.3] - 2024-06-18
+
+### Changed
+
+- Removed duplicate network attachment definition for OpenShift deployments
+- Resolved naming conflict for cluster roles deployed to OpenShift
+
+## [2.7.6-bb.2] - 2024-05-22
+
+### Changed
+
+- Fix monitoring sub chart dependency. Update to 2.6.3.
+- Update from gluon 0.4.8 to 0.5.0
+
+## [2.7.6-bb.1] - 2024-05-05
+
+### Changed
+
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/prometheus-exporter from 5.3.0 to 5.3.2
+
+## [2.7.6-bb.0] - 2024-04-14
+
+### Changed
+
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/controller from 5.3.0 to 5.3.2
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/enforcer from 5.3.0 to 5.3.2
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/manager from 5.3.0 to 5.3.2
+
+## [2.6.3-bb.19] - 2024-04-11
+
+### Added
+
+- Added Openshift resources to support Neuvector deployment in openshift
+
+## [2.6.3-bb.18] - 2024-04-09
+
+### Added
+
+- Added custom network policies
+
+## [2.6.3-bb.17] - 2024-03-22
+
+### Changed
+
+- Adding the monitoring authorization policy
+
+## [2.6.3-bb.16] - 2024-03-21
+
+### Changed
+
+- Changed uid:gid to 1001:1001 for monitor.prometheus-exporter image to allow python package visibility
+
+## [2.6.3-bb.15] - 2024-03-19
+
+### Changed
+
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/controller from 5.2.2 to 5.3.0
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/enforcer from 5.2.2 to 5.3.0
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/manager from 5.2.2 to 5.3.0
+- Updated Cypress tests
+
+## [2.6.3-bb.14] - 2024-03-15
+
+### Changed
+
+- Update for reverting exporter
+
+## [2.6.3-bb.13] - 2024-03-13
+
+### Changed
+
+- Adding Sidecar to deny egress that is external to istio services
+- Adding customServiceEntries to allow egress to override sidecar restraint
+
+## [2.6.3-bb.12] - 2024-03-12
+
+### Changed
+
+- Openshift update for deploying Neuvector into Openshift cluster
+
+## [2.6.3-bb.11] - 2024-03-11
+
+### Changed
+
+- Moved and fixed all of the authorization policies
+- Updated some documentation
+
+## [2.6.3-bb.10] - 2024-03-11
+
+### Changed
+
+- Updated NeuVector Development Maintenance doc to reflect it is part of Bigbang
+
+## [2.6.3-bb.9] - 2024-02-06
+
+### Changed
+
+- Updated to Gluon 0.4.8
+- Removed cypress config as it is now coming from Gluon
+- Renamed cypress script file name
+
+## [2.6.3-bb.8] - 2023-12-13
+
+### Added
+
+- Peerauthentication added for controller for upgrade support
+
+## [2.6.3-bb.7] - 2023-12-06
+
+### Changed
+
+- Increase cypress timeouts
+
+## [2.6.3-bb.6] - 2023-11-29
+
+### Changed
+
+- Updated big-bang/base from 2.0.0 to 2.1.0
+
+### Removed
+
+- requirements.lock file legacy to Helm 2
+
+## [2.6.3-bb.5] - 2023-11-28
+
+### Added
+
+- Updating OSCAL Component file.
+
+## [2.6.3-bb.4] - 2023-11-17
+
+### Added
+
+- Added istio `allow-nothing` policy
+- Added istio `allow-ingress` polic(y|ies)
+- Added istio custom policy template
+- Changed `istio: injection:` from `"disabled"` to `"enabled"`
+
+## [2.6.3-bb.3] - 2023-11-08
+
+### Added
+
+- Added logic for neuvector-prometheus-exporter-pod to poll for active api server before starting
+- Set uid:gid runAsUser/runAsGroup to match the user/group in the exporter container
+
+## [2.6.3-bb.2] - 2023-11-3
+
+### Changed
+
+- Updated Gluon from 0.4.1 to 0.4.4
+
+## [2.6.3-bb.1] - 2023-10-16
+
+### Added
+
+- Added non-root group user
+
+## [2.6.3-bb.0] - 2023-10-11
+
+### Changed
+
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/controller from 5.1.3 to 5.2.2
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/enforcer from 5.1.3 to 5.2.2
+- Updated registry1.dso.mil/ironbank/neuvector/neuvector/manager from 5.1.3 to 5.2.2
+
+## [2.4.5-bb.7] - 2023-10-11
+
+### Changed
+
+- Update OSCAL version from 1.0.0 to 1.1.1
+
+## [2.4.5-bb.6] - 2023-09-21
+
+### Changed
+
+- Updated to Gluon 0.4.1 and Cypress 13.x
+
+## [2.4.5-bb.5]
+
+### Added
+
+- Add ability to pass in a sso certificate authority secret with `sso.certificateAuthority.secret`.
+
+## [2.4.5-bb.4] - 2023-08-15
+
+### Added
+
+- Update securityContext for controller, manager, scanner,& enforcer to runAsNonRoot
+
+## [2.4.5-bb.3] - 2023-08-04
+
+### Added
+
+- added securityContext: capabilities: drop: ALL
+
+## [2.4.5-bb.2] - 2023-07-31
+
+### Fixed
+
+- OSCAL component file package reference
+
+## [2.4.5-bb.1] - 2023-07-27
+
+### Added
+
+- OSCAL component file
+
+## [2.4.5-bb.0] - 2023-06-21
+
+### Fixed
+
+- Update images from `5.1.2` to `5.1.3`
+- Update chart version to `2.4.5`
+- Update monitor chart to `2.4.5`
+
+## [2.4.3-bb.7] - 2023-04-06
+
+### Fixed
+
+- Update images from `5.1.1` to `5.1.2`
+- Update chart version to `2.4.3`
+- Update monitor chart to `2.4.3`
+
+## [2.4.2-bb.6] - 2023-04-05
+
+### Fixed
+
+- Make cypress scan test more deterministic
+
+## [2.4.2-bb.5] - 2023-03-22
+
+### Changed
+
+- Added support for podAnnotations on exporter
+- Added network policy for updater kube api egress
+- Add controller checksum for init config
+
+## [2.4.2-bb.4] - 2023-03-14
+
+### Changed
+
+- Fixed pod termination issue caused by istio sidecar injection
+
+## [2.4.2-bb.3] - 2023-03-10
+
+### Changed
+
+- Enable mTLS for metrics
+
+## [2.4.2-bb.2] - 2023-03-08
+
+### Changed
+
+- Conditionals on API NetworkPolicy template
+
+## [2.4.2-bb.1] - 2023-03-03
+
+### Added
+
+- Integrated istio
+
+## [2.4.2-bb.0] - 2022-02-23
+
+### Changed
+
+- Update images from `5.1.0` to `5.1.1`
+- Update chart version to `2.4.2`
+- Update monitor chart to `2.4.2`
+- Exporter image to test image list
+
+## [2.4.0-bb.6] - 2022-02-28
+
+### Added
+
+- Add network policy for controller egress
+
+## [2.4.0-bb.5] - 2022-02-09
+
+### Changed
+
+- Fixed network policy templating errors, standardized naming
+
+## [2.4.0-bb.4] - 2023-02-09
+
+### Fixed
+
+- Update the monitor chart tarball
+
+## [2.4.0-bb.3] - 2023-01-31
+
+### Added
+
+- Added Prometheus integration
+- Added Grafana dashboard
+
+## [2.4.0-bb.2] - 2023-01-17
+
+### Changed
+
+- Update gluon to new registry1 location + latest version (0.3.2)
+
+## [2.4.0-bb.1]
+
+### Changed
+
+- Changed scanner image tag from `latest` to `5`
+
+## [2.4.0-bb.0]
+
+### Changed
+
+- Update images to IronBank images (5.1.0)
+- Update chart version to `2.4.0`
+
+## [2.2.2-bb.2]
+
+### Fixed
+
+- Hot fix for some UI testing hiccups
+
+## [2.2.2-bb.1]
+
+### Changed
+
+- Added tests directory and a test-ui file
+
+## [2.2.2-bb.0]
+
+### Changed
+
+- Update images to IronBank images (5.0.2)
+- Update chart version to `2.2.2`
+- Use BB base image for updater job
+
+## [1.9.1-bb.0]
+
+### Added
+
+- Pointing to upstream helm chart 1.9.1

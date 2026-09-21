@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: restrict-sysctls-cel ValidatingPolicy
+templates:
+  - templates/pod-security-vpol/baseline/restrict-sysctls-cel.yaml
+
+capabilities:
+  apiVersions:
+    - policies.kyverno.io/v1
+tests:
+  - it: should not render when disabled (default)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render when global enabled is false
+    set:
+      enabled: false
+      celPoliciesBeta:
+        restrict-sysctls-cel:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render when enabled
+    set:
+      celPoliciesBeta:
+        restrict-sysctls-cel:
+          enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingPolicy
+      - isAPIVersion:
+          of: policies.kyverno.io/v1
+      - equal:
+          path: metadata.name
+          value: restrict-sysctls-cel
+
+  - it: non-empty allow list lists values in the message
+    set:
+      celPoliciesBeta:
+        restrict-sysctls-cel:
+          enabled: true
+          parameters:
+            allow:
+              - kernel.shm_rmid_forced
+              - net.ipv4.tcp_syncookies
+    asserts:
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: 'kernel\.shm_rmid_forced'
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: 'net\.ipv4\.tcp_syncookies'
+
+  - it: empty allow list denies any sysctl usage
+    set:
+      celPoliciesBeta:
+        restrict-sysctls-cel:
+          enabled: true
+          parameters:
+            allow: []
+    asserts:
+      - matchRegex:
+          path: spec.validations[0].message
+          pattern: 'must not be set'

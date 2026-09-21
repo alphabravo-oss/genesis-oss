@@ -1,0 +1,11 @@
+# Assert that the bare pod got all four defaults injected
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bare-pod
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: require-istio-on-namespaces-good
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: require-istio-on-namespaces-good-ambient
+  labels:
+    istio.io/dataplane-mode: ambient

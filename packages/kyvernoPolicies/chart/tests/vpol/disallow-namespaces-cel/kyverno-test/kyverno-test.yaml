@@ -1,0 +1,40 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-namespaces-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-namespaces-cel
+  resources:
+  - badpod-default-ns
+  - badpod-bigbang-ns
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-namespaces-cel
+  resources:
+  - baddeployment-default-ns
+  result: fail
+- isValidatingPolicy: true
+  kind: CronJob
+  policy: disallow-namespaces-cel
+  resources:
+  - badcronjob-default-ns
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: disallow-namespaces-cel
+  resources:
+  - goodpod-myapp-ns
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: disallow-namespaces-cel
+  resources:
+  - gooddeployment-myapp-ns
+  result: pass

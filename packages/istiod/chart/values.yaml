@@ -1,0 +1,118 @@
+networkPolicies:
+  # -- Enable or disable the bundled network policies
+  enabled: false
+
+  prependReleaseName: true
+
+  # -- Configure which CIDRs istiod will be allowed to connect to
+  # when accessing the kube-apiserver;
+  # if none are specified, the chart will look up the default kubernetes
+  # EndpointSlice and use the addresses found there
+  controlPlaneCIDRs: []
+  # -- A list of additional network policies to create
+  # in the release namespace
+  egress:
+    defaults:
+      allowInNamespace:
+        enabled: false
+      allowIstiod:
+        enabled: false
+    from:
+      istiod:
+        to:
+          definition:
+            kubeAPI: true
+  ingress:
+    defaults:
+      allowInNamespace:
+        enabled: false
+    to:
+      istiod:15014: # Required for applications that monitor istio
+        from:
+          k8s:
+            kiali/kiali: true
+            monitoring/prometheus: true
+      istiod:[443,15017]: # Access to webhook required by k8s control plane and envoy proxies
+        from:
+          cidr:
+            0.0.0.0/0: true
+      istiod:[15010,15012]: # Required by both sidecars and ambient mesh (15010 may also be required for apps not using mTLS or external to mesh)
+        from:
+          k8s:
+            "*": true
+  additionalPolicies: []
+
+
+# -- A list of additional EnvoyFilters to create in the release namespace. Gateway-scoped classification banner configuration is managed by the istio-gateway package.
+additionalEnvoyFilters: []
+# additionalEnvoyFilters:
+#   - name: my-envoy-filter # required
+#     labels: # optional
+#       app: my-app
+#     annotations: # optional
+#       my-annotation: my-value
+#     spec: # required
+#       configPatches:
+#         - applyTo: NETWORK_FILTER
+#           match:
+#             context: SIDECAR_INBOUND
+#             listener:
+#               portNumber: 8080
+#               filterChain:
+#                 filterType: NETWORK
+#                 filterName: "envoy.filters.network.http_connection_manager"
+#           patch:
+#             operation: INSERT_BEFORE
+#             value:
+#               name: "envoy.filters.http.lua"
+#               typed_config:
+#                 "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+#                 inlineCode: |
+#                   function envoy_on_request(request_handle)
+#                     request_handle:headers():add("x-my-header", "my-value")
+#                   end
+#                   function envoy_on_response(response_handle)
+#                     response_handle:headers():add("x-my-header", "my-value")
+#                   end
+
+monitoring:
+  # -- Enable or disable the bundled monitoring components and
+  # network policies
+  enabled: true
+
+defaultSecurityHeaders:
+  # -- Enable or disable the default security headers
+  enabled: true
+
+istio:
+  enabled: true
+
+  prependReleaseName: true
+
+  sidecar:
+    enabled: true
+    outboundTrafficPolicyMode: "REGISTRY_ONLY"
+  mtls:
+    mode: STRICT
+  serviceEntries:
+    custom: []
+
+  authorizationPolicies:
+    enabled: true
+    generateFromNetpol: true
+    custom: []
+
+# -- Values to pass to [the upstream istiod chart](https://github.com/istio/istio/blob/master/manifests/charts/istio-control/istio-discovery/values.yaml)
+# @default -- Upstream chart values
+upstream:
+  env:
+    ENABLE_NATIVE_SIDECARS: "true"
+
+  meshConfig:
+    accessLogFile: /dev/stdout
+    meshMTLS:
+      minProtocolVersion: TLSV1_2
+
+  global:
+    hub: registry1.dso.mil/ironbank/opensource/istio
+    tag: 1.30.4

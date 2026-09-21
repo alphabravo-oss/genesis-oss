@@ -1,0 +1,61 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsFluentbit := mergeOverwrite (deepCopy .Values.flux) .Values.fluentbit.flux -}}
+{{- if .Values.fluentbit.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: fluentbit
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: fluentbit
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/fluentbit/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: fluentbit
+  releaseName: fluentbit
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "fluentbit" "package" .Values.fluentbit "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsFluentbit | nindent 2 }}
+
+  postRenderers:
+  {{ include "fluentbit.podPostRenderers" . | nindent 4 }}
+  {{- if .Values.fluentbit.postRenderers }}
+  {{ toYaml .Values.fluentbit.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "fluentbit" "root" .) | nindent 2 }}
+
+  {{/* To support a "standalone" fluentbit for shipping to central location we conditionally depend on logging enabled */}}
+  {{- if or .Values.elasticsearchKibana.enabled .Values.loki.enabled .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.kyverno.enabled .Values.monitoring.enabled }}
+  dependsOn:
+    {{- if .Values.elasticsearchKibana.enabled }}
+    - name: ek
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if  .Values.loki.enabled }}
+    - name: loki
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.kyverno.enabled }}
+    - name: kyverno
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

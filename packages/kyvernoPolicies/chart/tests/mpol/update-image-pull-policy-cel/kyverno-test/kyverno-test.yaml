@@ -1,0 +1,24 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: update-image-pull-policy-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- policy: update-image-pull-policy-cel
+  resources:
+  - tagged-pod
+  - digest-pod
+  - preset-pod
+  - init-ephemeral-pod
+  patchedResources: patched.yaml
+  kind: Pod
+  result: pass
+- policy: update-image-pull-policy-cel
+  resources:
+  - tagged-deployment
+  patchedResources: patched.yaml
+  kind: Deployment
+  result: pass

@@ -1,0 +1,78 @@
+{{- if not (kindIs "map" .Values.issuers) }}{{ fail "issuers must be an object containing selfSigned and letsEncrypt" }}{{ end }}
+{{- $acme := .Values.issuers.letsEncrypt -}}
+{{- $bbCommon := index .Values "bb-common" -}}
+{{- if and $acme.enabled (or $acme.createOnInstall .Release.IsUpgrade) }}
+{{- if and $bbCommon.networkPolicies.enabled $acme.networking.controllerEgress.enabled }}
+{{- if not $acme.networking.controllerEgress.cidrs }}
+{{- fail "issuers.letsEncrypt.networking.controllerEgress.cidrs must contain at least one CIDR when controller egress is enabled" }}
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-acme-controller-egress
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "cert-manager.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: {{ .Release.Name | quote }}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        {{- range $acme.networking.controllerEgress.cidrs }}
+        - ipBlock:
+            cidr: {{ required "each issuers.letsEncrypt.networking.controllerEgress.cidrs entry must set cidr" .cidr }}
+            {{- with .except }}
+            except:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+        {{- end }}
+      ports:
+        - port: 443
+          protocol: TCP
+        {{- if eq (include "cert-manager.hasHTTP01Solver" $) "true" }}
+        - port: 80
+          protocol: TCP
+        {{- end }}
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- end }}
+{{- if and $acme.networking.serviceEntry.enabled $bbCommon.istio.enabled $bbCommon.istio.sidecar.enabled (not (dig "ambient" "enabled" false $bbCommon.istio)) (eq $bbCommon.istio.sidecar.outboundTrafficPolicyMode "REGISTRY_ONLY") }}
+---
+apiVersion: networking.istio.io/v1
+kind: ServiceEntry
+metadata:
+  name: {{ .Release.Name }}-acme-directory
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "cert-manager.labels" . | nindent 4 }}
+spec:
+  hosts:
+    - {{ include "cert-manager.letsEncryptServerHost" . | quote }}
+  location: MESH_EXTERNAL
+  resolution: DNS
+  exportTo:
+    - "."
+  ports:
+    - number: 443
+      name: https
+      protocol: HTTPS
+{{- end }}
+{{- end }}

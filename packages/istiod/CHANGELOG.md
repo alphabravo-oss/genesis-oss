@@ -1,0 +1,225 @@
+# Changelog
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+## [1.30.4-bb.0] (2026-09-01)
+### Changed
+- bb-common 1.2.0 -> 1.5.0
+- istiod 1.30.3 -> 1.30.4
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.30.3 -> 1.30.4
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.3 -> 1.30.4
+
+## [1.30.3-bb.0] (2026-07-27)
+### Changed
+- bb-common 1.0.2 -> 1.2.0
+- istiod 1.30.2 -> 1.30.3
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.30.2 -> 1.30.3
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.2 -> 1.30.3
+- removed deprecated `bigbang.dev/applicationVersions` annotation from Chart.yaml
+
+## [1.30.2-bb.1] (2026-07-24)
+### Changed
+- removed unused values from package values file
+
+## [1.30.2-bb.0] (2026-06-26)
+### Changed
+- bb-common 1.0.1 -> 1.0.2
+- istiod 1.30.1 -> 1.30.2
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.30.1 -> 1.30.2
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.1 -> 1.30.2
+- Updated dev-overrides to reference other istio renovate branches
+
+## [1.30.1-bb.0] (2026-06-10)
+### Changed
+- bb-common 0.14.2 -> 1.0.1
+- istiod 1.29.2 -> 1.30.1
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.29.2 -> 1.30.1
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.29.2 -> 1.30.1
+
+## [1.29.2-bb.0] (2026-04-14)
+### Changed
+- bb-common 0.14.1 -> 0.14.2
+- istiod 1.29.1 -> 1.29.2
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.29.1 -> 1.29.2
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.29.1 -> 1.29.2
+
+## [1.29.1-bb.0] (2026-03-11)
+### Changed
+- istiod 1.29.0 -> 1.29.1
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.29.0 -> 1.29.1
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.29.0 -> 1.29.1
+
+## [1.29.0-bb.1] (2026-02-20)
+### Changed
+- Migrated Istio resources (PeerAuthentication, AuthorizationPolicies) to bb-common
+
+## [1.29.0-bb.0] (2026-02-20)
+### Changed
+- bb-common 0.13.0 -> 0.14.0
+- istiod 1.28.3 -> 1.29.0
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.28.3 -> 1.29.0
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.28.3 -> 1.29.0
+
+## [1.28.3-bb.0] (2026-01-20)
+### Changed
+- bb-common 0.12.1 -> 0.13.0
+- istiod 1.28.2 -> 1.28.3
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.28.2 -> 1.28.3
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.28.2 -> 1.28.3
+
+## [1.28.2-bb.0] (2025-12-31)
+### Changed
+- bb-common 0.10.0 -> 0.12.1
+- istiod 1.28.0 -> 1.28.2
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.28.0 -> 1.28.2
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.28.0 -> 1.28.2
+
+## [1.28.0-bb.0] (2025-11-14)
+### Changed
+- bb-common 0.8.3 -> 0.10.0
+- istiod 1.27.3 -> 1.28.0
+- registry1.dso.mil/ironbank/opensource/istio/pilot 1.27.3 -> 1.28.0
+- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.27.3 -> 1.28.0
+
+## [1.27.3-bb.0] (2025-10-21)
+### Changed
+- istiod updated from 1.27.2 to 1.27.3
+- bb-common updated from 0.8.2 to 0.8.3
+
+## [1.27.2-bb.0] (2025-10-14)
+### Changed
+- istiod updated from 1.27.1 to 1.27.2
+- bb-common updated from 0.6.1 to 0.8.2
+
+## [1.27.1-bb.0] (2025-09-11)
+### Changed
+- istiod updated from 1.27.0 to 1.27.1
+
+## [1.27.0-bb.0] (2025-08-15)
+### Changed
+- istiod updated from 1.26.3 to 1.27.0
+- ironbank/opensource/istio/pilot updated from 1.26.3 to 1.27.0
+- ironbank/opensource/istio/proxyv2 updated from 1.26.3 to 1.27.0
+
+## [1.26.3-bb.1] (2025-08-13)
+### Changed
+- Integrated bb-common and updated network policies accordingly
+- Added helm unittests for additional templates we add
+
+## [1.26.3-bb.0] (2025-08-01)
+### Changed
+- istiod updated from 1.26.2 to 1.26.3
+
+## [1.26.2-bb.1] (2025-07-30)
+### Added
+- Added istio grafana dashboards
+
+## [1.26.2-bb.0] (2025-07-11)
+### Changed
+- ironbank/opensource/istio/pilot updated from 1.26.1 to 1.26.2
+- ironbank/opensource/istio/proxyv2 updated from 1.26.1 to 1.26.2
+
+## [1.26.1-bb.0] (2025-06-12)
+
+### Changed
+
+- ironbank/opensource/istio/pilot updated from 1.25.3 to 1.26.1
+- ironbank/opensource/istio/proxyv2 updated from 1.25.3 to 1.26.1
+
+## [1.25.3-bb.3] - 2025-06-06
+
+### Added
+
+- Fix helm rendering when when adding additional envoy filters
+
+## [1.25.3-bb.2] - 2025-06-05
+
+### Added
+
+- Added hardened configuration to support hardened service mesh deployment
+
+## [1.25.3-bb.1] - 2025-06-04
+
+### Added
+
+- Added JSON schema for values.yaml
+
+## [1.25.3-bb.0] - 2025-05-28
+
+### Changed
+
+- ironbank/opensource/istio/pilot updated from 1.25.2 to 1.25.3
+- ironbank/opensource/istio/proxyv2 updated from 1.25.2 to 1.25.3
+
+## [1.25.2-bb.4] - 2025-05-15
+
+### Changed
+
+- Added missing network policy for SSO
+
+## [1.25.2-bb.3] - 2025-05-01
+
+### Changed
+
+- Stopped overriding upstream CPU limits for proxies and waypoints
+
+## [1.25.2-bb.2] - 2025-04-30
+
+### Added
+
+- Added a `NetworkPolicy` that allows istiod access to the Kubernetes API
+
+## [1.25.2-bb.1] - 2025-04-29
+
+### Added
+
+- Added option for passing in `EnvoyFilter` resources via `additionalEnvoyFilters`
+
+### Changed
+
+- Renamed `network-policies/additional-network-policies.yaml` to `network-policies/additional.yaml` for consistency
+
+## [1.25.2-bb.0] - 2025-04-17
+
+### Changed
+
+- Updated for upstream 1.25.2
+
+## [1.25.1-bb.0] - 2025-04-14
+
+### Changed
+
+- Migrated to passthrough chart pattern
+
+## [1.22.2-bb.3] - 2024-09-30
+
+### Added
+
+- Added Tetrate TID image support
+- adds defaults.global.enterprise boolean
+- Adds defaults.global.tidHub key
+- Adds defaults.global.tidHub key
+
+## [1.22.2-bb.2] - 2024-07-25
+
+### Added
+
+- Added global values for registry, tag, and imagePullSecrets.
+- Sets defaults.global.hub to `registry1.dso.mil/ironbank/opensource/istio`.
+- Sets defaults.global.tag set to `<chart version>`.
+- Sets defaults.global.imagePullSecrets to `registry-private`.
+
+## [1.22.2-bb.1] - 2024-07-24
+
+### Added
+
+- Added the `registry1.dso.mil` image registry in chart/values.yaml.
+- Set `private-registry` as the imagePullSecret in chart/values.yaml.
+
+## [1.22.2-bb.0] - 2024-07-16
+
+### Added
+
+- Added Istio/istiod v1.22.2 chart files.
+- Generated README.md

@@ -1,0 +1,47 @@
+alloy:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+certManager:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+loki:
+  enabled: true
+  strategy: monolith
+  values:
+    minio:
+      enabled: false
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+    backend:
+      replicas: 0
+    bbtests:
+      enabled: true
+      scripts:
+        envs:
+          LOKI_URL: 'http://logging-loki.logging.svc:3100'
+grafana:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+monitoring:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+certManager:
+  enabled: true
+kyverno:
+  values:
+    bbtests:
+      enabled: false
+kyvernoPolicies:
+  values:
+    bbtests:
+      enabled: false

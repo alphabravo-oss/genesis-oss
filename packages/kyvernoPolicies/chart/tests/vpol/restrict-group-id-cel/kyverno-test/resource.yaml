@@ -1,0 +1,271 @@
+###### Pods - Bad (below allow min)
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-pod-runasgroup
+  namespace: default
+spec:
+  securityContext:
+    runAsGroup: 500
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-container-runasgroup
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    securityContext:
+      runAsGroup: 100
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-initcontainer-runasgroup
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+  initContainers:
+  - name: init1
+    image: nginx
+    securityContext:
+      runAsGroup: 0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-ephemeralcontainer-runasgroup
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+  ephemeralContainers:
+  - name: debug1
+    image: nginx
+    securityContext:
+      runAsGroup: 100
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-fsgroup
+  namespace: default
+spec:
+  securityContext:
+    fsGroup: 999
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-supplementalgroups
+  namespace: default
+spec:
+  securityContext:
+    supplementalGroups: [1001, 500]
+  containers:
+  - name: c1
+    image: nginx
+---
+###### Pods - Bad (caught by deny range 1500-1599)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-deny-pod-runasgroup
+  namespace: default
+spec:
+  securityContext:
+    runAsGroup: 1500
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-deny-container-runasgroup
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    securityContext:
+      runAsGroup: 1550
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-deny-fsgroup
+  namespace: default
+spec:
+  securityContext:
+    fsGroup: 1599
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod-deny-supplementalgroups
+  namespace: default
+spec:
+  securityContext:
+    supplementalGroups: [1001, 1550]
+  containers:
+  - name: c1
+    image: nginx
+---
+###### Pods - Good
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-no-securitycontext
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-pod-runasgroup
+  namespace: default
+spec:
+  securityContext:
+    runAsGroup: 1001
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-container-runasgroup
+  namespace: default
+spec:
+  containers:
+  - name: c1
+    image: nginx
+    securityContext:
+      runAsGroup: 65534
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-fsgroup
+  namespace: default
+spec:
+  securityContext:
+    fsGroup: 2000
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-supplementalgroups
+  namespace: default
+spec:
+  securityContext:
+    supplementalGroups: [1001, 2000, 3000]
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-all-fields
+  namespace: default
+spec:
+  securityContext:
+    runAsGroup: 1700
+    fsGroup: 2000
+    supplementalGroups: [3000, 4000]
+  containers:
+  - name: c1
+    image: nginx
+    securityContext:
+      runAsGroup: 1700
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-just-below-deny
+  namespace: default
+spec:
+  securityContext:
+    runAsGroup: 1499
+  containers:
+  - name: c1
+    image: nginx
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: goodpod-just-above-deny
+  namespace: default
+spec:
+  securityContext:
+    runAsGroup: 1600
+  containers:
+  - name: c1
+    image: nginx
+---
+###### Deployments - Bad
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: baddeployment-runasgroup
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      securityContext:
+        runAsGroup: 100
+      containers:
+      - name: c1
+        image: nginx
+---
+###### Deployments - Good
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gooddeployment-runasgroup
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      securityContext:
+        runAsGroup: 1001
+      containers:
+      - name: c1
+        image: nginx

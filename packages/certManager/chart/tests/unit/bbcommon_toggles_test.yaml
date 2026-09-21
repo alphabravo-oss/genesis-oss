@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: cert-manager bb-common toggle behavior
+templates:
+  - charts/bb-common/templates/istio/render.yaml
+  - charts/bb-common/templates/network-policies/render.yaml
+release:
+  name: cert-manager
+  namespace: cert-manager
+capabilities:
+  apiVersions:
+    - security.istio.io/v1
+    - networking.istio.io/v1
+tests:
+  - it: renders no istio resources when istio is disabled
+    template: charts/bb-common/templates/istio/render.yaml
+    set:
+      bb-common.istio.authorizationPolicies.enabled: false
+      bb-common.istio.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders only peer auth when sidecar, authz, and service entries disabled
+    template: charts/bb-common/templates/istio/render.yaml
+    set:
+      bb-common.istio.enabled: true
+      bb-common.istio.sidecar.enabled: false
+      bb-common.istio.authorizationPolicies.enabled: false
+      bb-common.istio.serviceEntries.custom: []
+    asserts:
+      - hasDocuments:
+          count: 1
+
+  - it: renders peer auth and sidecar when enabled and service entries disabled
+    template: charts/bb-common/templates/istio/render.yaml
+    set:
+      bb-common.istio.enabled: true
+      bb-common.istio.sidecar.enabled: true
+      bb-common.istio.authorizationPolicies.enabled: false
+      bb-common.istio.serviceEntries.custom: []
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: renders no network policy resources when network policies are disabled
+    template: charts/bb-common/templates/network-policies/render.yaml
+    set:
+      bb-common.networkPolicies.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

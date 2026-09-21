@@ -1,0 +1,44 @@
+#########################
+# Disable Core Packages #
+#########################
+# monitoring:
+#   enabled: false
+# grafana:
+#   enabled: false
+bbctl:
+  enabled: false
+kyvernoReporter:
+  enabled: false
+neuvector:
+  enabled: false
+loki:
+  enabled: false
+kiali:
+  enabled: false
+addons:
+  minioOperator:
+    enabled: false
+#########################
+# Required for package #
+########################
+grafana:
+  enabled: true
+  values:
+    bbtests:
+      enabled: False
+monitoring:
+  enabled: true
+  values:
+    bbtests:
+      enabled: False
+tempo:
+  enabled: true
+
+kyverno:
+  values:
+    bbtests:
+      enabled: false
+kyvernoPolicies:
+  values:
+    bbtests:
+      enabled: false

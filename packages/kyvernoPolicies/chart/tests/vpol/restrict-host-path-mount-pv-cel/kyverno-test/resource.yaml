@@ -1,0 +1,59 @@
+###### PersistentVolumes - Bad
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bad-disallowed-hostpath
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /tmp/disallowed
+---
+###### PersistentVolumes - Good
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: good-allowed-hostpath
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /tmp/allowed
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: good-wildcard-hostpath
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /var/lib/rancher/k3s/storage/pvc-12345
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: good-without-hostpath
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  csi:
+    driver: example.csi.k8s.io
+    volumeHandle: good-without-hostpath

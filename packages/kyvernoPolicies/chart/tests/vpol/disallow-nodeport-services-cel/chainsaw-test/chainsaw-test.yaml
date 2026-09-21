@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kyverno/chainsaw/main/.schemas/json/test-chainsaw-v1alpha1.json
+#
+# BB policy: disallow-nodeport-services-cel
+# Verifies that Services of type NodePort are rejected by admission.
+apiVersion: chainsaw.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: disallow-nodeport-services-cel
+spec:
+  timeouts:
+    cleanup: 2m
+  steps:
+  - name: step-01
+    try:
+    - apply:
+        file: ../policy.yaml
+    # Cluster-wide Deny (no namespace scoping). Services don't overlap with
+    # Pod-targeting VPols, so this is safe to run in parallel without
+    # matchConditions. Avoids the webhook binding resync delay that
+    # namespace-scoped Deny triggers for non-Pod resource types.
+    - patch:
+        resource:
+          apiVersion: policies.kyverno.io/v1
+          kind: ValidatingPolicy
+          metadata:
+            name: disallow-nodeport-services-cel
+          spec:
+            validationActions:
+             - Deny
+    - assert:
+        file: policy-ready.yaml
+  - name: step-02
+    try:
+    - apply:
+        dryRun: true
+        expect:
+        - check:
+            ($error != null): true
+            (contains($error, 'validate.kyverno.svc')): true
+            (contains($error, 'disallow-nodeport-services-cel')): true
+        file: service-bad.yaml
+    - apply:
+        dryRun: true
+        file: service-good.yaml

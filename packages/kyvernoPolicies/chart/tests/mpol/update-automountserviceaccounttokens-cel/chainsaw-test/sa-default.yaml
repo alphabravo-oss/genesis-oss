@@ -1,0 +1,9 @@
+# Kubernetes auto-creates a `default` SA in every namespace. We patch it to
+# `true` first so a mutation of the MPol would flip it to `false` — letting
+# the assertion detect an accidental carve-out regression.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: default
+  namespace: update-automountserviceaccounttokens-2
+automountServiceAccountToken: true

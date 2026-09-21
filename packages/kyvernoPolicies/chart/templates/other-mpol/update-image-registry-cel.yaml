@@ -1,0 +1,81 @@
+{{- $name := "update-image-registry-cel" }}
+{{- if and .Values.enabled (dig $name "enabled" false .Values.celPoliciesBeta) }}
+{{- $update := dig $name "parameters" "update" (list) .Values.celPoliciesBeta -}}
+{{- if eq (len $update) 0 -}}
+  {{- fail (printf "%s is enabled but celPoliciesBeta.%s.parameters.update is empty - disable the policy or provide a list of {from,to} registry rewrites" $name $name) -}}
+{{- end -}}
+{{- range $u := $update -}}
+  {{- if not (hasKey $u "from") -}}
+    {{- fail (printf "%s: each parameters.update entry must set 'from'" $name) -}}
+  {{- end -}}
+  {{- if not (hasKey $u "to") -}}
+    {{- fail (printf "%s: each parameters.update entry must set 'to'" $name) -}}
+  {{- end -}}
+{{- end -}}
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
+metadata:
+  name: {{ $name }}
+  annotations:
+    policies.kyverno.io/title: Replace Image Registry
+    policies.kyverno.io/category: Helper
+    policies.kyverno.io/severity: {{ default "medium" (dig $name "severity" nil .Values.celPoliciesBeta) }}
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.17.0
+    policies.kyverno.io/description: >-
+      It is common practice to pull images from a local proxy or approved registry.  This
+      policy will mutate existing image registries so pulls are directed to desired registries.
+    policies.bigbang.dev/lifecycle: beta
+    policies.bigbang.dev/origin: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies
+  labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
+spec:
+  failurePolicy: {{ include "bb-kyverno-policies.mpol-failurePolicy" (merge (dict "name" $name) .) }}
+  {{- include "bb-kyverno-policies.cel-webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
+  {{- include "bb-kyverno-policies.cel-autogenControllers" (merge (dict "name" $name) .) | indent 2 }}
+  evaluation:
+    background:
+      enabled: {{ include "bb-kyverno-policies.cel-background" (merge (dict "name" $name) .) }}
+  {{- if dig $name "matchConstraints" nil .Values.celPoliciesBeta }}
+  matchConstraints:
+    {{- toYaml (dig $name "matchConstraints" nil .Values.celPoliciesBeta) | nindent 4 }}
+  {{- else }}
+  matchConstraints:
+    resourceRules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["pods"]
+  {{- end }}
+  {{- $nsExclude := include "bb-kyverno-policies.cel-excludeNamespaces" (merge (dict "name" $name) .) -}}
+  {{- $userConditions := dig $name "matchConditions" nil .Values.celPoliciesBeta -}}
+  {{- if or $nsExclude $userConditions }}
+  matchConditions:
+    {{- if $nsExclude }}
+    {{- $nsExclude | nindent 4 }}
+    {{- end }}
+    {{- with $userConditions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  mutations:
+  {{- /* Each update entry rewrites `from` to `to` on every container image it matches.
+         `from` is an RE2 regex located with .find(); the matched substring is then
+         swapped for the literal `to`. CEL has no true regex replace, so `to` cannot
+         reference capture groups. Later entries see earlier rewrites, so they chain. */ -}}
+  {{- range $u := $update }}
+  {{- include "update-image-registry-cel.mutation" (dict "field" "containers"          "from" $u.from "to" $u.to "guard" false) }}
+  {{- include "update-image-registry-cel.mutation" (dict "field" "initContainers"      "from" $u.from "to" $u.to "guard" true) }}
+  {{- include "update-image-registry-cel.mutation" (dict "field" "ephemeralContainers" "from" $u.from "to" $u.to "guard" true) }}
+  {{- end }}
+{{- end -}}
+{{- define "update-image-registry-cel.mutation" -}}
+{{- $inner := printf "object.spec.%s.filter(c, c.image.find(%q) != \"\").map(c, Object.spec.%s{name: c.name, image: c.image.replace(c.image.find(%q), %q)})" .field .from .field .from .to -}}
+{{- $expr := printf "Object{spec: Object.spec{%s: %s}}" .field $inner -}}
+{{- if .guard -}}
+{{- $expr = printf "has(object.spec.%s) ? %s : Object{}" .field $expr -}}
+{{- end }}
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          {{ $expr }}
+{{- end -}}

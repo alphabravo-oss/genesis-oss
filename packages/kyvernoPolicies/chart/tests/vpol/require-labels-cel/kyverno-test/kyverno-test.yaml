@@ -1,0 +1,40 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-labels-cel
+policies:
+- ../policy.yaml
+resources:
+- resource.yaml
+results:
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-labels-cel
+  resources:
+  - badpod-no-labels
+  - badpod-missing-name
+  - badpod-wrong-version
+  - badpod-missing-version
+  - badpod-empty-name
+  - badpod-regex-no-match
+  result: fail
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-labels-cel
+  resources:
+  - baddeployment-no-labels
+  result: fail
+- isValidatingPolicy: true
+  kind: Pod
+  policy: require-labels-cel
+  resources:
+  - goodpod-frontend
+  - goodpod-backend
+  - goodpod-with-extras
+  result: pass
+- isValidatingPolicy: true
+  kind: Deployment
+  policy: require-labels-cel
+  resources:
+  - gooddeployment
+  result: pass
