@@ -76,11 +76,11 @@ patches:
             - name: manager
               resources:
                 limits:
-                  cpu: 1800m
-                  memory: 2Gi
-                requests:
-                  cpu: 900m
+                  cpu: 500m
                   memory: 1Gi
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
   - target:
       kind: ServiceAccount
       name: kustomize-controller
@@ -106,11 +106,11 @@ patches:
             - name: manager
               resources:
                 limits:
-                  cpu: 600m
-                  memory: 1200Mi
-                requests:
                   cpu: 300m
-                  memory: 600Mi
+                  memory: 512Mi
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
   - target:
       kind: ServiceAccount
       name: notification-controller
@@ -166,8 +166,8 @@ patches:
             - name: manager
               resources:
                 limits:
-                  cpu: 600m
-                  memory: 800Mi
+                  cpu: "1"
+                  memory: 1536Mi
                 requests:
-                  cpu: 300m
-                  memory: 384Mi
+                  cpu: 100m
+                  memory: 512Mi

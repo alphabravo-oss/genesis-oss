@@ -70,6 +70,13 @@ grafana:
           registry: quay.io
           repository: kiwigrid/k8s-sidecar
           tag: 2.10.1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 200m
+          memory: 512Mi
       securityContext:
         runAsUser: 472
         runAsGroup: 472
@@ -86,6 +93,22 @@ istiod:
     upstream:
       global:
         hub: docker.io/istio
+        proxy:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      pilot:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
 kiali:
   values:
     upstream:
@@ -113,6 +136,13 @@ kyverno:
             repository: kyverno/kyverno
             tag: v1.19.1
             registry: ghcr.io
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
         initContainer:
           image:
             defaultRegistry: ghcr.io
@@ -194,6 +224,13 @@ loki:
         tag: 3.7.7
         digest: null
         pullPolicy: IfNotPresent
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          cpu: 200m
+          memory: 512Mi
     bbtests:
       enabled: false
 monitoring:
@@ -209,10 +246,10 @@ monitoring:
             imagePullSecrets: []
           resources:
             requests:
-              cpu: 300m
-              memory: 2Gi
+              cpu: 100m
+              memory: 1Gi
             limits:
-              cpu: 300m
+              cpu: 500m
               memory: 2Gi
       alertmanager:
         alertmanagerSpec:
@@ -222,6 +259,13 @@ monitoring:
             tag: v0.34.0
             sha: ''
             imagePullSecrets: []
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
       prometheus-node-exporter:
         image:
           registry: quay.io
@@ -255,6 +299,13 @@ monitoring:
           repository: thanos/thanos
           tag: v0.42.4
           sha: ''
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
     bbtests:
       enabled: false
 neuvector:
@@ -284,7 +335,7 @@ neuvector:
     monitor:
       exporter:
         image:
-          repository: docker.io/neuvector/prometheus-exporter
+          repository: neuvector/prometheus-exporter
           tag: 1-1.0.0
           imagePullPolicy: Always
       registry: docker.io
@@ -304,8 +355,11 @@ tempo:
           mountPath: /var/tempo
         resources:
           requests:
-            cpu: 500m
-            memory: 4Gi
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 300m
+            memory: 512Mi
         reportingEnabled: false
         ingester:
           trace_idle_period: 10s
@@ -336,3 +390,28 @@ kyvernoPolicies:
       enabled: false
     waitJob:
       enabled: false
+istioGateway:
+  values:
+    gateways:
+      passthrough:
+        upstream:
+          service:
+            type: ClusterIP
+      public:
+        gateway:
+          servers:
+          - hosts:
+            - '*.dev.genesis.local'
+            port:
+              name: http
+              number: 8080
+              protocol: HTTP
+          - hosts:
+            - '*.dev.genesis.local'
+            port:
+              name: https
+              number: 8443
+              protocol: HTTPS
+            tls:
+              credentialName: public-cert
+              mode: SIMPLE
