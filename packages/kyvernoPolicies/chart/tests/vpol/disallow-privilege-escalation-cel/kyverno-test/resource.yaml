@@ -44,6 +44,27 @@ spec:
     securityContext:
       allowPrivilegeEscalation: false
 ---
+# orValue(true) — omitted field defaults to deny
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod06
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+---
+# orValue(true) — securityContext present but field omitted
+apiVersion: v1
+kind: Pod
+metadata:
+  name: badpod07
+spec:
+  containers:
+  - name: container01
+    image: dummyimagename
+    securityContext: {}
+---
 ###### Pods - Good
 apiVersion: v1
 kind: Pod
@@ -71,27 +92,6 @@ spec:
     image: dummyimagename
     securityContext:
       allowPrivilegeEscalation: false
----
-# no securityContext (field undefined) — passes
-apiVersion: v1
-kind: Pod
-metadata:
-  name: goodpod06
-spec:
-  containers:
-  - name: container01
-    image: dummyimagename
----
-# securityContext present, allowPrivilegeEscalation undefined — passes
-apiVersion: v1
-kind: Pod
-metadata:
-  name: goodpod07
-spec:
-  containers:
-  - name: container01
-    image: dummyimagename
-    securityContext: {}
 ---
 ###### Deployments — one bad + one good to prove autogen
 apiVersion: apps/v1

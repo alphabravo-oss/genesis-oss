@@ -8,31 +8,23 @@ resources:
 - resource.yaml
 results:
 - policy: update-automountserviceaccounttokens-cel
+  rule: autogen-mutate
   resources:
   - api-access-allowed-pod
   - api-access-denied-pod
-  patchedResources: patched.yaml
-  kind: Pod
-  result: pass
-- policy: update-automountserviceaccounttokens-cel
-  resources:
-  - api-access-allowed-deployment
-  patchedResources: patched.yaml
-  kind: Deployment
-  result: pass
-- policy: update-automountserviceaccounttokens-cel
-  resources:
-  - api-access-denied-statefulset
-  patchedResources: patched.yaml
-  kind: StatefulSet
-  result: pass
-- policy: update-automountserviceaccounttokens-cel
-  resources:
   - api-access-ignored-pod
   kind: Pod
-  result: skip
+  result: pass
 - policy: update-automountserviceaccounttokens-cel
+  rule: autogen-mutate
   resources:
+  - api-access-allowed-deployment
   - api-access-ignored-deployment
   kind: Deployment
-  result: skip
+  result: pass
+- policy: update-automountserviceaccounttokens-cel
+  rule: autogen-mutate
+  resources:
+  - api-access-denied-statefulset
+  kind: StatefulSet
+  result: pass

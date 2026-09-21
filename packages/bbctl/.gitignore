@@ -1,0 +1,16 @@
+/bbctl
+.vscode
+*.txt
+!NOTES.txt
+test.out
+bin/
+./.bbctl/config
+coverage.html
+pkg/
+config.yaml
+dist/
+.DS_Store
+node_modules/
+screenshots/
+videos/
+**/cypress/downloads

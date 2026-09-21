@@ -1,9 +1,14 @@
 apiVersion: v2
 name: kyverno-policies
-version: 3.3.4-bb.87
+version: 3.3.4-bb.65
 appVersion: v1.13.2
 icon: https://github.com/kyverno/kyverno/raw/main/img/logo.png
 description: Collection of Kyverno security and best-practice policies for Kyverno
+keywords:
+  - kyverno
+  - nirmata
+  - policy agent
+  - policies
 home: https://kyverno.io/policies/
 sources:
   - https://github.com/kyverno/policies

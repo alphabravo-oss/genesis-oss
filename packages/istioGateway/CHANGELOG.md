@@ -3,86 +3,42 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-
-## [1.30.4-bb.0] (2026-09-01)
-### Changed
-- bb-common 1.2.0 -> 1.5.0
-- gateway 1.30.3 -> 1.30.4
-- gluon 1.1.3 -> 1.1.6
-- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.3 -> 1.30.4
-
-## [1.30.3-bb.0] (2026-07-24)
-### Changed
-- bb-common 1.0.2 -> 1.2.0
-- gateway 1.30.2 -> 1.30.3
-- gluon 1.1.1 -> 1.1.3
-- registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.2 -> 1.30.3
-- removed deprecated `bigbang.dev/applicationVersions` annotation from Chart.yaml
-- fixed the wait job failing package CI when the istiod and istio-gateway package versions differ; it now converges gateway pods on istiod's proxy version instead of the chart's appVersion
-
-## [1.30.2-bb.2] (2026-07-10)
-
-### Changed
-
-- bb-common 0.15.0 -> 1.0.2
-- gluon 0.9.8 -> 1.1.2
-
-## [1.30.2-bb.1] (2026-07-06)
-
-### Changed
-
-- Updated the wait job to verify every gateway `istio-proxy` image before and after rollout restart.
-
 ## [1.30.2-bb.0] (2026-06-25)
-
 ### Changed
-
 - gateway 1.30.1 -> 1.30.2
 - registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.30.1 -> 1.30.2
 
 ## [1.30.1-bb.1] (2026-06-15)
-
 ### Added
-
 - Added gateway-scoped host-based classification banner configuration.
 
 ## [1.30.1-bb.0] (2026-06-10)
-
 ### Changed
-
 - bb-common 0.14.2 -> 0.15.0
 - gateway 1.29.2 -> 1.30.1
 - registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.29.2 -> 1.30.1
 
 ## [1.29.2-bb.0] (2026-04-14)
-
 ### Changed
-
 - bb-common 0.14.1 -> 0.14.2
 - gateway 1.29.1 -> 1.29.2
 - registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.29.1 -> 1.29.2
 
 ## [1.29.1-bb.0] (2026-03-11)
-
 ### Changed
-
 - bb-common 0.14.0 -> 0.14.1
 - gateway 1.29.0 -> 1.29.1
 - registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.29.0 -> 1.29.1
 
 ## [1.29.0-bb.0] (2026-02-18)
-
 ### Changed
-
 - bb-common 0.13.0 -> 0.14.0
 - gateway 1.28.3 -> 1.29.0
 - gluon 0.9.7 -> 0.9.8
 - registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.28.3 -> 1.29.0
 
 ## [1.28.3-bb.0] (2026-01-20)
-
 ### Changed
-
 - bb-common 0.12.1 -> 0.13.0
 - gateway 1.28.0 -> 1.28.3
 - gateway 1.28.2 -> 1.28.3
@@ -90,9 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - registry1.dso.mil/ironbank/opensource/istio/proxyv2 1.28.2 -> 1.28.3
 
 ## [1.28.2-bb.0] (2025-12-31)
-
 ### Changed
-
 - bb-common 0.10.0 -> 0.12.0
 - gateway 1.28.0 -> 1.28.2
 - gluon 0.9.6 -> 0.9.7
@@ -136,22 +90,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Incorporated bb-common netpol implementation
 
 ## [1.27.1-bb.0] (2025-09-09)
-
 ### Changed
-
 - gateway updated from 1.27.0 to 1.27.1
 
 ## [1.27.0-bb.0] (2025-08-15)
-
 ### Changed
-
 - gateway updated from 1.26.3 to 1.27.0
 - ironbank/opensource/istio/proxyv2 updated from 1.26.3 to 1.27.0
 
 ## [1.26.3-bb.0] (2025-07-31)
-
 ### Changed
-
 - gateway updated from 1.26.2 to 1.26.3
 - added wait script to ensure image gets updated properly
 - added new network policy for wait job

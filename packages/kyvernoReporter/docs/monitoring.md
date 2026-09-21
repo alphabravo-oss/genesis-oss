@@ -13,16 +13,29 @@ In addition, you can specify the scope of your monitoring targets to either the 
 
 The instructions below are for deploying kyverno reporting in a BigBang cluster with monitoring and kyverno packages enabled.
 
-Execute the installation steps as mentioned in [overview](./overview.md) document. Monitoring is turned on by the following chart values, which are set by default:
+Note: At the time of writing, IB approved image for Kyverno is not available. As such, if kyvernopolicies package is also deployed in the BigBang Cluster, the restrict-image-registries policy needs to be updated to allow images to be sourced from ghrc.io repository.
+
+```
+kyvernopolicies:
+  values:
+    policies:
+      restrict-image-registries:
+        parameters:
+          allow:
+          - ghcr.io
+```
+
+Note that Big Bang is setup to add your overrides to the default value (registry1.dso.mil) 
+
+Execute the installation steps as mentioned in [overview](./overview.md) document. Ensure that the following values are used to turn on monitoring:
 
 
 ```
-upstream:
-  monitoring:
-    enabled: true
-    grafana:
-      dashboards:
-        enabled: true
+monitoring:
+  enabled: true
+  namespace: monitoring
+  grafana:
+    namespace: monitoring
 ```
    
 ## Kyverno Metrics 
@@ -87,37 +100,43 @@ This metric can be used to track the number of admission requests which were tri
 
 ## Prometheus Dashboard
 
-Big Bang exposes Prometheus through its own ingress. With Big Bang's test values this is https://prometheus.dev.bigbang.mil/
+Port forward the kube-prometheus service as follows:
+
+```
+kubectl -n monitoring port-forward service/monitoring-monitoring-kube-prometheus 9090:9090
+```
+
+Navigate to Prometheus Dashboard at http://localhost:9090/
 
 
 ![kyverno dashboard
 ](pics/PrometheusPolicyReporterMetrics.png)
 
-The metrics are sourced from Kyverno endpoints that can be verified by targets at https://prometheus.dev.bigbang.mil/targets
+The metrics are sourced from Kyverno endpoints that can be verified by targets at http://localhost:9090/targets
 
-serviceMonitor/kyverno/kyverno-admission-controller/0
+serviceMonitor/kyverno/kyverno-kyverno-svc-service-monitor/0
 
-serviceMonitor/kyverno/kyverno-background-controller/0
-
-serviceMonitor/kyverno/kyverno-cleanup-controller/0
-
-serviceMonitor/kyverno/kyverno-reports-controller/0
-
-serviceMonitor/kyverno-reporter/policy-reporter-monitoring/0
+serviceMonitor/policy-reporter/policy-reporter-monitoring/0
 
 ## Grafana
 
-Big Bang exposes Grafana through its own ingress. With Big Bang's test values this is https://grafana.dev.bigbang.mil/
+Port forward the grafana service as follows:
+
+```
+kubectl -n monitoring port-forward service/monitoring-monitoring-grafana  3000:80
+```
+
+Navigate to Grafana Dashboard at http://localhost:3000/
 
 Verify that Prometheus datasource is setup by navigating to the following url. This datasource is automatic created when monitoring is enabled in BigBang installation.
 
-https://grafana.dev.bigbang.mil/connections/datasources
+http://localhost:3000/datasources
 
 ### Policy Report Dashboards
 
-Search for the Policy Report dashboards by navigating to the following url.
+Search for Policy Report dashboards by navigating to the following url and enter Policy as search term.
 
-https://grafana.dev.bigbang.mil/dashboards?&query=policyreport
+http://localhost:3000/datasources?search=open
 
 This results in dashboards tagged with Policy Reporter
 
@@ -138,9 +157,9 @@ This results in dashboards tagged with Policy Reporter
 
 ### Kyverno Dashboard
 
-Search for the Kyverno dashboard by navigating to the following url.
+Search for Kyverno dashboards by navigating to the following url and enter "Kyverno" as search term.
 
-https://grafana.dev.bigbang.mil/dashboards?&query=kyverno
+http://localhost:3000/datasources?search=open
 
 Select the returned row to navigate to the dashboard as shown below:
 

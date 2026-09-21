@@ -6,18 +6,12 @@ policies:
 - ../policy.yaml
 resources:
 - resource.yaml
-# The ignored SA is excluded by matchConditions, so it is asserted as `skip`
-# (which fails if a matchConditions change lets it through and mutates it).
 results:
 - policy: update-automountserviceaccounttokens-cel-serviceaccounts
+  rule: mutate
   resources:
   - update-token-automount-2
   - update-token-automount-wild-1
-  patchedResources: patched.yaml
-  kind: ServiceAccount
-  result: pass
-- policy: update-automountserviceaccounttokens-cel-serviceaccounts
-  resources:
   - update-token-automount-ignored
   kind: ServiceAccount
-  result: skip
+  result: pass

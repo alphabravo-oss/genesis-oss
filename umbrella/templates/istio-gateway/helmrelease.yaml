@@ -1,5 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettingsIstioGateway := mergeOverwrite (deepCopy .Values.flux) .Values.istioGateway.flux -}}
+{{- $fluxSettingsIstioGateway := merge .Values.istioGateway.flux .Values.flux -}}
 {{- if and .Values.istiod.enabled .Values.istioGateway.enabled }}
 {{- range $name, $gw := include "enabledGateways" $ | fromYaml }}
 ---

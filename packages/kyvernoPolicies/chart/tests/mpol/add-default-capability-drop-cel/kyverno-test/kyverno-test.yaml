@@ -6,38 +6,17 @@ policies:
 - ../policy.yaml
 resources:
 - resource.yaml
+# For MPols, `kyverno test` proves the rule evaluates successfully against
+# these fixture shapes offline. The explicit post-mutation object assertions
+# live in the sibling Chainsaw test.
 results:
 - policy: add-default-capability-drop-cel
+  rule: autogen-mutate
   resources:
   - bare-pod
   - partial-pod
   - full-pod
   - init-pod
   - ephemeral-pod
-  patchedResources: patched.yaml
   kind: Pod
-  result: pass
-- policy: add-default-capability-drop-cel
-  resources:
-  - bare-deployment
-  patchedResources: patched.yaml
-  kind: Deployment
-  result: pass
-- policy: add-default-capability-drop-cel
-  resources:
-  - bare-replicaset
-  patchedResources: patched.yaml
-  kind: ReplicaSet
-  result: pass
-- policy: add-default-capability-drop-cel
-  resources:
-  - bare-daemonset
-  patchedResources: patched.yaml
-  kind: DaemonSet
-  result: pass
-- policy: add-default-capability-drop-cel
-  resources:
-  - bare-statefulset
-  patchedResources: patched.yaml
-  kind: StatefulSet
   result: pass

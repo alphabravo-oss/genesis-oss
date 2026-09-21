@@ -1,5 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettingsIstioCore := mergeOverwrite (deepCopy .Values.flux) .Values.istiod.flux -}}
+{{- $fluxSettingsIstioCore := merge .Values.istiod.flux .Values.flux -}}
 {{- if .Values.istiod.enabled }}
 {{- if not .Values.istioCRDs.enabled }}
 {{- fail "istiod requires istioCRDs to be enabled" }}

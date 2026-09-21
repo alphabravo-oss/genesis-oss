@@ -1,5 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettingsGitlab := mergeOverwrite (deepCopy .Values.flux) .Values.addons.gitlab.flux -}}
+{{- $fluxSettingsGitlab := merge .Values.addons.gitlab.flux .Values.flux -}}
 {{- if .Values.addons.gitlab.enabled }}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -31,7 +30,7 @@ spec:
   {{- end }}
   {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "gitlab" "root" .) | nindent 2 }}
 
-  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled .Values.addons.gitlab.dependsOn }}
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled }}
   dependsOn:
   {{- if .Values.gatekeeper.enabled }}
   - name: gatekeeper
@@ -47,9 +46,6 @@ spec:
   {{- if .Values.monitoring.enabled }}
   - name: monitoring
     namespace: {{ .Release.Namespace }}
-  {{- end }}
-  {{- with .Values.addons.gitlab.dependsOn }}
-  {{- toYaml . | nindent 2 }}
   {{- end }}
   {{- end }}
 {{- end }}

@@ -20,17 +20,18 @@ istio:
     # STRICT = Allow only mutual TLS traffic
     # PERMISSIVE = Allow both plain text and mutual TLS traffic
     mode: STRICT
+    
 
 
 routes:
   inbound:
     tempo-query:
-      enabled: false
+      enabled: false   
       gateways:
-      - istio-gateway/public-ingressgateway
+        - istio-gateway/public-ingressgateway
       hosts:
-      - tempo.{{ .Values.domain }}
-      service: tempo-tempo
+        - tempo.{{ .Values.domain }}
+      service: tempo-tempo    
       port: 3200
       selector:
         app.kubernetes.io/name: tempo
@@ -76,6 +77,10 @@ networkPolicies:
 monitoring:
   enabled: false
 
+# -- This value will be removed in a later release as Tempo no longer has a UI
+sso:
+  enabled: false
+
 upgradeJob:
   # -- Enable BigBang specific autoRollingUpgrade support
   enabled: true
@@ -115,7 +120,7 @@ bbtests:
 
 # -- Toggle or openshift specific config
 openshift: false
-# -- Values to pass to [the upstream tempo chart](https://github.com/grafana-community/helm-charts/blob/main/charts/tempo/values.yaml)
+# -- Values to pass to [the upstream tempo chart](https://github.com/grafana/helm-charts/tree/main/charts/tempo/values.yaml)
 # @default -- Upstream chart values
 upstream:
   # -- Overrides the chart's computed fullname
@@ -126,8 +131,8 @@ upstream:
 
   # --- Add writable runtime volume ---
   extraVolumes:
-  - name: tempo-runtime
-    emptyDir: {}    # ephemeral, backed by node disk or memory
+    - name: tempo-runtime
+      emptyDir: {}  # ephemeral, backed by node disk or memory
 
   tempo:
     # -- Docker image registry
@@ -140,8 +145,8 @@ upstream:
     pullPolicy: Always
 
     extraVolumeMounts:
-    - name: tempo-runtime
-      mountPath: /var/tempo
+      - name: tempo-runtime
+        mountPath: /var/tempo
 
     resources:
       requests:
@@ -149,11 +154,27 @@ upstream:
         memory: 4Gi
 
     reportingEnabled: false
+
     ingester:
       trace_idle_period: 10s
       max_block_bytes: 1_000_000
       max_block_duration: 5m
-    retention: 336h
+
+    retention: 336h # 2 weeks retention
+
+    server:
+      # -- HTTP server listen port
+      http_listen_port: 3200
+
+    # Readiness and Liveness Probe Configuration Options
+    livenessProbe:
+      httpGet:
+        path: /ready
+        port: 3200
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 3200
 
     receivers:
       zipkin:
@@ -185,10 +206,12 @@ upstream:
     runAsUser: 1001
     runAsGroup: 1001
     fsGroup: 1001
+    runAsNonRoot: true
+
   serviceAccount:
     # -- Image pull secrets for the service account
     imagePullSecrets:
-    - name: private-registry
+      - name: private-registry
     automountServiceAccountToken: false
 
   # -- Pod Annotations

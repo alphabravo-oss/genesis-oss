@@ -1,47 +1,23 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 Thank you for supporting Platform One!
 
-{{- with .Values._packageAliasMigrations }}
-
-BIG BANG PACKAGE VALUES MIGRATION NOTICE:
-  The unified packages.<name> configuration is active. It takes precedence over
-  the corresponding legacy path. Legacy paths remain supported until Big Bang 4.x.
-  Please visit the 3.x->4.x migration guide for more information.
-  https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/migration/migrating-package-values-for-bb4.0.md
-{{- range . }}
-  - {{ . }}
-{{- end }}
-{{- end }}
-
-{{ if .Values.offline }}
-
-BIG BANG OFFLINE SOURCE NOTICE:
-  offline=true prevents Big Bang from creating GitRepository resources for integrated packages,
-  additional packages, and the package wrapper. HelmReleases configured with Git sources still
-  reference those resources. Ensure each required GitRepository already exists in the namespace
-  referenced by its HelmRelease before reconciliation.
-{{ end }}
-
 {{ if $.Values.addons.gitlab.enabled }}
-{{- $externalPostgresConfigured := eq (include "bigbang.gitlab.externalPostgresConfigured" .) "true" }}
-{{- $externalRedisConfigured := eq (include "bigbang.gitlab.externalRedisConfigured" .) "true" }}
-{{- $externalObjectStorageConfigured := eq (include "bigbang.gitlab.externalObjectStorageConfigured" .) "true" }}
 Gitlab is enabled.
 Please follow the Gitlab online documentation for proper configuration.
 This BigBang chart provides convenient enhancements to the Gitlab Package helm chart.
 If you enable these features certain settings will be defaulted for you and any required secrets will be automatically created.
-You should point to your cloud provider's RDS, Redis or Valkey, and object storage.
-Gitlab will not provision these services for you. You will need to provision the database, Redis or Valkey service, and S3 buckets.
+You should point to your cloud provider's RDS and object storage.
+Gitlab will not provision storage for you. You will need to provision the database and the S3 buckets.
 Here is an example of how to configure your deployment.
 
 addons:
   gitlab:
     enabled: true
     hostnames:
-      gitlab: gitlab
-      registry: registry
+      gitlab: gitlab.example.mil
+      registry: registry.example.mil
     sso:
       enabled: true
+      label: "Platform One SSO"
       client_id: "platform1_a8604cc9-f5e9-4656-802d-d05624370245_bb8-gitlab"
       client_secret: ""
     database:
@@ -50,14 +26,7 @@ addons:
       username: gitlab
       database: gitlab
       password: mysecretpassword
-    redis:
-      password: mysecretpassword
-    values:
-      global:
-        redis:
-          host: redis.example.mil
-          port: 6379
-    objectStorage:
+    objectstorage:
       type: s3
       endpoint: https://s3.us-gov-west-1.amazonaws.com
       region: us-gov-west-1
@@ -95,22 +64,20 @@ gitlab-backup-tmp
 {{- end }}
 {{- end }}
 
-{{ if not $externalPostgresConfigured }}
+{{ if $.Values.addons.gitlab.database.host }}
+{{ else }}
 PLATFORM ONE GITLAB WARNING:
-  GitLab PostgreSQL is not configured.
-  GitLab 19 no longer includes bundled PostgreSQL. Configure an independently managed PostgreSQL 17 service before enabling GitLab.
-{{- end }}
+  You have enabled an internal postgres database in the BigBang configuration.
+  Platform One does not support this option for production deployments because your persistent data can be permanently lost.
+  This option should only be used for development or CI pipelines.
+{{- end -}}
 
-{{ if not $externalRedisConfigured }}
+{{ if $.Values.addons.gitlab.objectStorage.endpoint }}
+{{ else }}
 PLATFORM ONE GITLAB WARNING:
-  GitLab Redis or Valkey is not configured.
-  GitLab 19 no longer includes bundled Redis. Configure an independently managed Redis 7.0 or later, or Valkey 7.2 or later, before enabling GitLab.
-{{- end }}
-
-{{ if not $externalObjectStorageConfigured }}
-PLATFORM ONE GITLAB WARNING:
-  GitLab object storage is not configured.
-  GitLab 19 no longer includes bundled MinIO. Configure independently managed object storage before enabling GitLab.
+  You have enabled a MinIO internal service in the BigBang configuration.
+  Platform One does not support this option for production deployments because your persistent data can be permanently lost.
+  This option should only be used for development or CI pipelines.
 {{- end }}
 {{- end }}
 
@@ -217,6 +184,12 @@ PLATFORM ONE LOKI WARNING:
 {{- if and $.Values.loki.enabled (dig "values" "gel" "enabled" false $.Values.loki) }}
 PLATFORM ONE LOKI WARNING:
   You still have Loki gel values set but this version of Loki has changed significantly, please review the latest grafana enterprise document within the Loki package repo: https://repo1.dso.mil/big-bang/product/packages/loki/-/blob/main/docs/grafana-enterprise.md
+{{- end }}
+
+{{- if and .Values.bbctl.enabled (or (not .Values.loki.enabled) (not .Values.alloy.enabled) (not .Values.alloy.alloyLogs.enabled) (not .Values.monitoring.enabled) (not .Values.grafana.enabled)) }}
+PLATFORM ONE BBCTL WARNING:
+  You have enabled the bbctl Grafana dashboards package but one or more of the dependencies are disabled.
+  Please ensure Loki, Alloy, Grafana, and Monitoring are all enabled when using the bbctl package.
 {{- end }}
 
 {{- if and .Values.renovate.enabled (not .Values.addons.gitlab.enabled) }}

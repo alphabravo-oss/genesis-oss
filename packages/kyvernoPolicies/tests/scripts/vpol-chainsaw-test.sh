@@ -15,9 +15,8 @@
 #     (uninstall kyverno-policies chart or set all CPols to Audit first)
 #
 # Test discovery:
-#   Auto-discovers chart/tests/vpol/**/chainsaw-test/ directories. The policy
-#   name is the parent directory's basename (e.g.
-#   chart/tests/vpol/disallow-pod-exec-cel/chainsaw-test → disallow-pod-exec-cel).
+#   Auto-discovers chart/tests/vpol/**/chainsaw-test/ directories. Each must have
+#   a sibling kyverno-test/kyverno-test.yaml to provide the policy name.
 #
 # Values-key resolution:
 #   One values key can produce multiple named VPols (e.g.
@@ -63,7 +62,20 @@ for test_dir in $(find "${TESTS_DIR}" -name 'chainsaw-test' -type d 2>/dev/null)
     continue
   fi
 
-  policy_name="$(basename "${policy_dir}")"
+  # The policy name comes from the sibling kyverno-test.yaml, which is the
+  # single source of truth shared by both the kyverno CLI and chainsaw tests.
+  kyverno_test="${policy_dir}/kyverno-test/kyverno-test.yaml"
+  if [[ ! -f "${kyverno_test}" ]]; then
+    echo "SKIP: no kyverno-test/kyverno-test.yaml alongside ${test_dir}"
+    continue
+  fi
+
+  policy_name="$(yq '.metadata.name' "${kyverno_test}")"
+  if [[ -z "${policy_name}" || "${policy_name}" == "null" ]]; then
+    echo "ERROR: could not extract policy name from ${kyverno_test}"
+    failures=$((failures + 1))
+    continue
+  fi
 
   values_key="${policy_name%-serviceaccounts}"
   values_key="${values_key%-controllers}"
@@ -74,7 +86,7 @@ for test_dir in $(find "${TESTS_DIR}" -name 'chainsaw-test' -type d 2>/dev/null)
   helm template kp "${CHART_DIR}" \
     --values <(yq "{\"celPoliciesBeta\": (.kyvernoPolicies.values.celPoliciesBeta | pick([\"${values_key}\"]))}" "${TEST_VALUES}") \
     --set "celPoliciesBeta.${values_key}.enabled=true" \
-    | yq "select((.kind == \"ValidatingPolicy\" or .kind == \"ImageValidatingPolicy\") and (.metadata.name | test(\"^${values_key}\")))" \
+    | yq "select(.kind == \"ValidatingPolicy\" and (.metadata.name | test(\"^${values_key}\")))" \
     > "${rendered}"
   rendered_files+=("${rendered}")
 

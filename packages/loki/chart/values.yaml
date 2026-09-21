@@ -87,7 +87,8 @@ loki:
     # -- Docker image repository
     repository: ironbank/opensource/grafana/loki
     # -- Overrides the image tag whose default is the chart's appVersion
-    tag: 3.7.7
+    # renovate: docker=registry1.dso.mil/ironbank/opensource/grafana/loki
+    tag: 3.7.1
     # -- Overrides the image tag with an image digest
     digest: null
     # -- Docker image pull policy
@@ -388,8 +389,15 @@ loki:
   memberlistConfig: {}
   # -- Extra memberlist configuration
   extraMemberlistConfig: {}
-  # -- Tenants list to be created on nginx htpasswd file, with name and password or passwordHash keys.
-  # Example: `[{name: "test-user-1", password: "test-password-1"}, {name: "test-user-2", passwordHash: "$2y$10$..."}]`
+  # -- Tenants list to be created on nginx htpasswd file, with name and password or passwordHash keys<br><br>
+  # Example:
+  # <pre>
+  # tenants:<br>
+  #   - name: "test-user-1"<br>
+  #     password: "test-password-1"<br>
+  #   - name: "test-user-2"<br>
+  #     passwordHash: "$2y$10$7O40CaY1yz7fu9O24k2/u.ct/wELYHRBsn25v/7AyuQ8E8hrLqpva" # generated using `htpasswd -nbBC10 test-user-2 test-password-2`
+  # </pre>
   tenants: []
   # -- Check https://grafana.com/docs/loki/latest/configuration/#server for more info on the server configuration.
   server:
@@ -718,7 +726,8 @@ enterprise:
     # -- Docker image repository
     repository: ironbank/grafana/grafana-enterprise-logs
     # -- Docker image tag, default is the chart's appVersion
-    tag: v3.6.13
+    # renovate: docker=registry1.dso.mil/ironbank/grafana/grafana-enterprise-logs
+    tag: v3.6.5
     # -- Overrides the image tag with an image digest
     digest: null
     # -- Docker image pull policy
@@ -817,7 +826,8 @@ enterprise:
       # -- Docker image repository
       repository: ironbank/ironbank/opensource/grafana/enterprise-logs-provisioner
       # -- Overrides the image tag whose default is the chart's appVersion
-      tag: 3.6.13
+      # renovate: docker=registry1.dso.mil/ironbank/ironbank/opensource/grafana/enterprise-logs-provisioner
+      tag: 3.6.5
       # -- Overrides the image tag with an image digest
       digest: null
       # -- Docker image pull policy
@@ -833,7 +843,8 @@ kubectlImage:
   # -- Docker image repository
   repository: ironbank/opensource/kubernetes/kubectl
   # -- Overrides the image tag whose default is the chart's appVersion
-  tag: v1.36.4
+  # renovate: docker=registry1.dso.mil/ironbank/opensource/kubernetes/kubectl
+  tag: v1.34.6
   # -- Overrides the image tag with an image digest
   digest: null
   # -- Docker image pull policy
@@ -866,6 +877,7 @@ test:
     # -- Docker image repository
     repository: ironbank/bigbang/grafana/loki-helm-test
     # -- Overrides the image tag whose default is the chart's appVersion
+    # renovate: docker=registry1.dso.mil/ironbank/bigbang/grafana/loki-helm-test
     tag: "0.0.1"
     # -- Overrides the image tag with an image digest
     digest: null
@@ -924,7 +936,8 @@ lokiCanary:
     # -- Docker image repository
     repository: ironbank/bigbang/grafana/loki-canary
     # -- Overrides the image tag whose default is the chart's appVersion
-    tag: 3.7.7
+    # renovate: docker=registry1.dso.mil/ironbank/bigbang/grafana/loki-canary
+    tag: 3.7.1
     # -- Overrides the image tag with an image digest
     digest: null
     # -- Docker image pull policy
@@ -1187,7 +1200,8 @@ gateway:
     # -- The gateway image repository
     repository: ironbank/opensource/nginx/nginx
     # -- The gateway image tag
-    tag: 1.31.4
+    # renovate: docker=registry1.dso.mil/ironbank/opensource/nginx/nginx
+    tag: 1.30.0
     # -- Overrides the gateway image tag with an image digest
     digest: null
     # -- The gateway image pull policy
@@ -1663,7 +1677,7 @@ singleBinary:
     # -- Size of persistent disk
     size: 12Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -1815,7 +1829,7 @@ write:
     # -- Size of persistent disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -1965,7 +1979,7 @@ read:
     # -- Size of persistent disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -2105,7 +2119,7 @@ backend:
     # -- Size of persistent disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -2277,7 +2291,7 @@ ingester:
           - ReadWriteOnce
         size: 10Gi
         #   -- Storage class to be used.
-        #   If defined, storageClassName is set to this value.
+        #   If defined, `storageClassName: <storageClass>`.
         #   If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
         #   If empty or set to null, no storageClassName spec is
         #   set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -2584,7 +2598,7 @@ querier:
     # -- Size of persistent disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -2866,7 +2880,7 @@ indexGateway:
     # -- Size of persistent or memory disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -2984,7 +2998,7 @@ compactor:
     # -- Size of persistent disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -2998,7 +3012,7 @@ compactor:
           - ReadWriteOnce
         size: 10Gi
         #   -- Storage class to be used.
-        #   If defined, storageClassName is set to this value.
+        #   If defined, `storageClassName: <storageClass>`.
         #   If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
         #   If empty or set to null, no storageClassName spec is
         #   set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -3121,7 +3135,7 @@ bloomGateway:
         # -- Size of persistent disk
         size: 10Gi
         #   -- Storage class to be used.
-        #   If defined, storageClassName is set to this value.
+        #   If defined, `storageClassName: <storageClass>`.
         #   If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
         #   If empty or set to null, no storageClassName spec is
         #   set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -3235,7 +3249,7 @@ bloomPlanner:
         # -- Size of persistent disk
         size: 10Gi
         #   -- Storage class to be used.
-        #   If defined, storageClassName is set to this value.
+        #   If defined, `storageClassName: <storageClass>`.
         #   If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
         #   If empty or set to null, no storageClassName spec is
         #   set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -3456,7 +3470,7 @@ patternIngester:
     # -- Size of persistent disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -3470,7 +3484,7 @@ patternIngester:
           - ReadWriteOnce
         size: 10Gi
         #   -- Storage class to be used.
-        #   If defined, storageClassName is set to this value.
+        #   If defined, `storageClassName: <storageClass>`.
         #   If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
         #   If empty or set to null, no storageClassName spec is
         #   set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -3585,7 +3599,7 @@ ruler:
     # -- Size of persistent disk
     size: 10Gi
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -3753,7 +3767,8 @@ memcached:
     # -- Memcached Docker image repository
     repository: registry1.dso.mil/ironbank/opensource/memcached/memcached
     # -- Memcached Docker image tag
-    tag: 1.6.45
+    # renovate: docker=registry1.dso.mil/ironbank/opensource/memcached/memcached
+    tag: 1.6.41
     # -- Memcached Docker image pull policy
     pullPolicy: IfNotPresent
   # -- The SecurityContext override for memcached pods
@@ -3764,6 +3779,12 @@ memcached:
     fsGroup: 11211
   # -- The name of the PriorityClass for memcached pods
   priorityClassName: null
+  # -- The SecurityContext for memcached containers
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+    allowPrivilegeEscalation: false
   # -- Readiness probe for memcached pods (probe port defaults to container port)
   readinessProbe:
     tcpSocket:
@@ -3778,6 +3799,7 @@ memcached:
     capabilities:
       drop: [ALL]
     allowPrivilegeEscalation: false
+    fsGroup: 10001
     runAsGroup: 10001
     runAsNonRoot: true
     runAsUser: 10001
@@ -3797,7 +3819,8 @@ memcachedExporter:
   enabled: false
   image:
     repository: registry1.dso.mil/ironbank/opensource/prometheus/memcached-exporter
-    tag: v0.16.0
+    # renovate: docker=registry1.dso.mil/ironbank/opensource/prometheus/memcached-exporter
+    tag: v0.15.3
     pullPolicy: IfNotPresent
   resources:
     requests: {}
@@ -3808,6 +3831,7 @@ memcachedExporter:
     capabilities:
       drop: [ALL]
     allowPrivilegeEscalation: false
+    fsGroup: 10001
     runAsGroup: 10001
     runAsNonRoot: true
     runAsUser: 10001
@@ -3938,7 +3962,7 @@ resultsCache:
     # -- Size of persistent disk, must be in G or Gi
     storageSize: 10G
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -4053,7 +4077,7 @@ chunksCache:
     # -- Size of persistent disk, must be in G or Gi
     storageSize: 10G
     # -- Storage class to be used.
-    # If defined, storageClassName is set to this value.
+    # If defined, `storageClassName: <storageClass>`.
     # If set to "-", `storageClassName: ""`, which disables dynamic provisioning.
     # If empty or set to null, no storageClassName spec is
     # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -4173,7 +4197,7 @@ chunksCache:
       # -- Size of persistent disk, must be in G or Gi
       storageSize: 10G
       # -- Storage class to be used.
-      # If defined, storageClassName is set to this value.
+      # If defined, storageClassName: <storageClass>.
       # If set to "-", storageClassName: "", which disables dynamic provisioning.
       # If empty or set to null, no storageClassName spec is
       # set, choosing the default provisioner (gp2 on AWS, standard on GKE, AWS, and OpenStack).
@@ -4193,10 +4217,6 @@ chunksCache:
 # -- Setting for the Grafana Rollout Operator https://github.com/grafana/helm-charts/tree/main/charts/rollout-operator
 rollout_operator:
   enabled: false
-  image:
-    registry: registry1.dso.mil
-    repository: ironbank/opensource/grafana/rollout-operator
-    tag: v0.39.0
   # -- podSecurityContext is the pod security context for the rollout operator.
   # When installing on OpenShift, override podSecurityContext settings with
   #
@@ -4311,7 +4331,8 @@ sidecar:
     # -- The Docker registry and image for the k8s sidecar
     repository: ironbank/kiwigrid/k8s-sidecar
     # -- Docker image tag
-    tag: 2.11.1
+    # renovate: docker=registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar
+    tag: 2.5.0
     # -- Docker image sha. If empty, no sha will be used
     sha: ""
     # -- Docker image pull policy
@@ -4381,6 +4402,9 @@ domain: dev.bigbang.mil
 
 # Default to false, override in openshift-test-values.yaml
 openshift: false
+
+fluentbit:
+  enabled: false
 
 experimentalMode:
   # -- Toggle enabling of configurations and deployment modes currently unsupported by Big Bang
@@ -4582,10 +4606,10 @@ monitoring:
     # -- ServiceMonitor scrape timeout in Go duration format (e.g. 15s)
     scrapeTimeout: null
     # -- ServiceMonitor relabel configs to apply to samples before scraping
-    # https://prometheus-operator.dev/docs/api-reference/api/#relabelconfig
+    # https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#relabelconfig
     relabelings: []
     # -- ServiceMonitor metric relabel configs to apply to samples before ingestion
-    # https://prometheus-operator.dev/docs/api-reference/api/#endpoint
+    # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#endpoint
     metricRelabelings: []
     # -- ServiceMonitor will use http by default, but you can pick https as well
     scheme: http
@@ -4621,7 +4645,7 @@ monitoring:
     grafanaAgent:
       # -- DEPRECATED Controls whether to install the Grafana Agent Operator and its CRDs.
       # Note that helm will not install CRDs if this flag is enabled during an upgrade.
-      # In that case install the CRDs manually from the Grafana Agent Operator release assets.
+      # In that case install the CRDs manually from https://github.com/grafana/agent/tree/main/production/operator/crds
       installOperator: false
       # -- Grafana Agent annotations
       annotations: {}
@@ -4649,7 +4673,7 @@ monitoring:
       # -- Additional PodLogs labels
       labels: {}
       # -- PodLogs relabel configs to apply to samples before scraping
-      # https://prometheus-operator.dev/docs/api-reference/api/#relabelconfig
+      # https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#relabelconfig
       relabelings: []
       # -- Additional pipeline stages to process logs after scraping
       # https://grafana.com/docs/agent/latest/operator/api/#pipelinestagespec-a-namemonitoringgrafanacomv1alpha1pipelinestagespeca

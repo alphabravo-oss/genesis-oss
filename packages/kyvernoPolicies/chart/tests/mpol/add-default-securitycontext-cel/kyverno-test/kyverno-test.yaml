@@ -6,12 +6,18 @@ policies:
 - ../policy.yaml
 resources:
 - resource.yaml
+# For MPols, `kyverno test` proves the rule evaluates successfully against
+# these fixture shapes offline. The explicit post-mutation object assertions
+# live in the sibling Chainsaw test.
 results:
+  # "autogen-mutate" is the rule name kyverno generates for MutatingPolicy pods.
+  # The MPol template has no explicit rule name — kyverno synthesizes this during
+  # autogen. If the autogen naming convention changes, this test will break.
 - policy: add-default-securitycontext-cel
+  rule: autogen-mutate
   resources:
   - bare-pod
   - partial-pod
   - full-pod
-  patchedResources: patched.yaml
   kind: Pod
   result: pass

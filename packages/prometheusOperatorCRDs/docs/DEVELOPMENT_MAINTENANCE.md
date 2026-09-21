@@ -13,7 +13,7 @@ NOTE: This package is slightly different than others as there are no pods or ima
 3. Update the chart version in `./chart/Chart.yaml` and append or bump the `-bb.0` suffix (if missing or incorrect) to the chart version from upstream.
 
 4. Ensure the Big Bang `./chart/Chart.yaml` and the target upstream version `Chart.yaml` align correctly with the following:
-- Check `appVersion` in `./chart/Chart.yaml` to make sure it has updated to the correct upstream version.
+    - Check `appVersion` and `bigbang.dev/applicationVersions` in `./chart/Chart.yaml` to make sure they match and have updated to the correct version
     - Check the upstream chart dependencies and compare the dependency versions against the corresponding image tags in `./chart/values.yaml` to make sure they match
 
 5. Update dependencies and binaries using `helm dependency update ./chart`.

@@ -169,6 +169,7 @@ upstream:
     name: bigbang
   alloy-operator:
     waitForAlloyRemoval:
+      enabled: true
       image:
         registry: registry1.dso.mil
         repository: ironbank/opensource/grafana/helm-chart-toolbox-kubectl
@@ -176,7 +177,7 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/grafana/alloy-operator
-      tag: "1.11.0"
+      tag: "1.6.0"
     securityContext:
       runAsUser: 1001
       runAsGroup: 1001
@@ -185,12 +186,12 @@ upstream:
       image:
         registry: registry1.dso.mil
         repository: ironbank/opensource/grafana/alloy
-        tag: "v1.18.0"
+        tag: "v1.17.1"
       configReloader:
         image:
           registry: registry1.dso.mil
           repository: ironbank/opensource/prometheus-operator/prometheus-config-reloader
-          tag: "v0.93.0"
+          tag: "v0.92.1"
         securityContext:
           capabilities:
             drop:
@@ -198,12 +199,17 @@ upstream:
       alloy:
         # toggle usage reporting, to prevent trying to reach out to the internet
         enableReporting: false
+        securityContext:
+          capabilities:
+            drop:
+              - ALL
       controller:
         securityContext:
           capabilities:
             drop:
               - ALL
   applicationObservability:
+    enabled: false
     connectors:
       grafanaCloudMetrics:
         enabled: false
@@ -212,7 +218,13 @@ upstream:
         grpc:
           enabled: true
     collector: alloy-receiver
+  integrations:
+    alloy:
+      # Configure scraping for existing Alloy instances, not the collector image itself.
+      enableReporting: false
   podLogsViaLoki:
+    enabled: false
     collector: alloy-logs
   clusterEvents:
+    enabled: false
     collector: alloy-singleton

@@ -80,28 +80,6 @@ reconstruct_fixtures() {
   done
 }
 
-# Extract a VPol and any sibling VPols sharing its name prefix into one YAML
-# file. One values key can render multiple VPols (e.g. disallow-tolerations-cel
-# + disallow-tolerations-cel-runtimeclass) and per-policy fixtures may reference
-# them all. Matches "${prefix}" exactly or "${prefix}-*"; trailing chars without
-# a separator (e.g. -cels) won't match.
-extract_vpols_with_prefix() {
-  local prefix="${1}" out="${2}"
-  : > "${out}"
-  local names
-  names=$(kubectl get vpol -o jsonpath='{.items[*].metadata.name}' 2>/dev/null) || return 1
-  local first=true
-  for name in ${names}; do
-    [[ "${name}" == "${prefix}" || "${name}" == "${prefix}-"* ]] || continue
-    if [[ "${first}" == "true" ]]; then
-      first=false
-    else
-      echo "---" >> "${out}"
-    fi
-    kubectl get validatingpolicy "${name}" -o yaml >> "${out}" || return 1
-  done
-}
-
 # --- Policy quiet/restore helpers ----------------------------------------
 # Patch all CPols/VPols to Audit before tests, restore after.
 # Prevents cross-policy interference during targeted enforce/deny testing.
@@ -257,87 +235,22 @@ restore_vpols() {
          -p "[{\"op\":\"replace\",\"path\":\"/spec/validationActions\",\"value\":[\"${original}\"]}]"; then
       echo -e "${_YEL}Cleanup: could not restore ${vpol}, continuing with matchCondition cleanup${_NC}"
     fi
-    # Remove any scope-to-test-* matchConditions left by parallel chainsaw tests.
-    # Loop because removing an index shifts later ones down; bounded to avoid
-    # an infinite loop if a patch keeps failing.
-    local attempts=0
-    while [[ ${attempts} -lt 10 ]]; do
-      local idx
-      idx=$(kubectl get vpol "$vpol" \
-        -o jsonpath='{range .spec.matchConditions[*]}{.name}{"\n"}{end}' \
-        | grep -n '^scope-to-test-' | head -1 | cut -d: -f1) || true
-      [[ -z "$idx" ]] && break
+    # Remove scope-to-test-ns matchCondition left by parallel chainsaw tests.
+    # Uses grep to find the index, then JSON patch to delete it. No-op if absent.
+    # A stale scope-to-test-ns would limit policy enforcement to the test namespace,
+    # so we log loudly on failure rather than suppressing errors.
+    local idx
+    idx=$(kubectl get vpol "$vpol" \
+      -o jsonpath='{range .spec.matchConditions[*]}{.name}{"\n"}{end}' \
+      | grep -n '^scope-to-test-ns$' | head -1 | cut -d: -f1) || true
+    if [[ -n "$idx" ]]; then
       local zero_idx=$((idx - 1))
       if ! kubectl patch vpol "$vpol" --type=json \
            -p "[{\"op\":\"remove\",\"path\":\"/spec/matchConditions/${zero_idx}\"}]"; then
-        echo -e "${_RED}WARNING: failed to remove stale scope-to-test-* from ${vpol} at index ${zero_idx}${_NC}"
-        echo -e "${_RED}  This matchCondition may silently exempt resources from enforcement!${_NC}"
-        break
-      fi
-      attempts=$((attempts + 1))
-    done
-  done
-}
-
-# Patch all IVPols to Audit. Populates SAVED_IVPOL_ACTIONS for restore_ivpols.
-# Unlike VPols, IVPols don't have ValidatingAdmissionPolicyBindings, so the
-# webhook-settle window after quiet_* is the only sync we need.
-quiet_ivpols() {
-  declare -gA SAVED_IVPOL_ACTIONS
-  local all_ivpols
-  all_ivpols=$(kubectl get ivpol --no-headers -o custom-columns=":metadata.name" 2>/dev/null || true)
-  if [[ -z "$all_ivpols" ]]; then return 0; fi
-
-  echo -e "${_CYN}Setup: Set all ivpols to Audit${_NC}"
-  for ivpol in $all_ivpols; do
-    local current
-    if ! current=$(kubectl get ivpol "$ivpol" -o jsonpath='{.spec.validationActions[0]}' 2>&1); then
-      echo -e "${_RED}ERROR: could not read ${ivpol}: ${current}${_NC}"
-      return 1
-    fi
-    current="${current:-Audit}"
-    SAVED_IVPOL_ACTIONS[$ivpol]="$current"
-    if [ "$current" != "Audit" ]; then
-      if ! kubectl patch ivpol "$ivpol" --type=json \
-           -p '[{"op":"replace","path":"/spec/validationActions","value":["Audit"]}]'; then
-        echo -e "${_RED}ERROR: could not quiet ${ivpol}, aborting${_NC}"
-        return 1
+        echo -e "${_RED}WARNING: failed to remove stale scope-to-test-ns from ${vpol} at index ${zero_idx}${_NC}"
+        echo -e "${_RED}  This matchCondition may limit enforcement to the test namespace only!${_NC}"
       fi
     fi
-  done
-}
-
-# Restore IVPol validationActions and remove stale scope-to-test-* matchConditions.
-# Called from EXIT traps; continues on failure. Mirrors restore_vpols.
-restore_ivpols() {
-  local saved_count
-  set +u
-  saved_count=${#SAVED_IVPOL_ACTIONS[@]}
-  set -u
-  if [[ ${saved_count} -eq 0 ]]; then return 0; fi
-  echo -e "${_CYN}Cleanup: Restore ivpol validationActions${_NC}"
-  for ivpol in "${!SAVED_IVPOL_ACTIONS[@]}"; do
-    local original="${SAVED_IVPOL_ACTIONS[$ivpol]}"
-    if ! kubectl patch ivpol "$ivpol" --type=json \
-         -p "[{\"op\":\"replace\",\"path\":\"/spec/validationActions\",\"value\":[\"${original}\"]}]"; then
-      echo -e "${_YEL}Cleanup: could not restore ${ivpol}, continuing with matchCondition cleanup${_NC}"
-    fi
-    local attempts=0
-    while [[ ${attempts} -lt 10 ]]; do
-      local idx
-      idx=$(kubectl get ivpol "$ivpol" \
-        -o jsonpath='{range .spec.matchConditions[*]}{.name}{"\n"}{end}' \
-        | grep -n '^scope-to-test-' | head -1 | cut -d: -f1) || true
-      [[ -z "$idx" ]] && break
-      local zero_idx=$((idx - 1))
-      if ! kubectl patch ivpol "$ivpol" --type=json \
-           -p "[{\"op\":\"remove\",\"path\":\"/spec/matchConditions/${zero_idx}\"}]"; then
-        echo -e "${_RED}WARNING: failed to remove stale scope-to-test-* from ${ivpol} at index ${zero_idx}${_NC}"
-        echo -e "${_RED}  This matchCondition may silently exempt resources from enforcement!${_NC}"
-        break
-      fi
-      attempts=$((attempts + 1))
-    done
   done
 }
 
@@ -398,37 +311,23 @@ restore_mpols() {
         fi
       done <<< "$idxs"
     fi
-  done
-  QUIETED_MPOLS=()
-}
-
-# Strip scope-to-test-ns left on mpols by parallel chainsaw tests. Sweeps ALL
-# mpols, not QUIETED_MPOLS.
-restore_mpol_scope() {
-  local all_mpols
-  all_mpols=$(kubectl get mpol --no-headers -o custom-columns=":metadata.name" 2>/dev/null || true)
-  if [[ -z "$all_mpols" ]]; then return 0; fi
-  echo -e "${_CYN}Cleanup: Remove scope-to-test-ns from mpols${_NC}"
-  for mpol in $all_mpols; do
-    # Loop because removing an index shifts later ones down; bounded to avoid
-    # an infinite loop if a patch keeps failing.
-    local attempts=0
-    while [[ ${attempts} -lt 10 ]]; do
-      local idx
-      idx=$(kubectl get mpol "$mpol" \
-        -o jsonpath='{range .spec.matchConditions[*]}{.name}{"\n"}{end}' \
-        | grep -n '^scope-to-test-ns$' | head -1 | cut -d: -f1) || true
-      [[ -z "$idx" ]] && break
-      local zero_idx=$((idx - 1))
+    # Remove scope-to-test-ns matchCondition left by parallel chainsaw tests.
+    # A stale scope-to-test-ns would limit the mutator to the (now-deleted)
+    # chainsaw namespace, so we log loudly on failure.
+    local scope_idx
+    scope_idx=$(kubectl get mpol "$mpol" \
+      -o jsonpath='{range .spec.matchConditions[*]}{.name}{"\n"}{end}' \
+      | grep -n '^scope-to-test-ns$' | head -1 | cut -d: -f1) || true
+    if [[ -n "$scope_idx" ]]; then
+      local zero_idx=$((scope_idx - 1))
       if ! kubectl patch mpol "$mpol" --type=json \
            -p "[{\"op\":\"remove\",\"path\":\"/spec/matchConditions/${zero_idx}\"}]"; then
         echo -e "${_RED}WARNING: failed to remove stale scope-to-test-ns from ${mpol} at index ${zero_idx}${_NC}"
         echo -e "${_RED}  This matchCondition may limit the mutator to the test namespace only!${_NC}"
-        break
       fi
-      attempts=$((attempts + 1))
-    done
+    fi
   done
+  QUIETED_MPOLS=()
 }
 
 QUIET_CPOLS_DURING_CEL_TESTS=(

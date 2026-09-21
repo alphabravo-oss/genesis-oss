@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.tempo.enabled }}
 {{- /* Create a cleaned copy of tempo config and merge deprecated paths into current paths */ -}}
 {{- $tempoPackage := deepCopy .Values.tempo -}}
@@ -103,7 +102,11 @@ routes:
       - grafana.com
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       tempo:3200:
         from:
@@ -119,6 +122,7 @@ networkPolicies:
             alloy-alloy-logs@alloy/alloy-logs: {{ .Values.alloy.enabled }}
             alloy-alloy-receiver@alloy/alloy-receiver: {{ .Values.alloy.enabled }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       tempo:
         to:
@@ -129,8 +133,18 @@ networkPolicies:
             storage-subnets: {{ or (ne $storageMode "local") (not (empty .Values.tempo.objectStorage.endpoint )) }}
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
-    enabled: {{ $istioHardenedEnabled }}
+    enabled: {{ or (dig "istio" "hardened" "enabled" false .Values.tempo.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.tempo.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.tempo.values .) }}
 
 bbtests:
   enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}

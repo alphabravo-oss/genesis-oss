@@ -1,5 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettingsGitlabRunner := mergeOverwrite (deepCopy .Values.flux) .Values.addons.gitlabRunner.flux -}}
+{{- $fluxSettingsGitlabRunner := merge .Values.addons.gitlabRunner.flux .Values.flux -}}
 {{- if .Values.addons.gitlabRunner.enabled }}
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease

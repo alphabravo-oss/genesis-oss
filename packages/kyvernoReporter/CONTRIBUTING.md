@@ -9,6 +9,8 @@ This repository uses the following conventions:
 * [Semantic Versioning](https://semver.org/)
 * [Keep a Changelog](https://keepachangelog.com/)
 * [Conventional Commits](https://www.conventionalcommits.org/)
+* [Policy Naming Guide](./docs/naming.md)
+* Scripted framework for testing.  See the [Testing Documentation](./docs/testing.md) for details.
 
 Development requires the following tools
 
@@ -24,7 +26,7 @@ To contribute a change:
 1. Ensure the issue has proper `Milestone` and `Iteration`
 1. Create a branch in the repository using your issue number as a prefix
 1. Make changes in code and push to your branch
-1. Write test cases.
+1. Write test cases by following the [testing documentation](docs/testing.md).
 1. Make commits using the [Conventional Commits](https://www.conventionalcommits.org/) format
 1. Update `CHANGELOG.md` using the [Keep a Changelog](https://keepachangelog.com) format
 1. Open a merge request into the `main` branch

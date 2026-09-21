@@ -38,9 +38,3 @@ spec:
         file: pod-all.yaml
     - assert:
         file: pod-all-mutated.yaml
-  - name: step-03
-    try:
-    - apply:
-        file: dep-bare.yaml
-    - assert:
-        file: dep-bare-mutated.yaml

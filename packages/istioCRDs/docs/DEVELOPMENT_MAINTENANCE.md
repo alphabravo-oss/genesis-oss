@@ -26,6 +26,15 @@ BigBang makes modifications to the upstream helm chart. The full list of changes
 1. In `/chart/values.yaml` verify all the image tags to the new version are updated.
 1. Verify `/CHANGELOG.md` with an entry for "upgrade to app version X.X.X chart version X.X.X-bb.X". Or, whatever description is appropriate.
 1. Verify the `/README.md` or follow the [gluon library script](https://repo1.dso.mil/platform-one/big-bang/apps/library-charts/gluon/-/blob/master/docs/bb-package-readme.md).
+1. Verify `/chart/Chart.yaml` to the appropriate versions. The annotation version should match the `appVersion`.
+
+    ```yaml
+    version: X.X.X-bb.X
+    appVersion: X.X.X
+    annotations:
+      dev.bigbang.mil/applicationVersions: |
+        - CHANGEME: X.X.X
+    ```
 
 1. Update `annotations.helm.sh/images` section in `/chart/Chart.yaml` to fix references to updated packages (if needed).
 1. Use a development environment to deploy and test. See more detailed testing instructions below. Also test an upgrade by deploying the old version first and then deploying the new version.

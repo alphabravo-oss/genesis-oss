@@ -38,43 +38,65 @@ kubectl -n kyverno get pods
 
 Create a Policy Resource as shown below. The validation rule is implemented using a regex expression match against te tier label in metadata section of Pod spec. Validation fails if the label is missing.
 
-When this is applied in the kubernetes cluster, the Kyverno custom controller that is watching ValidatingPolicy objects updates its configuration to check for the label tier during the creation request for a new Pod. If the label is missing, request is denied by the admission control.
+When this is applied in the kubernetes cluster, the Kyverno custom controller that is watching ClusterPolicy objects updates its configuration to check for the label tier during the creation request for a new Pod. If the label is missing, request is denied by the admission control.
 
 ```
-apiVersion: policies.kyverno.io/v1
-kind: ValidatingPolicy
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
 metadata:
   name: require-tier-label
 spec:
-  validationActions:
-  - Deny
-  matchConstraints:
-    resourceRules:
-    - apiGroups: [""]
-      apiVersions: ["v1"]
-      operations: ["CREATE", "UPDATE"]
-      resources: ["pods"]
-  validations:
-  - expression: "has(object.metadata.labels) && 'tier' in object.metadata.labels && object.metadata.labels.tier != ''"
-    message: "label 'tier' is required"
+  validationFailureAction: enforce
+  rules:
+  - name: check-for-label
+    match:
+      resources:
+        kinds:
+        - Pod
+    validate:
+      message: "label 'tier' is required"
+      pattern:
+        metadata:
+          labels:
+            tier: "?*"
 ```
 
-Verify the require-tier-label ValidatingPolicy resource as follows:
+Verify the require-tier-label ClusterPolicy resource as follows:
 
-kubectl describe vpol require-tier-label
+kubectl describe cpol require-tier-label
 
 ```
-Status:
-  Condition Status:
-    Conditions:
-      Message:  Webhook configured.
-      Reason:   Succeeded
-      Status:   True
-      Type:     WebhookConfigured
-    Ready:      true
+  rules:
+  - match:
+      resources:
+        kinds:
+        - Pod
+    name: check-for-label
+    validate:
+      message: label 'tier' is required
+      pattern:
+        metadata:
+          labels:
+  - match:
+      resources:
+        kinds:
+        - DaemonSet
+        - Deployment
+        - Job
+        - StatefulSet
+    name: autogen-check-for-label
+    validate:
+      message: label 'tier' is required
+      pattern:
+        spec:
+          template:
+            metadata:
+              labels:
+                tier: ?*
+
 ```
 
-Note that `ValidatingPolicy` does not autogenerate matching rules for DaemonSet, Deployment, StatefulSet and Job. If you want the policy enforced on the Pod controllers as well, add them to `matchConstraints.resourceRules` or set `spec.autogen`.
+Note that Kyverno has automatically included DaemonSet, Deployment, StatefulSet and Job in addition to Pod to apply the policy, as these resources also create a Pod.
 
 Try to create a Pod as follows:
 

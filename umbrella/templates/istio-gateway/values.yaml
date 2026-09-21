@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- define "bigbang.istio-gateway-secrets" -}}
 {{- $root := . -}}
 {{- $enabledGateways := include "enabledGateways" $ | fromYaml }}
@@ -8,12 +7,11 @@
 {{- if and (typeIs "map[string]interface {}" $gw) (hasKey $gw "overlays") }}
   {{ $_ := unset $gw.overlays "gatewayCerts" }}
 {{- end }}
-{{ include "values-secret" (dict
-  "root" $root
+{{ include "values-secret" (dict 
+  "root" $root 
   "name" (printf "istio-%s-gateway" $name)
   "defaults" ($gw.defaults | toYaml)
-  "package" (dict "values" $gw.overlays)
-  "injectCommonDefaults" false
+  "package" (dict "values" $gw.overlays "disableAutomaticPassthroughValues" true)
 ) }}
 {{- end }}
 {{- end }}

@@ -171,8 +171,8 @@ alloy:
 ```
 
 Testing Steps:
-- Go to [https://grafana.dev.bigbang.mil](https://grafana.dev.bigbang.mil) in your browser and login with [default credentials](https://docs-bigbang.dso.mil/latest/docs/guides/using-bigbang/default-credentials/).
-  - Navigate to `Connections -> Data sources -> Loki`
+- Go to [https://grafana.dev.bigbang.mil](https://grafana.dev.bigbang.mil) in your browser and login with [default credentials](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/guides/using-bigbang/default-credentials.md).
+  - Navigate to `Configuration -> Data sources -> Loki`
   - Click on `Save & test` and ensure `Data source successfully connected.` message appears
   - Navigate to `Dashboards` and then click on ``Loki Dashboard Quick Search`` and validate that data is loaded
 - Log into [Prometheus](https://prometheus.dev.bigbang.mil/).

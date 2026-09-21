@@ -361,44 +361,6 @@ autogen:
 {{- end }}
 {{- end -}}
 
-{{/* matchConstraints resourceRules for pod controllers, derived from the same
-     autogenControllers value as cel-autogenControllers. JSONPatch MutatingPolicies
-     cannot rely on Kyverno autogen (it does not rewrite JSONPatch paths), so they
-     match the controllers directly and use a kind-aware expression to target
-     spec.template.spec. Emits nothing when autogenControllers is "none". */}}
-{{- define "bb-kyverno-policies.cel-controllerResourceRules" -}}
-{{- $name := .name -}}
-{{- $perPolicy := dig $name "autogenControllers" "" .Values.celPoliciesBeta -}}
-{{- $globalBeta := default "" .Values.celPoliciesBeta.autogenControllers -}}
-{{- $controllers := default (default .Values.autogenControllers $globalBeta) $perPolicy -}}
-{{- if and $controllers (ne (lower $controllers) "none") }}
-{{- $apps := list -}}
-{{- $batch := list -}}
-{{- range (splitList "," $controllers) }}
-{{- $controller := trim . }}
-{{- if eq $controller "Deployment" }}{{- $apps = append $apps "deployments" -}}
-{{- else if eq $controller "ReplicaSet" }}{{- $apps = append $apps "replicasets" -}}
-{{- else if eq $controller "DaemonSet" }}{{- $apps = append $apps "daemonsets" -}}
-{{- else if eq $controller "StatefulSet" }}{{- $apps = append $apps "statefulsets" -}}
-{{- else if eq $controller "Job" }}{{- $batch = append $batch "jobs" -}}
-{{- else if eq $controller "CronJob" }}{{- $batch = append $batch "cronjobs" -}}
-{{- end }}
-{{- end }}
-{{- if $apps }}
-- apiGroups:   ["apps"]
-  apiVersions: ["v1"]
-  operations:  ["CREATE", "UPDATE"]
-  resources:   [{{ range $i, $r := $apps }}{{ if $i }}, {{ end }}{{ $r | quote }}{{ end }}]
-{{- end }}
-{{- if $batch }}
-- apiGroups:   ["batch"]
-  apiVersions: ["v1"]
-  operations:  ["CREATE", "UPDATE"]
-  resources:   [{{ range $i, $r := $batch }}{{ if $i }}, {{ end }}{{ $r | quote }}{{ end }}]
-{{- end }}
-{{- end }}
-{{- end -}}
-
 {{/* Namespace exclusion via matchConditions CEL.
      CPol equivalent: kyverno-policies.exclude helper (lines 116-147 of _helpers.tpl).
 
@@ -410,14 +372,10 @@ autogen:
      default is exclude.any[].resources.namespaces: [kube-system], which maps directly to
      excludeNamespaces: [kube-system].
 
-     Most policies compare against request.namespace, not object.metadata.namespace. With
-     autogenControllers, Kyverno rewrites object.* to the embedded pod template
-     (object.spec.template.*), and a pod template has no metadata.namespace, so
-     object.metadata.namespace would throw "no such key: namespace" and fail closed.
-     request.namespace stays the controller's namespace and is left untouched by autogen.
-     Namespace-targeting policies are the special case: the resource is cluster-scoped, so
-     callers can override the compared field to object.metadata.name while reusing the same
-     merged values wiring.
+     Most policies need to compare against object.metadata.namespace because they validate
+     namespaced resources. Namespace-targeting policies are the special case: the resource is
+     cluster-scoped, so callers can override the compared field to object.metadata.name while
+     reusing the same merged values wiring.
 
      NOT COVERED by this helper (use celPoliciesBeta.<name>.matchConditions instead):
      - exclude.all semantics (AND logic across multiple conditions)
@@ -428,7 +386,7 @@ autogen:
      Tests: vpol-shared-helpers_test.yaml */}}
 {{- define "bb-kyverno-policies.cel-excludeNamespacesBy" -}}
 {{- $name := .name -}}
-{{- $field := default "request.namespace" .field -}}
+{{- $field := default "object.metadata.namespace" .field -}}
 {{- $global := default (list) .Values.celPoliciesBeta.excludeNamespaces -}}
 {{- $perPolicy := default (list) (dig $name "excludeNamespaces" nil .Values.celPoliciesBeta) -}}
 {{- $merged := concat $global $perPolicy | uniq -}}

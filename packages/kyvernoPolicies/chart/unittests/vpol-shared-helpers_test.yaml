@@ -493,7 +493,7 @@ tests:
           path: spec.matchConditions
           content:
             name: exclude-namespaces
-            expression: '!(request.namespace in ["kube-system"])'
+            expression: '!(object.metadata.namespace in ["kube-system"])'
 
   - it: "excludeNamespaces: per-policy generates matchCondition"
     set:
@@ -508,7 +508,7 @@ tests:
           path: spec.matchConditions
           content:
             name: exclude-namespaces
-            expression: '!(request.namespace in ["istio-system"])'
+            expression: '!(object.metadata.namespace in ["istio-system"])'
 
   - it: "excludeNamespaces: merges global + per-policy, deduplicates"
     set:
@@ -527,7 +527,7 @@ tests:
           path: spec.matchConditions
           content:
             name: exclude-namespaces
-            expression: '!(request.namespace in ["kube-system","istio-system","flux-system"])'
+            expression: '!(object.metadata.namespace in ["kube-system","istio-system","flux-system"])'
 
   - it: "excludeNamespaces: coexists with user-supplied matchConditions"
     set:
@@ -545,7 +545,7 @@ tests:
           path: spec.matchConditions
           content:
             name: exclude-namespaces
-            expression: '!(request.namespace in ["kube-system"])'
+            expression: '!(object.metadata.namespace in ["kube-system"])'
       - contains:
           path: spec.matchConditions
           content:

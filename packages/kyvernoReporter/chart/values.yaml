@@ -67,6 +67,7 @@ bbtests:
       cypress_reporter_ns: kyverno-reporter
       cypress_policyreporter_ui: http://policy-reporter-ui.kyverno-reporter.svc.cluster.local:8080
   scripts:
+    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.5
     envs:
       KYVERNO_REPORTER_URL: 'http://policy-reporter.kyverno-reporter.svc:8080'
   volumes: []
@@ -85,7 +86,7 @@ upstream:
     registry: registry1.dso.mil
     repository: ironbank/opensource/kyverno/policy-reporter
     pullPolicy: IfNotPresent
-    tag: 3.10.0
+    tag: 3.7.4
     priorityClassName: ""
 
   ui:
@@ -94,7 +95,7 @@ upstream:
       registry: registry1.dso.mil
       repository: ironbank/nirmata/policy-reporter/policy-reporter-ui
       pullPolicy: IfNotPresent
-      tag: "2.8.1"
+      tag: "2.5.4"
     imagePullSecrets: 
       - name: private-registry
     podLabels:
@@ -112,7 +113,7 @@ upstream:
         registry: registry1.dso.mil
         repository: ironbank/opensource/kyverno/policy-reporter/kyverno-plugin
         pullPolicy: IfNotPresent
-        tag: "0.6.2"
+        tag: "0.6.1"
       imagePullSecrets:
         - name: private-registry
       podLabels:

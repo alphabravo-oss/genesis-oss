@@ -12,11 +12,8 @@ spec:
     try:
     - apply:
         file: namespace.yaml
-    # template: false so chainsaw doesn't try to evaluate the PolicyException's
-    # CEL matchCondition (which starts with "(") as a JMESPath template.
     - apply:
         file: ../policy.yaml
-        template: false
     - assert:
         file: policy-ready.yaml
     - assert:
@@ -119,40 +116,3 @@ spec:
         file: daemonset-allowed.yaml
     - assert:
         file: daemonset-allowed-unchanged.yaml
-
-  - name: step-16-daemonset-pod-generatename-deny
-    try:
-    - apply:
-        file: daemonset-denied.yaml
-    - assert:
-        file: daemonset-denied-pod-mutated.yaml
-
-  - name: step-17-enforce-disallow-vpol
-    try:
-    - apply:
-        file: disallow-vpol-enforce.yaml
-    - assert:
-        resource:
-          apiVersion: policies.kyverno.io/v1
-          kind: ValidatingPolicy
-          metadata:
-            name: disallow-auto-mount-service-account-token-cel
-          status:
-            conditionStatus:
-              ready: true
-
-  - name: step-18-allowlisted-pod-exempted
-    try:
-    - apply:
-        file: pod-exempt.yaml
-    - assert:
-        file: pod-exempt-mutated.yaml
-
-  - name: step-19-unlisted-token-pod-denied
-    try:
-    - apply:
-        file: pod-token-unlisted.yaml
-        expect:
-        - check:
-            ($error != null): true
-            (contains($error, 'disallow-auto-mount-service-account-token-cel')): true

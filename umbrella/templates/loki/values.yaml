@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.loki.enabled }}
 {{- /* Create a cleaned copy of loki config and merge deprecated paths into current paths */ -}}
 {{- $lokiPackage := deepCopy .Values.loki -}}
@@ -28,8 +27,18 @@ clusterName: ""
 openshift: {{ .Values.openshift }}
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
-    enabled: {{ $istioHardenedEnabled }}
+    enabled: {{ or (dig "istio" "hardened" "enabled" false .Values.loki.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.loki.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.loki.values .) }}
 
 routes:
   inbound:
@@ -66,7 +75,11 @@ image:
   pullPolicy: {{ .Values.imagePullPolicy }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       logging-loki:3100:
         from:
@@ -91,6 +104,7 @@ networkPolicies:
           k8s:
             minio-operator@minio-operator/minio-operator: {{ $minioEnabled }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       logging-loki:
         to:
@@ -166,6 +180,12 @@ loki:
     filesystem:
       directory: /var/loki/chunks
   {{- end }}
+  # The bbctl violations dashboard output can be larger than the default loki line limit of 256KB
+  # Setting max_line_size = 0 removes the limit so the data can be ingested properly
+  {{- if .Values.bbctl.enabled }}
+  limits_config:
+    max_line_size: 0
+  {{- end }}
   {{- if $istioEnabled }}
   podAnnotations:
     {{ include "istioAnnotation" . }}
@@ -221,10 +241,6 @@ backend:
           fieldPath: status.podIP
 gateway:
   enabled: true
-  {{- if $istioEnabled }}
-  podAnnotations:
-    {{ include "istioAnnotation" . }}
-  {{- end }}
   extraArgs:
     - -config.expand-env=true
   extraEnv:
@@ -248,10 +264,6 @@ backend:
 
 gateway:
   enabled: true
-  {{- if $istioEnabled }}
-  podAnnotations:
-    {{ include "istioAnnotation" . }}
-  {{- end }}
   extraArgs:
     - -config.expand-env=true
   extraEnv:

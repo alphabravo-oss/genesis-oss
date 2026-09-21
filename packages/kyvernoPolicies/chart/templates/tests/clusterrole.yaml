@@ -23,7 +23,6 @@ rules:
   - validatingpolicies
   - mutatingpolicies
   - generatingpolicies
-  - imagevalidatingpolicies
   verbs:
   - create
   - delete
@@ -52,9 +51,7 @@ rules:
   - leases
   - namespaces
   - pods
-  - pods/attach
   - pods/ephemeralcontainers
-  - pods/exec
   - persistentvolumes
   - secrets
   - serviceaccounts

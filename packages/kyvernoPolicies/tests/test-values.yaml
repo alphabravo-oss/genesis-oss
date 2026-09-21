@@ -1,8 +1,6 @@
 #########################
 # Disable Core Packages #
 #########################
-alloy:
-  enabled: false
 monitoring:
   enabled: false
 grafana:
@@ -182,31 +180,15 @@ kyvernoPolicies:
       disallow-nodeport-services-cel:
         enabled: false
         validationFailureAction: Audit
-      disallow-pod-exec-cel:
-        enabled: false
-        validationFailureAction: Audit
       disallow-privilege-escalation-cel:
         enabled: false
         validationFailureAction: Audit
       disallow-privileged-containers-cel:
         enabled: false
         validationFailureAction: Audit
-      disallow-rbac-on-default-serviceaccounts-cel:
-        enabled: false
-        validationFailureAction: Audit
       disallow-selinux-options-cel:
         enabled: false
         validationFailureAction: Audit
-      disallow-tolerations-cel:
-        enabled: false
-        validationFailureAction: Audit
-        parameters:
-          disallow:
-            - key: 'node-role\.kubernetes\.io/master'
-            - key: 'taint-with-value'
-              value: 'forbidden-value'
-            - key: 'taint-with-effect'
-              effect: 'PreferNoSchedule'
       require-annotations-cel:
         enabled: false
         validationFailureAction: Audit
@@ -221,9 +203,6 @@ kyvernoPolicies:
         enabled: false
         validationFailureAction: Audit
       require-drop-all-capabilities-cel:
-        enabled: false
-        validationFailureAction: Audit
-      require-image-signature-cel:
         enabled: false
         validationFailureAction: Audit
       require-istio-on-namespaces-cel:
@@ -251,25 +230,13 @@ kyvernoPolicies:
       require-probes-cel:
         enabled: false
         validationFailureAction: Audit
-      restrict-apparmor-cel:
-        enabled: false
-        validationFailureAction: Audit
-      restrict-capabilities-cel:
-        enabled: false
-        validationFailureAction: Audit
       restrict-proc-mount-cel:
         enabled: false
         validationFailureAction: Audit
       restrict-seccomp-cel:
         enabled: false
         validationFailureAction: Audit
-      restrict-selinux-type-cel:
-        enabled: false
-        validationFailureAction: Audit
       restrict-sysctls-cel:
-        enabled: false
-        validationFailureAction: Audit
-      require-requests-equal-limits-cel:
         enabled: false
         validationFailureAction: Audit
       require-ro-rootfs-cel:
@@ -287,61 +254,12 @@ kyvernoPolicies:
         parameters:
           allow:
             - '.*\.allowed\.internal'
-      restrict-group-id-cel:
-        enabled: false
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - min: 1000
-          deny:
-            - min: 1500
-              max: 1599
-      restrict-host-path-mount-cel:
-        enabled: false
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - /tmp/allowed
-            - /var/log/.*
-      restrict-host-path-mount-pv-cel:
-        enabled: false
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - /tmp/allowed
-            - /var/lib/rancher/k3s/storage/pvc-*
-      restrict-host-path-write-cel:
-        enabled: false
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - /tmp/allowed
-            - /var/log/.*
-      restrict-host-ports-cel:
-        enabled: false
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - min: 63999
-              max: 63999
-            - min: 64000
-              max: 64999
-            - min: 65001
       restrict-image-registries-cel:
         enabled: false
         validationFailureAction: Audit
         parameters:
           allow:
             - registry1.dso.mil/
-      restrict-user-id-cel:
-        enabled: false
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - min: 1000
-          deny:
-            - min: 1500
-              max: 1599
       restrict-volume-types-cel:
         enabled: false
         validationFailureAction: Audit
@@ -360,33 +278,3 @@ kyvernoPolicies:
               deny:
                 - api-access-denied-.*
                 - api-access-overlap-.*
-      update-automountserviceaccounttokens-default-cel:
-        enabled: false
-        namespaces:
-          - update-automountserviceaccounttokens-default-2
-      update-image-pull-policy-cel:
-        enabled: false
-        parameters:
-          # Chained config so the live/offline suites exercise the from filter
-          # and last-wins ordering, not just an unconditional set. Entry 1
-          # forces every tagged image to Never; entry 2 rewrites Never to
-          # Always. A tagged image ending at Always proves entry 2's from
-          # matched entry 1's output (chaining). Net result still matches the
-          # simple fixtures: tagged -> Always, digest -> IfNotPresent.
-          update:
-            - to: Never
-            - from: Never
-              to: Always
-      update-image-registry-cel:
-        enabled: false
-        parameters:
-          # `from` is an RE2 regex (anchored, escaped dots here). Chained so the
-          # suite exercises multi-entry ordering: entry 1 rewrites
-          # replace.image.registry -> intermediate.registry, entry 2 rewrites
-          # that to registry1.dso.mil. An image ending at registry1.dso.mil
-          # proves entry 2's from matched entry 1's output (chaining).
-          update:
-            - from: '^replace\.image\.registry'
-              to: intermediate.registry
-            - from: '^intermediate\.registry'
-              to: registry1.dso.mil

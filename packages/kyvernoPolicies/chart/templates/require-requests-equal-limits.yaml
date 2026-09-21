@@ -24,7 +24,7 @@ metadata:
   labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
 spec:
   {{- include "kyverno-policies.webhookTimeoutSeconds" (merge (dict "name" $name) .) | indent 2 }}
-  validationFailureAction: {{ $failureAction }}
+  validationFailureAction: {{ $failureAction }} 
   background: false
   failurePolicy: {{ default .Values.failurePolicy (include "setFailurePolicy" $failureAction) }}
   rules:

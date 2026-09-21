@@ -1,6 +1,6 @@
 ## Overview
 
-This package contains an extensible and configurable abstract installation of Grafana based on the [upstream chart](https://github.com/grafana-community/helm-charts/tree/main/charts/grafana) provided by the Grafana community.
+This package contains an extensible and configurable abstract installation of Grafana based on the [upstream chart](https://github.com/grafana/helm-charts/tree/main/charts/grafana) provided by grafana.
 
 Grafana is an open-source analytics and interactive visualization web application. It provides a powerful platform for monitoring and observability, allowing users to query, visualize, alert on, and explore metrics, logs, and traces from various data sources.
 

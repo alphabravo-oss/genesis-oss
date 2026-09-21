@@ -11,7 +11,7 @@ metadata:
     policies.kyverno.io/subject: Pod
     policies.kyverno.io/description: >-
       Privilege escalation, such as via set-user-ID or set-group-ID file mode, should not be allowed.
-      This policy ensures the `allowPrivilegeEscalation` field is either undefined or set to `false`.
+      This policy ensures the `allowPrivilegeEscalation` field is set to `false`.
     policies.bigbang.dev/lifecycle: beta
     policies.bigbang.dev/origin: https://github.com/kyverno/policies/blob/main/pod-security-vpol/restricted/disallow-privilege-escalation/disallow-privilege-escalation.yaml
   labels: {{- include "kyverno-policies.labels" . | nindent 4 }}
@@ -52,8 +52,8 @@ spec:
   validations:
     - expression: >-
         variables.allContainers.all(container,
-        container.?securityContext.?allowPrivilegeEscalation.orValue(false) == false)
+        container.?securityContext.?allowPrivilegeEscalation.orValue(true) == false)
       message: >-
         Privilege escalation is disallowed.
-        All containers must leave securityContext.allowPrivilegeEscalation undefined or set it to `false`.
+        All containers must set securityContext.allowPrivilegeEscalation to `false`.
 {{- end -}}

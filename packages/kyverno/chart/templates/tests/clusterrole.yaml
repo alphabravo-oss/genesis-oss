@@ -10,21 +10,13 @@ metadata:
 rules:
 - apiGroups:
   - ""
+  - "kyverno.io"
   resources:
   - pods
   - pods/log
   - secrets
   - namespaces
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - watch
-- apiGroups:
-  - "policies.kyverno.io"
-  resources:
-  - generatingpolicies
+  - clusterpolicies
   verbs:
   - create
   - delete

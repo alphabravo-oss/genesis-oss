@@ -22,7 +22,7 @@ openshift: false
 # See https://docs-bigbang.dso.mil/latest/packages/grafana/docs/enterprise
 enterprise:
   createSecret: false
-  license:
+  license: null
 
 
 ## DO NOT CHANGE
@@ -50,14 +50,19 @@ nodeExporter:
       enabled: true
     darwin:
       enabled: true
+    windows:
+      enabled: true
 kubelet:
   enabled: true
+  namespace: kube-system
 windowsMonitoring:
   enabled: true
 prometheusRemoteWriteDashboards: true
 grafana:
-  forceDeployDashboards: true
-  defaultDashboardsEnabled: true
+  forceDeployDashboards:
+    enabled: true
+  defaultDashboardsEnabled:
+    enabled: true
   operator:
     dashboardsConfigMapRefEnabled: false
     annotations: {}
@@ -137,21 +142,21 @@ routes:
     grafana:
       enabled: '{{ .Values.istio.enabled }}'
       gateways:
-      - istio-gateway/public-ingressgateway
+        - istio-gateway/public-ingressgateway
       hosts:
-      - 'grafana.{{ .Values.domain }}'
+        - 'grafana.{{ .Values.domain }}'
       # Custom HTTP routing to handle /metrics redirect
       http:
-      - match:
-        - uri:
-            prefix: "/metrics"
-        redirect:
-          uri: "/"
-      - route:
-        - destination:
-            host: monitoring-grafana
-            port:
-              number: 80
+        - match:
+            - uri:
+                prefix: "/metrics"
+          redirect:
+            uri: "/"
+        - route:
+            - destination:
+                host: monitoring-grafana
+                port:
+                  number: 80
       selector:
         app.kubernetes.io/name: grafana
 
@@ -181,7 +186,7 @@ bbtests:
           requests: 512Mi
           limits: 2048Mi
 
-# -- Values to pass to [the upstream grafana chart](https://github.com/grafana-community/helm-charts/blob/main/charts/grafana/values.yaml)
+# -- Values to pass to [the upstream grafana chart](https://github.com/grafana/helm-charts/blob/main/charts/grafana/values.yaml)
 # @default -- Upstream chart values
 upstream:
   fullnameOverride: "monitoring-grafana"
@@ -191,20 +196,22 @@ upstream:
     registry: registry1.dso.mil
     repository: ironbank/big-bang/grafana/grafana-plugins
     # Overrides the Grafana image tag whose default is the chart appVersion
-    tag: "13.1.0"
+    tag: "12.4.2"
     pullPolicy: Always
 
     pullSecrets:
     - private-registry
 
   testFramework:
+    enabled: false
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/bats/bats
-      tag: "1.14.0"
+      tag: "1.13.0"
     imagePullPolicy: Always
 
   securityContext:
+    runAsNonRoot: true
     runAsUser: 65532
     runAsGroup: 65532
     fsGroup: 65532
@@ -217,6 +224,8 @@ upstream:
     pullPolicy: Always
 
   downloadDashboards:
+    env: {}
+    envFromSecret: ""
     resources:
       limits:
         cpu: 20m
@@ -224,6 +233,14 @@ upstream:
       requests:
         cpu: 20m
         memory: 20Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
+    envValueFrom: {}
 
   resources:
     requests:
@@ -235,12 +252,27 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/redhat/ubi/ubi9-minimal
-      tag: "9.8"
+      tag: "9.7"
+      sha: ""
       pullPolicy: Always
     resources:
       requests:
         cpu: 100m
         memory: 128Mi
+    securityContext:
+      readOnlyRootFilesystem: false
+      runAsNonRoot: false
+      runAsUser: 0
+      seccompProfile:
+        type: RuntimeDefault
+      capabilities:
+        add:
+          - CHOWN
+        drop:
+          - ALL
+
+  # Administrator credentials when not using an existing secret (see below)
+  adminUser: admin
   adminPassword: prom-operator
 
   ## Grafana's primary configuration
@@ -248,11 +280,16 @@ upstream:
   ## ref: http://docs.grafana.org/installation/configuration/
   ##
   grafana.ini:
+    paths:
+      data: /var/lib/grafana/
+      logs: /var/log/grafana
+      plugins: /var/lib/grafana/plugins
+      provisioning: /etc/grafana/provisioning
     analytics:
       reporting_enabled: false
       check_for_updates: false
-    feature_toggles:
-      splashScreen: false
+    log:
+      mode: console
     grafana_net:
       url: https://grafana.net
     server:
@@ -288,23 +325,36 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/kiwigrid/k8s-sidecar
-      tag: 2.10.1
+      tag: 2.5.4
     imagePullPolicy: Always
     resources:
       requests:
         cpu: 100m
         memory: 100Mi
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      seccompProfile:
+        type: RuntimeDefault
     # Log level default for all sidecars. Can be one of: DEBUG, INFO, WARN, ERROR, CRITICAL. Defaults to INFO
     # logLevel: INFO
+    alerts:
+      enabled: false
     dashboards:
       enabled: true
       # label that the configmaps with dashboards are marked with (can be templated)
+      label: grafana_dashboard
       # value of label that the configmaps with dashboards are set to
       labelValue: "1"
       # logLevel: INFO
+      folder: /tmp/dashboards
       searchNamespace: ALL
       # Method to use to detect ConfigMap changes. With WATCH the sidecar will do a WATCH requests, with SLEEP it will list all ConfigMaps, then sleep for 60 seconds.
+      watchMethod: WATCH
       # search in configmap, secret or both
+      resource: both
       multicluster:
         global:
           enabled: true
@@ -312,19 +362,26 @@ upstream:
           enabled: true
     datasources:
       enabled: true
+      label: grafana_datasource
       # value of label that the configmaps with datasources are set to
       labelValue: "1" #TODO: Confirm this value is used - Otherwise remove datasources section
       # logLevel: INFO
+      searchNamespace: null
       # Method to use to detect ConfigMap changes. With WATCH the sidecar will do a WATCH requests, with SLEEP it will list all ConfigMaps, then sleep for 60 seconds.
+      watchMethod: WATCH
       # search in configmap, secret or both
-      ## Add a seperate remote image renderer deployment/service
+      resource: both
+      resourceName: ""
+  ## Add a seperate remote image renderer deployment/service
   imageRenderer:
-    # Use an existing secret containing the image renderer token under the `token` key.
+    enabled: false
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/grafana/grafana-image-renderer
-      tag: v5.12.1
+      tag: v5.7.3
+      pullPolicy: Always
     service:
+      enabled: true
       portName: 'http-web'
 
   # assertNoLeakedSecrets is a helper function defined in _helpers.tpl that checks if secret

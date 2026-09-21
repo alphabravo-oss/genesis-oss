@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.headlamp.enabled }}
 {{- $headlampPackage := deepCopy .Values.addons.headlamp -}}
 {{- if .Values.addons.headlamp.values }}
@@ -17,11 +16,21 @@
 {{- $domainName := default .Values.domain .Values.hostname }}
 {{- $istioHardenedEnabled := dig "hardened" "enabled" false .Values.istiod.values }}
 istio:
+  enabled: {{ .Values.istiod.enabled }}
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.headlamp.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.headlamp.values .) }}
   sidecar:
     enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       headlamp:
         to:
@@ -31,6 +40,7 @@ networkPolicies:
             kubeAPI: true
             sso: {{ .Values.addons.headlamp.sso.enabled }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       headlamp:4466:
         from:
@@ -72,10 +82,6 @@ routes:
               number: {{ $port }}
       {{- end }}
   outbound:
-    headlamp-bb-tests:
-      enabled: {{ dig "bbtests" "enabled" false .Values.addons.headlamp.values }}
-      hosts:
-        - repo1.dso.mil
     sso:
       enabled: {{ .Values.addons.headlamp.sso.enabled }}
       {{- if $ssoHost }}
@@ -87,9 +93,13 @@ bbtests:
   cypress:
     envs:
       cypress_url: {{ printf "https://headlamp.%s" $domainName | quote }}
-      {{- include "bigbang.cypressKeycloakValues" (dict "package" .Values.addons.headlamp "values" .Values) | nindent 6 }}
 
 domain: {{ $domainName }}
+
+{{- if (eq (include "istioEnabled" .) "true") }}
+annotations:
+  {{ include "istioAnnotation" . }}
+{{- end }}
 
 openshift: {{ .Values.openshift }}
 
@@ -98,10 +108,6 @@ upstream:
     pullPolicy: {{ .Values.imagePullPolicy }}
 
   {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
-  {{- if (eq (include "istioEnabled" .) "true") }}
-  podAnnotations:
-    {{ include "istioAnnotation" . }}
-  {{- end }}
 
   config:
     {{- if .Values.addons.headlamp.sso.enabled }}

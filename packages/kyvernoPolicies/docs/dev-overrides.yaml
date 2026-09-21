@@ -225,31 +225,15 @@ celPoliciesBeta:
   disallow-nodeport-services-cel:
     enabled: true
     validationFailureAction: Audit
-  disallow-pod-exec-cel:
-    enabled: false
-    validationFailureAction: Audit
   disallow-privilege-escalation-cel:
     enabled: true
     validationFailureAction: Audit
   disallow-privileged-containers-cel:
     enabled: true
     validationFailureAction: Audit
-  disallow-rbac-on-default-serviceaccounts-cel:
-    enabled: true
-    validationFailureAction: Audit
   disallow-selinux-options-cel:
     enabled: true
     validationFailureAction: Audit
-  disallow-tolerations-cel:
-    enabled: true
-    validationFailureAction: Audit
-    parameters:
-      disallow:
-        - key: 'node-role\.kubernetes\.io/master'
-        - key: 'taint-with-value'
-          value: 'forbidden-value'
-        - key: 'taint-with-effect'
-          effect: 'PreferNoSchedule'
   require-annotations-cel:
     enabled: true
     validationFailureAction: Audit
@@ -264,9 +248,6 @@ celPoliciesBeta:
     enabled: true
     validationFailureAction: Audit
   require-drop-all-capabilities-cel:
-    enabled: true
-    validationFailureAction: Audit
-  require-image-signature-cel:
     enabled: true
     validationFailureAction: Audit
   require-labels-cel:
@@ -291,25 +272,13 @@ celPoliciesBeta:
   require-probes-cel:
     enabled: true
     validationFailureAction: Audit
-  restrict-apparmor-cel:
-    enabled: true
-    validationFailureAction: Audit
-  restrict-capabilities-cel:
-    enabled: true
-    validationFailureAction: Audit
   restrict-proc-mount-cel:
     enabled: true
     validationFailureAction: Audit
   restrict-seccomp-cel:
     enabled: true
     validationFailureAction: Audit
-  restrict-selinux-type-cel:
-    enabled: true
-    validationFailureAction: Audit
   restrict-sysctls-cel:
-    enabled: true
-    validationFailureAction: Audit
-  require-requests-equal-limits-cel:
     enabled: true
     validationFailureAction: Audit
   require-ro-rootfs-cel:
@@ -327,61 +296,12 @@ celPoliciesBeta:
     parameters:
       allow:
         - '.*\.allowed\.internal'
-  restrict-group-id-cel:
-    enabled: true
-    validationFailureAction: Audit
-    parameters:
-      allow:
-        - min: 1000
-      deny:
-        - min: 1500
-          max: 1599
-  restrict-host-path-mount-cel:
-    enabled: true
-    validationFailureAction: Audit
-    parameters:
-      allow:
-        - /tmp/allowed
-        - /var/log/.*
-  restrict-host-path-mount-pv-cel:
-    enabled: true
-    validationFailureAction: Audit
-    parameters:
-      allow:
-        - /tmp/allowed
-        - /var/lib/rancher/k3s/storage/pvc-*
-  restrict-host-path-write-cel:
-    enabled: true
-    validationFailureAction: Audit
-    parameters:
-      allow:
-        - /tmp/allowed
-        - /var/log/.*
-  restrict-host-ports-cel:
-    enabled: true
-    validationFailureAction: Audit
-    parameters:
-      allow:
-        - min: 63999
-          max: 63999
-        - min: 64000
-          max: 64999
-        - min: 65001
   restrict-image-registries-cel:
     enabled: true
     validationFailureAction: Audit
     parameters:
       allow:
         - registry1.dso.mil/
-  restrict-user-id-cel:
-    enabled: true
-    validationFailureAction: Audit
-    parameters:
-      allow:
-        - min: 1000
-      deny:
-        - min: 1500
-          max: 1599
   restrict-volume-types-cel:
     enabled: true
     validationFailureAction: Audit
@@ -400,24 +320,3 @@ celPoliciesBeta:
           deny:
             - api-access-denied-.*
             - api-access-overlap-.*
-  update-automountserviceaccounttokens-default-cel:
-    enabled: true
-    namespaces:
-      - update-automountserviceaccounttokens-default-2
-  update-image-pull-policy-cel:
-    enabled: true
-    parameters:
-      update:
-        - to: Always
-  update-image-registry-cel:
-    enabled: true
-    parameters:
-      # `from` is an RE2 regex (anchored, escaped dots here). Chained so the suite
-      # exercises multi-entry ordering: entry 1 rewrites replace.image.registry ->
-      # intermediate.registry, entry 2 rewrites that to registry1.dso.mil. Net
-      # result matches the fixtures: replace.image.registry -> registry1.dso.mil.
-      update:
-        - from: '^replace\.image\.registry'
-          to: intermediate.registry
-        - from: '^intermediate\.registry'
-          to: registry1.dso.mil

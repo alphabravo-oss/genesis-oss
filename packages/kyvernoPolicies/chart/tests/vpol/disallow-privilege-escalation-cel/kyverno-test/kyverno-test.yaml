@@ -14,6 +14,8 @@ results:
   - badpod01
   - badpod02
   - badpod03
+  - badpod06
+  - badpod07
   result: fail
 - isValidatingPolicy: true
   kind: Pod
@@ -21,8 +23,6 @@ results:
   resources:
   - goodpod01
   - goodpod03
-  - goodpod06
-  - goodpod07
   result: pass
 - isValidatingPolicy: true
   kind: Deployment

@@ -1,8 +1,7 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "kyvernoPolicies" }}
 
 {{- if (get .Values $pkg).enabled }}
-{{- include "values-secret" (dict "root" $ "package" (dict "values" (fromYaml (include "bigbang.overlays.kyverno-policies" .))) "name" "kyverno-policies" "defaults" (include "bigbang.defaults.kyverno-policies" .) "injectCommonDefaults" false) }}
+{{- include "values-secret" (dict "root" $ "package" (dict "values" (fromYaml (include "bigbang.overlays.kyverno-policies" .))) "name" "kyverno-policies" "defaults" (include "bigbang.defaults.kyverno-policies" .)) }}
 {{- end }}
 
 {{- define "bigbang.defaults.kyverno-policies" -}}
@@ -836,6 +835,7 @@ policies:
 
   # NOTE: This restricts the ability to have PVCs when using a local path provisioner storage class (i.e. k3d default).
   # To override either disable this policy (not ideal) or add an allowed wildcard matching where local paths are provisioned.
+  # See `docs/assets/configs/example/policy-overrides-k3d.yaml` for an example of how to do this for k3d.
   restrict-host-path-mount-pv:
     validationFailureAction: Enforce
 
@@ -1094,6 +1094,10 @@ policies:
           - logging-ek-es-master*
           - logging-ek-kb*
           - logging-ek-metrics*
+      - namespace: fluentbit
+        pods:
+          allow:
+          - fluentbit-script-test
       - namespace: minio-operator
         pods:
           allow:
@@ -1228,7 +1232,6 @@ policies:
         pods:
           allow:
           - fluentbit-fluent-bit-*
-          - fluentbit-script-test
       - namespace: eck-operator
         pods:
           allow:

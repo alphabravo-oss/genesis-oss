@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
 suite: Monitoring istio prometheus rule
 templates:
-  - templates/bigbang/rules/istio-prometheusrule.yaml
+  - templates/bigbang/rules/istio-proxy-mem-prometheusrule.yaml
 release:
   name: monitoring
 capabilities:
@@ -19,25 +19,24 @@ tests:
 
   - it: renders nothing when all rule toggles are false
     set:
-      prometheusRule.IstioSidecarMemModerate: false
-      prometheusRule.IstioSidecarMemHigh: false
-      prometheusRule.Istio5XXResponseCode: false
-      prometheusRule.IstioSidecarEndpointError: false
-      prometheusRule.IstioSidecarListenerConflict: false
-      prometheusRule.IstioAmbientReadinessProbeFailures: false
-      prometheusRule.IstioTCPConnectionFailures: false
+      istio.prometheusRule.IstioSidecarMemModerate: false
+      istio.prometheusRule.IstioSidecarMemHigh: false
+      istio.prometheusRule.IstioConfigValidationFailed: false
+      istio.prometheusRule.Istio5XXResponseCode: false
+      istio.prometheusRule.IstioSidecarEndpointError: false
+      istio.prometheusRule.IstioSidecarListenerConflict: false
     asserts:
       - hasDocuments:
           count: 0
 
-  - it: renders all 7 alerts when all toggles are true
+  - it: renders all 6 alerts when all toggles are true
     asserts:
       - containsDocument:
           apiVersion: monitoring.coreos.com/v1
           kind: PrometheusRule
       - lengthEqual:
           path: spec.groups[0].rules
-          count: 7
+          count: 6
       - equal:
           path: spec.groups[0].rules[0].alert
           value: IstioSidecarMemModerate
@@ -46,29 +45,25 @@ tests:
           value: IstioSidecarMemHigh
       - equal:
           path: spec.groups[0].rules[2].alert
-          value: Istio5XXResponseCode
+          value: IstioConfigValidationFailed
       - equal:
           path: spec.groups[0].rules[3].alert
-          value: IstioSidecarEndpointError
+          value: Istio5XXResponseCode
       - equal:
           path: spec.groups[0].rules[4].alert
-          value: IstioSidecarListenerConflict
+          value: IstioSidecarEndpointError
       - equal:
           path: spec.groups[0].rules[5].alert
-          value: IstioAmbientReadinessProbeFailures
-      - equal:
-          path: spec.groups[0].rules[6].alert
-          value: IstioTCPConnectionFailures
+          value: IstioSidecarListenerConflict
 
-  - it: renders only IstioSidecarMemModerate when its toggle is enabled
+  - it: renders only one alert when single toggle enabled
     set:
-      prometheusRule.IstioSidecarMemModerate: true
-      prometheusRule.IstioSidecarMemHigh: false
-      prometheusRule.Istio5XXResponseCode: false
-      prometheusRule.IstioSidecarEndpointError: false
-      prometheusRule.IstioSidecarListenerConflict: false
-      prometheusRule.IstioAmbientReadinessProbeFailures: false
-      prometheusRule.IstioTCPConnectionFailures: false
+      istio.prometheusRule.IstioSidecarMemModerate: true
+      istio.prometheusRule.IstioSidecarMemHigh: false
+      istio.prometheusRule.IstioConfigValidationFailed: false
+      istio.prometheusRule.Istio5XXResponseCode: false
+      istio.prometheusRule.IstioSidecarEndpointError: false
+      istio.prometheusRule.IstioSidecarListenerConflict: false
     asserts:
       - hasDocuments:
           count: 1
@@ -79,116 +74,11 @@ tests:
           path: spec.groups[0].rules[0].alert
           value: IstioSidecarMemModerate
 
-  - it: renders only IstioSidecarMemHigh when its toggle is enabled
-    set:
-      prometheusRule.IstioSidecarMemModerate: false
-      prometheusRule.IstioSidecarMemHigh: true
-      prometheusRule.Istio5XXResponseCode: false
-      prometheusRule.IstioSidecarEndpointError: false
-      prometheusRule.IstioSidecarListenerConflict: false
-      prometheusRule.IstioAmbientReadinessProbeFailures: false
-      prometheusRule.IstioTCPConnectionFailures: false
+  - it: validates severity levels for memory alerts
     asserts:
-      - hasDocuments:
-          count: 1
-      - lengthEqual:
-          path: spec.groups[0].rules
-          count: 1
       - equal:
-          path: spec.groups[0].rules[0].alert
-          value: IstioSidecarMemHigh
-
-  - it: renders only Istio5XXResponseCode when its toggle is enabled
-    set:
-      prometheusRule.IstioSidecarMemModerate: false
-      prometheusRule.IstioSidecarMemHigh: false
-      prometheusRule.Istio5XXResponseCode: true
-      prometheusRule.IstioSidecarEndpointError: false
-      prometheusRule.IstioSidecarListenerConflict: false
-      prometheusRule.IstioAmbientReadinessProbeFailures: false
-      prometheusRule.IstioTCPConnectionFailures: false
-    asserts:
-      - hasDocuments:
-          count: 1
-      - lengthEqual:
-          path: spec.groups[0].rules
-          count: 1
+          path: spec.groups[0].rules[0].labels.severity
+          value: warning
       - equal:
-          path: spec.groups[0].rules[0].alert
-          value: Istio5XXResponseCode
-
-  - it: renders only IstioSidecarEndpointError when its toggle is enabled
-    set:
-      prometheusRule.IstioSidecarMemModerate: false
-      prometheusRule.IstioSidecarMemHigh: false
-      prometheusRule.Istio5XXResponseCode: false
-      prometheusRule.IstioSidecarEndpointError: true
-      prometheusRule.IstioSidecarListenerConflict: false
-      prometheusRule.IstioAmbientReadinessProbeFailures: false
-      prometheusRule.IstioTCPConnectionFailures: false
-    asserts:
-      - hasDocuments:
-          count: 1
-      - lengthEqual:
-          path: spec.groups[0].rules
-          count: 1
-      - equal:
-          path: spec.groups[0].rules[0].alert
-          value: IstioSidecarEndpointError
-
-  - it: renders only IstioSidecarListenerConflict when its toggle is enabled
-    set:
-      prometheusRule.IstioSidecarMemModerate: false
-      prometheusRule.IstioSidecarMemHigh: false
-      prometheusRule.Istio5XXResponseCode: false
-      prometheusRule.IstioSidecarEndpointError: false
-      prometheusRule.IstioSidecarListenerConflict: true
-      prometheusRule.IstioAmbientReadinessProbeFailures: false
-      prometheusRule.IstioTCPConnectionFailures: false
-    asserts:
-      - hasDocuments:
-          count: 1
-      - lengthEqual:
-          path: spec.groups[0].rules
-          count: 1
-      - equal:
-          path: spec.groups[0].rules[0].alert
-          value: IstioSidecarListenerConflict
-
-  - it: renders only IstioAmbientReadinessProbeFailures when its toggle is enabled
-    set:
-      prometheusRule.IstioSidecarMemModerate: false
-      prometheusRule.IstioSidecarMemHigh: false
-      prometheusRule.Istio5XXResponseCode: false
-      prometheusRule.IstioSidecarEndpointError: false
-      prometheusRule.IstioSidecarListenerConflict: false
-      prometheusRule.IstioAmbientReadinessProbeFailures: true
-      prometheusRule.IstioTCPConnectionFailures: false
-    asserts:
-      - hasDocuments:
-          count: 1
-      - lengthEqual:
-          path: spec.groups[0].rules
-          count: 1
-      - equal:
-          path: spec.groups[0].rules[0].alert
-          value: IstioAmbientReadinessProbeFailures
-
-  - it: renders only IstioTCPConnectionFailures when its toggle is enabled
-    set:
-      prometheusRule.IstioSidecarMemModerate: false
-      prometheusRule.IstioSidecarMemHigh: false
-      prometheusRule.Istio5XXResponseCode: false
-      prometheusRule.IstioSidecarEndpointError: false
-      prometheusRule.IstioSidecarListenerConflict: false
-      prometheusRule.IstioAmbientReadinessProbeFailures: false
-      prometheusRule.IstioTCPConnectionFailures: true
-    asserts:
-      - hasDocuments:
-          count: 1
-      - lengthEqual:
-          path: spec.groups[0].rules
-          count: 1
-      - equal:
-          path: spec.groups[0].rules[0].alert
-          value: IstioTCPConnectionFailures
+          path: spec.groups[0].rules[1].labels.severity
+          value: critical

@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: default
-  namespace: update-automountserviceaccounttokens-default-other
-(automountServiceAccountToken == null): true

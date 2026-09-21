@@ -1,65 +1,65 @@
 umbrella:
   repo: https://github.com/DoD-Platform-One/bigbang
-  tag: 3.33.0
-  commit: c371ef0ed40289038e9661cd0b7d10e5ee40ecfe
+  tag: 3.28.0
+  commit: 4a6c22289f917e11650fe9eebce10085cc1833e8
 packages:
 - key: istioCRDs
   repo: https://repo1.dso.mil/big-bang/product/packages/istio-crds.git
-  tag: 1.30.4-bb.0
-  commit: 41679b719667b22bb10cee691861be97b2eea710
+  tag: 1.30.2-bb.0
+  commit: ffb5d4b4ec779f38bb13f2c210a19f96f3c13646
 - key: istiod
   repo: https://repo1.dso.mil/big-bang/product/packages/istiod.git
-  tag: 1.30.4-bb.0
-  commit: 727f5f1add17cdd6729bdb1c8be92c969784d97d
+  tag: 1.30.2-bb.0
+  commit: 94e1f30d5937af20351f10f4851a5121d8ac7a35
 - key: istioGateway
   repo: https://repo1.dso.mil/big-bang/product/packages/istio-gateway.git
-  tag: 1.30.4-bb.0
-  commit: b72e4781cf29bf2a7ed77eab4c7af02eb3ac6d83
+  tag: 1.30.2-bb.0
+  commit: f1be3a73e0ed284f3916a5150f2c4cb9d0ecefd0
 - key: kiali
   repo: https://repo1.dso.mil/big-bang/product/packages/kiali.git
-  tag: 2.31.0-bb.0
-  commit: f9f7b0f52ee3a1c9433b40e604507119603e08b2
+  tag: 2.28.0-bb.0
+  commit: 8f5ac84069447885eb0da9e359d1beb4f285ba0a
 - key: kyverno
   repo: https://repo1.dso.mil/big-bang/product/packages/kyverno.git
-  tag: 3.9.1-bb.0
-  commit: 867ae080d440d6be1c4099ca4c1c61980d51cd2a
+  tag: 3.8.1-bb.4
+  commit: 1cf70ee56d5dfa9a463f18fd01dc56a4c4602239
 - key: kyvernoPolicies
   repo: https://repo1.dso.mil/big-bang/product/packages/kyverno-policies.git
-  tag: 3.3.4-bb.87
-  commit: 4a5b32d4b3dda100b661ca04a9f4608705c9224e
+  tag: 3.3.4-bb.65
+  commit: f5bca768f6f7389839b8f5ff91de1952f9f1286e
 - key: kyvernoReporter
   repo: https://repo1.dso.mil/big-bang/product/packages/kyverno-reporter.git
-  tag: 3.10.0-bb.2
-  commit: 0a83ed6eca2463572b1a8e7549c91ed5e5da97f5
+  tag: 3.7.4-bb.3
+  commit: 17c5bb8afa0c960623537522be2977178b791ee2
 - key: alloy
   repo: https://repo1.dso.mil/big-bang/product/packages/alloy.git
-  tag: 4.3.2-bb.0
-  commit: 0f3476aa95a5fabbd189b63ccd205c3285b86efb
+  tag: 4.1.7-bb.0
+  commit: c392894d4375780560fd856d20f76b2817ae8504
 - key: loki
   repo: https://repo1.dso.mil/big-bang/product/packages/loki.git
-  tag: 6.55.0-bb.7
-  commit: 61e042909681942032e1ddf2d9138480dc9d52ee
+  tag: 6.55.0-bb.2
+  commit: 2ce249584973386eb4045de67198416a550babda
 - key: neuvector
   repo: https://repo1.dso.mil/big-bang/product/packages/neuvector.git
-  tag: 2.11.1-bb.0
-  commit: 39d6d9c1e67556ba8615d54fed7c89627aeef4a5
+  tag: 2.10.3-bb.0
+  commit: 4c3ec532eb8945dde11c60a8331ac1d09457022d
 - key: tempo
   repo: https://repo1.dso.mil/big-bang/product/packages/tempo.git
-  tag: 2.1.0-bb.2
-  commit: 00e3261d933da31330be94e44a36c19dafaaa865
+  tag: 2.1.0-bb.1
+  commit: 8ca4d6b14fdd6a325c564cd70a4212923ad28a4a
 - key: prometheusOperatorCRDs
   repo: https://repo1.dso.mil/big-bang/product/packages/prometheus-operator-crds.git
-  tag: 31.0.1-bb.0
-  commit: f595b0e3a23e7558895796d9ec810aa7ca3400fa
+  tag: 28.0.1-bb.0
+  commit: 512ee12a89aecacbd719ee8b6f312eefd27836f1
 - key: monitoring
   repo: https://repo1.dso.mil/big-bang/product/packages/monitoring.git
-  tag: 88.6.2-bb.0
-  commit: 4427e03f05fb9000824fa526e1301944478da20b
+  tag: 85.3.3-bb.2
+  commit: 31f4959e90cbf793236693ac31f5b01fe6405aca
 - key: grafana
   repo: https://repo1.dso.mil/big-bang/product/packages/grafana.git
-  tag: 12.10.0-bb.0
-  commit: fcc60a8a0f1c44b5b3b4d859bd45b54184cd2bc1
-- key: certManager
-  repo: https://repo1.dso.mil/big-bang/product/packages/cert-manager.git
-  tag: v1.20.3-bb.2
-  commit: 6e885ab5085e5609edfb428d27fb1555d209f8ea
+  tag: 10.5.15-bb.3
+  commit: e27b28e52bb347398b5238bba85983635ef63d5d
+- key: bbctl
+  repo: https://repo1.dso.mil/big-bang/product/packages/bbctl.git
+  tag: 3.0.1-bb.3
+  commit: 71a447773d90a81e82f83060ab247016f86d4208

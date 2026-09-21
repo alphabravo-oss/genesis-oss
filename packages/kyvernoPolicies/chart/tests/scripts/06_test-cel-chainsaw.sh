@@ -2,10 +2,9 @@
 # ---------------------------------------------------------------------------
 # test-cel-chainsaw.sh — Live admission tests inside the gluon bbtest pod
 # ---------------------------------------------------------------------------
-# Discovers deployed ValidatingPolicies, MutatingPolicies, GeneratingPolicies,
-# and ImageValidatingPolicies, reconstructs fixture directories from ConfigMap
-# mounts, then runs `chainsaw test` for the deployed CEL policies. IVPol
-# fixtures share the tests/vpol/ tree.
+# Discovers deployed ValidatingPolicies, MutatingPolicies, and
+# GeneratingPolicies, reconstructs fixture directories from ConfigMap
+# mounts, then runs `chainsaw test` for the deployed CEL policies.
 #
 # This script temporarily patches live policies in-cluster during the test:
 # - quiet_cpols / quiet_vpols keep unrelated validation policies from blocking
@@ -71,16 +70,9 @@ GPOL_DEPLOYED=$(kubectl get generatingpolicies -A -o jsonpath='{.items[*].metada
     echo -e "${_RED}ERROR: could not list GeneratingPolicies: ${GPOL_DEPLOYED}${_NC}"; exit 1
   fi
 }
-IVPOL_DEPLOYED=$(kubectl get imagevalidatingpolicies -A -o jsonpath='{.items[*].metadata.name}' 2>&1) || {
-  if [[ "${IVPOL_DEPLOYED}" == *"the server doesn't have a resource type"* ]]; then
-    IVPOL_DEPLOYED=""
-  else
-    echo -e "${_RED}ERROR: could not list ImageValidatingPolicies: ${IVPOL_DEPLOYED}${_NC}"; exit 1
-  fi
-}
 
-if [[ -z "${VPOL_DEPLOYED}" && -z "${MPOL_DEPLOYED}" && -z "${GPOL_DEPLOYED}" && -z "${IVPOL_DEPLOYED}" ]]; then
-  echo "SKIP: no ValidatingPolicies, MutatingPolicies, GeneratingPolicies, or ImageValidatingPolicies deployed — nothing to test"
+if [[ -z "${VPOL_DEPLOYED}" && -z "${MPOL_DEPLOYED}" && -z "${GPOL_DEPLOYED}" ]]; then
+  echo "SKIP: no ValidatingPolicies, MutatingPolicies, or GeneratingPolicies deployed — nothing to test"
   exit 0
 fi
 
@@ -99,30 +91,7 @@ for policy_name in ${VPOL_DEPLOYED}; do
   fi
 
   policy_file="${VPOL_WORKDIR}/${policy_name}/policy.yaml"
-  extract_vpols_with_prefix "${policy_name}" "${policy_file}"
-
-  if [[ ! -s "${policy_file}" ]]; then
-    echo "ERROR: kubectl get produced empty output for ${policy_name}"
-    extract_errors=$((extract_errors + 1))
-    continue
-  fi
-
-  vpol_test_dirs+=("${chainsaw_test_dir}")
-done
-
-# --- Collect test dirs for IVPols -----------------------------------------
-# IVPol fixtures live under tests/vpol/ alongside regular VPols. They run in
-# the same chainsaw phase since their admission behavior is similar.
-
-for policy_name in ${IVPOL_DEPLOYED}; do
-  chainsaw_test_dir="${VPOL_WORKDIR}/${policy_name}/chainsaw-test"
-  if [[ ! -d "${chainsaw_test_dir}" ]]; then
-    echo "SKIP: no chainsaw-test fixtures for ${policy_name}"
-    continue
-  fi
-
-  policy_file="${VPOL_WORKDIR}/${policy_name}/policy.yaml"
-  kubectl get imagevalidatingpolicy "${policy_name}" -o yaml > "${policy_file}"
+  kubectl get validatingpolicy "${policy_name}" -o yaml > "${policy_file}"
 
   if [[ ! -s "${policy_file}" ]]; then
     echo "ERROR: kubectl get produced empty output for ${policy_name}"
@@ -195,10 +164,9 @@ fi
 # VPols not under test could still reject fixtures. quiet_vpols catches that.
 quiet_cpols
 quiet_vpols
-quiet_ivpols
 quiet_mpols
 quiet_mutating_cpols
-trap 'restore_mutating_cpols; restore_mpols; restore_mpol_scope; restore_ivpols; restore_vpols; restore_cpols' EXIT
+trap 'restore_mutating_cpols; restore_mpols; restore_vpols; restore_cpols' EXIT
 # On upgrade jobs, CPols start at Enforce. quiet_cpols patches the resources
 # to Audit, but the kyverno admission webhook reloads asynchronously. Without
 # a settle window, chainsaw can fire before the webhook sees Audit and the old
@@ -215,17 +183,17 @@ sleep 5
 
 if [[ ${#vpol_test_dirs[@]} -eq 0 && ${#mpol_test_dirs[@]} -eq 0 && ${#gpol_test_dirs[@]} -eq 0 ]]; then
   echo "FAIL: no chainsaw-test directories found for any deployed policy."
-  echo "  Either the test ConfigMap is missing fixture dirs, or no VPol/MPol/GPol/IVPol"
+  echo "  Either the test ConfigMap is missing fixture dirs, or no VPol/MPol/GPol"
   echo "  policies are deployed. Check VPOL_DEPLOYED='${VPOL_DEPLOYED}',"
-  echo "  MPOL_DEPLOYED='${MPOL_DEPLOYED}', GPOL_DEPLOYED='${GPOL_DEPLOYED}',"
-  echo "  and IVPOL_DEPLOYED='${IVPOL_DEPLOYED}' against the ConfigMap contents."
+  echo "  MPOL_DEPLOYED='${MPOL_DEPLOYED}', and GPOL_DEPLOYED='${GPOL_DEPLOYED}'"
+  echo "  against the ConfigMap contents."
   exit 1
 fi
 
 # Run VPol live tests first while MPols are quiet.
 if [[ ${#vpol_test_dirs[@]} -gt 0 ]]; then
   echo "==> chainsaw: running ${#vpol_test_dirs[@]} vpol test(s)"
-  if ! chainsaw test --parallel 4 --fast-namespace-deletion --apply-timeout 30s --delete-timeout 30s "${vpol_test_dirs[@]}"; then
+  if ! chainsaw test --parallel 8 --apply-timeout 30s --delete-timeout 30s "${vpol_test_dirs[@]}"; then
     echo "==> ${#vpol_test_dirs[@]} vpol chainsaw test(s) run, FAILURES detected"
     exit 1
   fi
@@ -243,16 +211,15 @@ if [[ ${#gpol_test_dirs[@]} -gt 0 ]]; then
 fi
 
 # Re-enable MPols, give the webhook time to reconcile, then run their suites.
-# restore_mpols clears QUIETED_MPOLS, so the EXIT-trap restore_mpols becomes a
-# no-op after this point — but the mpol chainsaw phase below patches in
-# scope-to-test-ns, which restore_mpol_scope (also in the EXIT trap) sweeps off
-# all mpols afterward.
+# restore_mpols clears QUIETED_MPOLS so the EXIT trap becomes a no-op for MPols
+# after this point. Why-not-what: normal success path wants MPols live again
+# before chainsaw runs, but error paths still need best-effort restore.
 restore_mpols
 if [[ ${#mpol_test_dirs[@]} -gt 0 ]]; then
   echo -e "${_CYN}Waiting for mpol webhook to reconcile restored matchConditions...${_NC}"
   sleep 5
   echo "==> chainsaw: running ${#mpol_test_dirs[@]} mpol test(s)"
-  if ! chainsaw test --parallel 4 --fast-namespace-deletion --apply-timeout 30s --delete-timeout 30s "${mpol_test_dirs[@]}"; then
+  if ! chainsaw test --parallel 8 --apply-timeout 30s --delete-timeout 30s "${mpol_test_dirs[@]}"; then
     echo "==> ${#mpol_test_dirs[@]} mpol chainsaw test(s) run, FAILURES detected"
     exit 1
   fi

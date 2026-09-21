@@ -17,9 +17,9 @@ process is incredibly simple.
 
 1. Update version references for the chart in `Chart.yaml`. `version` should be
    `<version>-bb.0` (ex: `1.25.1-bb.0`) and `appVersion` should be `<version>`
-   (ex: `1.25.1`). Also validate that `appVersion` and the Big Bang `helm.sh/images`
-   annotation reflect the chart's new application and image versions.
-
+   (ex: `1.25.1`). Also validate that the Big Bang
+   `bigbang.dev/applicationVersions` and `helm.sh/images` annotations are update
+   to reflect the chart's new application and image versions.
 
 1. Add an entry to `CHANGELOG.md` detailing what changed in the update. At a
    minimum mention updating the dependency chart.

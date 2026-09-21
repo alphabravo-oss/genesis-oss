@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.kiali.enabled }}
 {{- /* Create a cleaned copy of kiali config and merge deprecated paths into current paths */ -}}
 {{- $kialiPackage := deepCopy .Values.kiali -}}
@@ -16,6 +15,7 @@
 
 {{- define "bigbang.defaults.kiali" -}}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.kiali.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
 {{- $grafanaUrl := first (dig "routes" "inbound" "grafana" "hosts" list .Values.grafana.values) }}
 # hostname is deprecated and replaced with domain. But if hostname exists then use it.
 {{- $domainName := default .Values.domain .Values.hostname }}
@@ -31,6 +31,19 @@ tracing:
   enabled: {{ .Values.tempo.enabled }}
 
 openshift: {{ .Values.openshift}}
+
+istio:
+  enabled: {{ $istioEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.kiali.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.kiali.values .) }}
 
 routes:
   inbound:
@@ -52,7 +65,19 @@ routes:
       - {{ include "sso.host" . }}
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6}}
+    defaults:
+      allowPrometheusToIstioSidecar:
+        enabled: {{ and .Values.monitoring.enabled .Values.istiod.enabled }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6}}
+    defaults:
+      allowIstiod:
+        enabled: {{ .Values.istiod.enabled }}
     from:
       kiali:
         to:
@@ -102,7 +127,7 @@ upstream:
         {{- else }}
         image_pull_secrets: []
         {{- end }}
-        {{- if eq (include "istioEnabled" .) "true" }}
+        {{- if include "istioEnabled" . }}
         pod_annotations:
           {{ include "istioAnnotation" . }}
         {{- end }}

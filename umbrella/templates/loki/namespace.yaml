@@ -1,4 +1,16 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if and .Values.loki.enabled (not .Values.elasticsearchKibana.enabled) }}
-{{- include "bigbang.namespace" (dict "root" . "name" "logging" "appName" "logging" "component" "core" "package" .Values.loki) }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logging
+  labels:
+    app.kubernetes.io/name: logging
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+    {{- if eq (include "ambientEnabled" .) "true" }}
+    istio.io/dataplane-mode: ambient
+    {{- else }}
+    istio-injection: {{ ternary "enabled" "disabled" (and $istioEnabled (eq (dig "istio" "injection" "enabled" .Values.loki) "enabled")) }}
+    {{- end }}
 {{- end }}

@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # neuvector
 
-![Version: 2.11.1-bb.0](https://img.shields.io/badge/Version-2.11.1--bb.0-informational?style=flat-square) ![AppVersion: 5.6.1](https://img.shields.io/badge/AppVersion-5.6.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 2.10.3-bb.0](https://img.shields.io/badge/Version-2.10.3--bb.0-informational?style=flat-square) ![AppVersion: 5.5.3](https://img.shields.io/badge/AppVersion-5.5.3-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 Helm chart for NeuVector's core services
 
@@ -77,17 +77,25 @@ helm install neuvector chart/
 | bbtests.updater.enabled | bool | `false` |  |
 | bbtests.cypress.artifacts | bool | `true` |  |
 | bbtests.cypress.envs.cypress_url | string | `"http://neuvector-service-webui.{{ .Release.Namespace }}.svc.cluster.local:8443"` |  |
-| bbtests.cypress.envs.cypress_prometheus_url | string | `"http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"` |  |
-| bbtests.cypress.envs.cypress_prometheus_targets_url | string | `"http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/targets?pool=serviceMonitor%2Fneuvector%2Fneuvector-prometheus-exporter%2F0"` |  |
 | bbtests.cypress.resources.requests.cpu | string | `"2"` |  |
 | bbtests.cypress.resources.requests.memory | string | `"4Gi"` |  |
 | bbtests.cypress.resources.limits.cpu | string | `"2"` |  |
 | bbtests.cypress.resources.limits.memory | string | `"4Gi"` |  |
-| bbtests.scripts.enabled | bool | `false` |  |
-| bbtests.scripts.image | string | `"registry1.dso.mil/ironbank/big-bang/base:2.1.0"` |  |
-| bbtests.scripts.envs.cypress_prometheus_targets_url | string | `"http://monitoring-monitoring-kube-prometheus.monitoring.svc.cluster.local:9090/targets?pool=serviceMonitor%2Fneuvector%2Fneuvector-prometheus-exporter%2F0"` |  |
-| bbtests.scripts.envs.cypress_prometheus_url | string | `"http://monitoring-monitoring-kube-prometheus.monitoring.svc.cluster.local:9090"` |  |
 | bbtests.scripts.envs.URL | string | `"http://neuvector-service-webui.{{ .Release.Namespace }}.svc.cluster.local:8443"` |  |
+| global.imagePullSecrets | string | `nil` |  |
+| global.images.neuvector_csp_pod.tag | string | `"latest"` |  |
+| global.images.neuvector_csp_pod.image | string | `"neuvector-billing-azure-by-suse-llc"` |  |
+| global.images.neuvector_csp_pod.registry | string | `"registry.suse.de/suse/sle-15-sp5/update/pubclouds/images"` |  |
+| global.images.neuvector_csp_pod.imagePullPolicy | string | `"Always"` |  |
+| global.images.controller.tag | string | `"5.5.3"` |  |
+| global.images.controller.image | string | `"controller"` |  |
+| global.images.controller.registry | string | `"registry1.dso.mil/ironbank/neuvector/neuvector"` |  |
+| global.images.manager.tag | string | `"5.5.3"` |  |
+| global.images.manager.image | string | `"manager"` |  |
+| global.images.manager.registry | string | `"registry1.dso.mil/ironbank/neuvector/neuvector"` |  |
+| global.images.enforcer.tag | string | `"5.5.3"` |  |
+| global.images.enforcer.image | string | `"enforcer"` |  |
+| global.images.enforcer.registry | string | `"registry1.dso.mil/ironbank/neuvector/neuvector"` |  |
 | upstream | object | Upstream chart values for Neuvector core | Values to pass to [the upstream NeuVector core subchart](https://github.com/neuvector/neuvector-helm/blob/master/charts/core/values.yaml) |
 | monitor.imagePullSecrets | string | `"private-registry"` |  |
 | monitor.install | bool | `false` |  |
@@ -110,3 +118,4 @@ Please see the [contributing guide](./CONTRIBUTING.md) if you are interested in 
 ---
 
 _This file is programatically generated using `helm-docs` and some BigBang-specific templates. The `gluon` repository has [instructions for regenerating package READMEs](https://repo1.dso.mil/big-bang/product/packages/gluon/-/blob/master/docs/bb-package-readme.md)._
+

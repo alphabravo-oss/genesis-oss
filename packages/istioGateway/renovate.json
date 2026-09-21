@@ -1,5 +1,5 @@
 {
-  "baseBranchPatterns": [
+  "baseBranches": [
     "main"
   ],
   "dependencyDashboard": true,
@@ -8,9 +8,9 @@
   "labels": [
     "istioGateway",
     "Big Bang Core",
+    "Package Sustainment",
     "kind::maintenance",
-    "renovate",
-    "team::Package Maintenance"
+    "renovate"
   ],
   "packageRules": [
     {
@@ -49,7 +49,8 @@
         "/^chart/Chart\\.yaml$/"
       ],
       "matchStrings": [
-        "appVersion:[^\\S\\r\\n]+(?<currentValue>.+)"
+        "appVersion:[^\\S\\r\\n]+(?<currentValue>.+)",
+        "- Istio:\\s*(?<currentValue>.+)"
       ],
       "depNameTemplate": "gateway",
       "datasourceTemplate": "helm",

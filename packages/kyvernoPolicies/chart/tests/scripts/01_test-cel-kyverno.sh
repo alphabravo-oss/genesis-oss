@@ -70,7 +70,7 @@ for policy_name in ${VPOL_DEPLOYED}; do
     continue
   fi
   policy_file="/test/vpol-kyverno/${policy_name}/policy.yaml"
-  extract_vpols_with_prefix "${policy_name}" "${policy_file}"
+  kubectl get validatingpolicy "${policy_name}" -o yaml > "${policy_file}"
   if [[ ! -s "${policy_file}" ]]; then
     echo "ERROR: kubectl get produced empty output for vpol ${policy_name}"
     extract_errors=$((extract_errors + 1))

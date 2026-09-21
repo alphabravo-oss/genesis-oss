@@ -77,10 +77,9 @@ for test_dir in $(find "${TESTS_DIR}" -name 'chainsaw-test' -type d 2>/dev/null)
 
   rendered="${policy_dir}/policy.yaml"
   helm template kp "${CHART_DIR}" \
-    --namespace kyverno \
     --values <(yq "{\"celPoliciesBeta\": (.kyvernoPolicies.values.celPoliciesBeta | pick([\"${values_key}\"]))}" "${TEST_VALUES}") \
     --set "celPoliciesBeta.${values_key}.enabled=true" \
-    | yq "select((.kind == \"MutatingPolicy\" or .kind == \"PolicyException\") and (.metadata.name | test(\"^${values_key}\")))" \
+    | yq "select(.kind == \"MutatingPolicy\" and (.metadata.name | test(\"^${values_key}\")))" \
     > "${rendered}"
   rendered_files+=("${rendered}")
 

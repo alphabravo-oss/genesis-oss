@@ -6,7 +6,7 @@ Grafana is a modified/customized version of an upstream chart. The below details
 
 **IMPORTANT**: This renovate process includes an extra step to run a script which pulls the latest kube-prometheus-stack dashboards, follow the instructions carefully.
 
-1. Navigate to the [upstream chart repo and folder](https://github.com/grafana-community/helm-charts/tree/main/charts/grafana) and find the tag (e.g., `grafana-x.x.x`) that corresponds with the new chart version for this update.
+1. Navigate to the [upstream chart repo and folder](https://github.com/grafana/helm-charts/tree/main/charts/grafana) and find the tag (e.g., `grafana-x.x.x`) that corresponds with the new chart version for this update.
 
 2. `git clone` the [grafana repository](https://repo1.dso.mil/big-bang/product/packages/grafana) from Repo1 and checkout the `renovate/ironbank` branch.
 

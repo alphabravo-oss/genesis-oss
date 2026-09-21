@@ -1,5 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettingsNeuvector := mergeOverwrite (deepCopy .Values.flux) .Values.neuvector.flux -}}
+{{- $fluxSettingsNeuvector := merge .Values.neuvector.flux .Values.flux -}}
 {{- if .Values.neuvector.enabled }}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
 apiVersion: helm.toolkit.fluxcd.io/v2

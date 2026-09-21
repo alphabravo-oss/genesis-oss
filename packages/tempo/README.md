@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # tempo
 
-![Version: 2.1.0-bb.2](https://img.shields.io/badge/Version-2.1.0--bb.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.10.5](https://img.shields.io/badge/AppVersion-2.10.5-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 2.1.0-bb.1](https://img.shields.io/badge/Version-2.1.0--bb.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.10.5](https://img.shields.io/badge/AppVersion-2.10.5-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 Grafana Tempo Single Binary Mode
 
@@ -55,6 +55,7 @@ helm install tempo chart/
 | networkPolicies.ingressLabels | object | `{"app":"istio-ingressgateway","istio":"ingressgateway"}` | Istio IngressGateway labels for VirtualService external routing to app UI |
 | networkPolicies.controlPlaneCidr | string | `"0.0.0.0/0"` | Use `kubectl cluster-info` and then resolve to IP for kube-api. Review value description in BigBang README.md |
 | monitoring | object | `{"enabled":false}` | Toggle monitoring integration. Intended to be controlled via BigBang passthrough of monitoring package status |
+| sso | object | `{"enabled":false}` | This value will be removed in a later release as Tempo no longer has a UI |
 | upgradeJob.enabled | bool | `true` | Enable BigBang specific autoRollingUpgrade support |
 | upgradeJob.name | string | `"tempo-upgrade-job"` |  |
 | upgradeJob.image.repository | string | `"registry1.dso.mil/ironbank/opensource/kubernetes/kubectl"` |  |
@@ -79,17 +80,18 @@ helm install tempo chart/
 | bbtests.scripts.image | string | `"registry1.dso.mil/ironbank/big-bang/base:2.1.0"` |  |
 | bbtests.scripts.envs.TEMPO_METRICS_URL | string | `"http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc:3200"` |  |
 | openshift | bool | `false` | Toggle or openshift specific config |
-| upstream | object | Upstream chart values | Values to pass to [the upstream tempo chart](https://github.com/grafana-community/helm-charts/blob/main/charts/tempo/values.yaml) |
+| upstream | object | Upstream chart values | Values to pass to [the upstream tempo chart](https://github.com/grafana/helm-charts/tree/main/charts/tempo/values.yaml) |
 | upstream.fullnameOverride | string | `"tempo-tempo"` | Overrides the chart's computed fullname |
 | upstream.nameOverride | string | `"tempo"` | Overrides the chart's computed name |
 | upstream.tempo.registry | string | `"registry1.dso.mil"` | Docker image registry |
 | upstream.tempo.repository | string | `"ironbank/opensource/grafana/tempo"` | Docker image repository |
 | upstream.tempo.tag | string | `"2.10.5"` | Docker image tag |
 | upstream.tempo.pullPolicy | string | `"Always"` | Docker image pull policy |
+| upstream.tempo.server.http_listen_port | int | `3200` | HTTP server listen port |
 | upstream.tempoQuery.repository | string | `"registry1.dso.mil/ironbank/opensource/grafana/tempo-query"` | Docker image repository |
 | upstream.tempoQuery.tag | string | `"2.10.5"` | Docker image tag |
 | upstream.tempoQuery.pullPolicy | string | `"Always"` | Docker image pull policy |
-| upstream.securityContext | object | `{"fsGroup":1001,"runAsGroup":1001,"runAsUser":1001}` | securityContext for container |
+| upstream.securityContext | object | `{"fsGroup":1001,"runAsGroup":1001,"runAsNonRoot":true,"runAsUser":1001}` | securityContext for container |
 | upstream.serviceAccount.imagePullSecrets | list | `[{"name":"private-registry"}]` | Image pull secrets for the service account |
 | upstream.podAnnotations | object | `{"traffic.sidecar.istio.io/excludeInboundPorts":"9411"}` | Pod Annotations |
 

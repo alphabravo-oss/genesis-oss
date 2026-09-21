@@ -1,59 +1,33 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.externalSecrets.enabled }}
 {{- include "values-secret" (dict "root" $ "package" .Values.addons.externalSecrets "name" "external-secrets" "defaults" (include "bigbang.defaults.external-secrets" .)) }}
 {{- end }}
 
 {{- define "bigbang.defaults.external-secrets" -}}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
-{{- $externalSecretsValues := .Values.addons.externalSecrets.values | default dict }}
-{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false $externalSecretsValues) (dig "hardened" "enabled" false .Values.istiod.values) }}
-{{- $webhookEnabled := dig "upstream" "webhook" "create" false $externalSecretsValues }}
-{{- $certControllerEnabled := dig "upstream" "certController" "create" false $externalSecretsValues }}
 
 upstream:
   image:
     pullPolicy: {{ .Values.imagePullPolicy }}
-
+    
   {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
-  {{- if $istioEnabled }}
-  podAnnotations:
-    {{ include "istioAnnotation" . }}
-  webhook:
-    podAnnotations:
-      {{ include "istioAnnotation" . }}
-  certController:
-    podAnnotations:
-      {{ include "istioAnnotation" . }}
-  {{- end }}
 
 monitoring:
   enabled: {{ .Values.monitoring.enabled }}
 
-istio:
-  hardened:
-    enabled: {{ $istioHardenedEnabled }}
-
 networkPolicies:
-  ingress:
-    to:
-      external-secrets-webhook:10250:
-        from:
-          definition:
-            kubeAPI: {{ $webhookEnabled }}
-  egress:
-    from:
-      external-secrets:
-        to:
-          k8s:
-            vault/vault:8200: {{ .Values.addons.vault.enabled }}
-      external-secrets-webhook:
-        to:
-          definition:
-            kubeAPI: {{ $webhookEnabled }}
-      external-secrets-cert-controller:
-        to:
-          definition:
-            kubeAPI: {{ $certControllerEnabled }}
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  controlPlaneCidr: {{ .Values.networkPolicies.controlPlaneCidr }}
+  vpcCidr: {{ .Values.networkPolicies.vpcCidr }}
+
+{{- if $istioEnabled }}
+annotations:
+  {{ include "istioAnnotation" . }}
+{{- end }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+  hardened:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.externalSecrets.values .) }}
 
 openshift: {{ .Values.openshift }}
 {{- end -}}

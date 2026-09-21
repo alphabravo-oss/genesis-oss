@@ -3,12 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [2.1.0-bb.2] (2026-07-16)
-### Changed
-- Removed duplicate upstream default values from package values file
-- Removed the unused `sso` value
-- Updated Readme to reflect changes
-
 ## [2.1.0-bb.1] (2026-05-06)
 ### Fixed
 - Sets routes.inbound.tempo-query.selector.app.kubernetes.io/name: tempo, so the bb-common route-generated NetworkPolicy and AuthorizationPolicy target the actual Tempo pods instead of the nonexistent tempo-query label

@@ -1,5 +1,5 @@
 {
-  "baseBranchPatterns": [
+  "baseBranches": [
     "main"
   ],
   "configWarningReuseIssue": false,
@@ -18,7 +18,7 @@
     "prometheusOperatorCRDs",
     "renovate",
     "kind::maintenance",
-    "team::Package Maintenance"
+    "team::Observability"
   ],
   "packageRules": [
     {
@@ -29,11 +29,10 @@
       ],
       "postUpgradeTasks": {
         "commands": [
-          "bump-chart-bb-suffix",
           "regenerate-helm-docs",
-          "bump-changelog '- Prometheus Operator CRDs updated from {{{currentVersion}}} to {{{newVersion}}}'"
+          "bump-changelog '- {{{replace 'registry1.dso.mil/' '' depName}}} updated from {{{currentVersion}}} to {{{newVersion}}}'"
         ],
-        "executionMode": "branch",
+        "executionMode": "update",
         "fileFilters": [
           "chart/Chart.yaml",
           "README.md",

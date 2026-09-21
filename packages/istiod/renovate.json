@@ -1,5 +1,5 @@
 {
-  "baseBranchPatterns": [
+  "baseBranches": [
     "main"
   ],
   "dependencyDashboard": true,
@@ -8,9 +8,9 @@
   "labels": [
     "istiod",
     "Big Bang Core",
+    "Package Sustainment",
     "kind::maintenance",
-    "renovate",
-    "team::Package Maintenance"
+    "renovate"
   ],
   "packageRules": [
     {
@@ -45,6 +45,7 @@
         "/^chart/Chart\\.yaml$/"
       ],
       "matchStrings": [
+        "- Istio:\\s*(?<currentValue>.+)",
         "appVersion:[^\\S\\r\\n]+(?<currentValue>.+)"
       ],
       "depNameTemplate": "istiod",

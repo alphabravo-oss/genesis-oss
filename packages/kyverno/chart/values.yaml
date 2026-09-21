@@ -57,6 +57,13 @@ networkPolicies:
         to:
           definition:
             kubeAPI: true
+  # -- This section will be deprecated in the next major release in favor of the bb-common definition
+  externalRegistries:
+    allowEgress: false
+    ports: []
+    # ports:
+    # - port: 1234
+    #   protocol: TCP
   additionalPolicies: []
 istio:
   enabled: false
@@ -64,7 +71,7 @@ openshift: false
 bbtests:
   enabled: false
   scripts:
-    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.37
+    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.5
     additionalVolumeMounts:
       - name: "kyverno-bbtest-manifest"
         mountPath: /yaml
@@ -74,44 +81,53 @@ bbtests:
           name: "kyverno-bbtest-manifest"
 
 global:
-  image:
-    registry: registry1.dso.mil
-  imagePullSecrets:
-    - name: private-registry
-  resyncPeriod: 15m
-  templating:
-    enabled: false
-    debug: false
-    version: ~
+    image:
+      # -- (string) Global value that allows to set a single image registry across all deployments.
+      # When set, it will override any values set under `.image.registry` across the chart.
+      registry: registry1.dso.mil
+      pullPolicy: IfNotPresent
+    imagePullSecrets:
+      - name: private-registry
+    resyncPeriod: 15m
+    templating:
+      enabled: false
+      debug: false
+      version: ~
 
 # -- Values to pass to [the upstream Kyverno chart](https://github.com/kyverno/kyverno/blob/main/charts/kyverno/values.yaml)
 # @default -- Upstream chart values
 upstream:
   nameOverride: kyverno
   fullnameOverride: kyverno
+  namespaceOverride: ~
   upgrade:
     fromV2: true
   apiVersionOverride:
     podDisruptionBudget: policy/v1
   # CRDs configuration
   crds:
+    install: true
     migration:
+      enabled: true
       image:
         defaultRegistry: registry1.dso.mil
         repository: ironbank/opensource/kyverno/kyvernocli
-        tag: 'v1.19.1'
+        tag: 'v1.18.1'
       imagePullSecrets:
-      - name: private-registry
+        - name: private-registry
 
   # Configuration
   config:
     defaultRegistry: registry1.dso.mil
-
+  existingImagePullSecrets:
+    - private-registry
   webhooksCleanup:
+    enabled: true
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/kubernetes/kubectl
-      tag: 'v1.37'
+      tag: 'v1.35.5'
+      pullPolicy: ~
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -121,12 +137,24 @@ upstream:
     securityContext:
       runAsUser: 1001
       runAsGroup: 1001
+      runAsNonRoot: true
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
     resources:
       limits:
         cpu: "0.5"
+        memory: "256Mi"
       requests:
         cpu: "0.5"
         memory: "256Mi"
+  grafana:
+    enabled: false
   features:
     policyExceptions:
       enabled: true
@@ -135,51 +163,71 @@ upstream:
   # Admission controller configuration
   admissionController:
     rbac:
+      serviceAccount:
+        automountServiceAccountToken: true
       coreClusterRole:
         extraResources:
-        - apiGroups:
-          - '*'
-          resources:
-          - '*'
-          verbs:
-          - get
-          - list
-          - watch
+          - apiGroups:
+              - '*'
+            resources:
+              - '*'
+            verbs:
+              - get
+              - list
+              - watch
 
       clusterRole:
         extraResources:
-        - apiGroups:
-          - '*'
-          resources:
-          - '*'
-          verbs:
-          - get
-          - list
-          - watch
+          - apiGroups:
+              - '*'
+            resources:
+              - '*'
+            verbs:
+              - get
+              - list
+              - watch
+    createSelfSignedCert: false
     replicas: 3
     podSecurityContext:
       runAsUser: 10001
       runAsGroup: 10001
       runAsNonRoot: true
+    podDisruptionBudget:
+      enabled: false
     imagePullSecrets:
       - name: private-registry
     initContainer:
       image:
+        registry: ~
         defaultRegistry: registry1.dso.mil
         repository: ironbank/opensource/kyverno/kyvernopre
-        tag: 'v1.19.1'
+        tag: 'v1.18.1'
+        pullPolicy: ~
       resources:
         limits:
           cpu: 1
           memory: 1Gi
+        requests:
+          cpu: 10m
+          memory: 64Mi
       securityContext:
+        runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
+        privileged: false
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
     container:
       image:
         defaultRegistry: registry1.dso.mil
         repository: ironbank/opensource/kyverno
-        tag: 'v1.19.1'
+        tag: 'v1.18.1'
+        pullPolicy: IfNotPresent
       resources:
         limits:
           cpu: 500m
@@ -188,79 +236,90 @@ upstream:
           cpu: 500m
           memory: 512Mi
       securityContext:
+        runAsNonRoot: true
         runAsUser: 10001
-        # Background controller configuration
         runAsGroup: 10001
+        privileged: false
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+        seccompProfile:
+          type: RuntimeDefault
+  # Background controller configuration
   backgroundController:
+    enabled: true
     rbac:
+      create: true
       serviceAccount:
         automountServiceAccountToken: false
       coreClusterRole:
         extraResources:
-        - apiGroups:
-          - networking.k8s.io
-          resources:
-          - ingresses
-          - ingressclasses
-          - networkpolicies
-          verbs:
-          - create
-          - update
-          - patch
-          - delete
-        - apiGroups:
-          - rbac.authorization.k8s.io
-          resources:
-          - rolebindings
-          - roles
-          verbs:
-          - create
-          - update
-          - patch
-          - delete
-        - apiGroups:
-          - '*'
-          resources:
-          - configmaps
-          - resourcequotas
-          - limitranges
-          verbs:
-          - create
-          - update
-          - patch
-          - delete
-        - apiGroups:
-          - '*'
-          resources:
-          - serviceaccounts
-          verbs:
-          - get
-          - list
-          - watch
-          - update
-          - patch
+          - apiGroups:
+              - networking.k8s.io
+            resources:
+              - ingresses
+              - ingressclasses
+              - networkpolicies
+            verbs:
+              - create
+              - update
+              - patch
+              - delete
+          - apiGroups:
+              - rbac.authorization.k8s.io
+            resources:
+              - rolebindings
+              - roles
+            verbs:
+              - create
+              - update
+              - patch
+              - delete
+          - apiGroups:
+              - '*'
+            resources:
+              - configmaps
+              - resourcequotas
+              - limitranges
+            verbs:
+              - create
+              - update
+              - patch
+              - delete
+          - apiGroups:
+              - '*'
+            resources:
+              - serviceaccounts
+            verbs:
+              - get
+              - list
+              - watch
+              - update
+              - patch
       clusterRole:
         extraResources:
-        - apiGroups:
-          - '*'
-          resources:
-          - '*'
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - '*'
-          resources:
-          - secrets
-          verbs:
-          - create
-          - update
-          - delete
+          - apiGroups:
+              - '*'
+            resources:
+              - '*'
+            verbs:
+              - get
+              - list
+              - watch
+          - apiGroups:
+              - '*'
+            resources:
+              - secrets
+            verbs:
+              - create
+              - update
+              - delete
     image:
       defaultRegistry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/background-controller
-      tag: 'v1.19.1'
+      tag: 'v1.18.1'
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -268,17 +327,29 @@ upstream:
       runAsGroup: 1000
       runAsNonRoot: true
     securityContext:
+      runAsNonRoot: true
       runAsUser: 1000
       runAsGroup: 1000
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
   cleanupController:
+    enabled: true
     rbac:
+      create: true
       serviceAccount:
         automountServiceAccountToken: false
 
     image:
       defaultRegistry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/cleanup-controller
-      tag: 'v1.19.1'
+      tag: 'v1.18.1'
+      pullPolicy: IfNotPresent
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -288,34 +359,46 @@ upstream:
     securityContext:
       runAsUser: 1000
       runAsGroup: 1000
+      runAsNonRoot: true
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
   reportsController:
+    enabled: true
     rbac:
+      create: true
       serviceAccount:
         automountServiceAccountToken: false
       coreClusterRole:
         extraResources:
-        - apiGroups:
-          - '*'
-          resources:
-          - '*'
-          verbs:
-          - get
-          - list
-          - watch
+          - apiGroups:
+              - '*'
+            resources:
+              - '*'
+            verbs:
+              - get
+              - list
+              - watch
       clusterRole:
         extraResources:
-        - apiGroups:
-          - '*'
-          resources:
-          - '*'
-          verbs:
-          - get
-          - list
-          - watch
+          - apiGroups:
+              - '*'
+            resources:
+              - '*'
+            verbs:
+              - get
+              - list
+              - watch
     image:
       defaultRegistry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/reports-controller
-      tag: 'v1.19.1'
+      tag: 'v1.18.1'
+      pullPolicy: IfNotPresent
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -323,13 +406,44 @@ upstream:
       runAsGroup: 1000
       runAsNonRoot: true
     securityContext:
+      runAsNonRoot: true
       runAsUser: 1000
-      # Tests configuration
       runAsGroup: 1000
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
+
+  # Tests configuration
   test:
+    sleep: 20
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/readiness-checker
-      tag: 'v1.19.1'
+      tag: 'v1.18.1'
+      pullPolicy: ~
     imagePullSecrets:
       - name: private-registry
+    resources:
+      limits:
+        cpu: 100m
+        memory: 256Mi
+      requests:
+        cpu: 10m
+        memory: 64Mi
+    securityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault

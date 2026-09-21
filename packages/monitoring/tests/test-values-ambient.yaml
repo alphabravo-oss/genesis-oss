@@ -1,27 +1,11 @@
 #########################
 # Required for package #
 ########################
-grafana:
-  enabled: true
-kiali:
-  enabled: true
-  values:
-    bbtests:
-      enabled: false
-    networkPolicies:
-      ingress:
-        to:
-          kiali:20001:
-            from:
-              k8s:
-                monitoring/*: true
 monitoring:
   enabled: true
   values:
     bbtests:
       enabled: true
-certManager:
-  enabled: true
 kyverno:
   values:
     bbtests:
@@ -30,6 +14,7 @@ kyvernoPolicies:
   values:
     bbtests:
       enabled: false
+
 # Enable Ambient
 istio:
   ambient:

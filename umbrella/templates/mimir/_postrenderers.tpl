@@ -32,13 +32,4 @@
         target:
           kind: Deployment
           name: ^.+-query-frontend$
-{{- if eq (include "metricsSidecarMtls" (list .Values.addons.mimir .)) "true" }}
-      - patch: |
-          - op: add
-            path: /spec/endpoints/0/enableHttp2
-            value: false
-        target:
-          kind: ServiceMonitor
-          name: ^.+-query-frontend$
-{{- end }}
 {{- end }}

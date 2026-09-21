@@ -1,9 +1,6 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettings := mergeOverwrite (deepCopy .Values.flux) .Values.addons.externalSecrets.flux -}}
+{{- $fluxSettings := merge .Values.addons.externalSecrets.flux .Values.flux -}}
 {{- if .Values.addons.externalSecrets.enabled }}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
-{{- $externalSecretsValues := .Values.addons.externalSecrets.values | default dict }}
-{{- $istioWebhookPatch := and $istioEnabled (dig "upstream" "webhook" "create" false $externalSecretsValues) }}
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -21,14 +18,9 @@ spec:
 
   {{- toYaml $fluxSettings | nindent 2 }}
 
-  {{- if or .Values.addons.externalSecrets.postRenderers $istioWebhookPatch }}
+  {{- if .Values.addons.externalSecrets.postRenderers }}
   postRenderers:
-  {{- if $istioWebhookPatch }}
-  {{- include "externalSecrets.istioPostRenderers" . | nindent 2 }}
-  {{- end }}
-  {{- with .Values.addons.externalSecrets.postRenderers }}
-  {{- toYaml . | nindent 2 }}
-  {{- end }}
+  {{- toYaml .Values.addons.externalSecrets.postRenderers | nindent 2 }}
   {{- end }}
   {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "external-secrets" "root" .) | nindent 2 }}
 

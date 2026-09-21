@@ -1,5 +1,8 @@
 domain: dev.bigbang.mil
 
+sso:
+  enabled: false
+
 routes:
   inbound:
     kiali:
@@ -34,6 +37,9 @@ istio:
     # PERMISSIVE = Allow both plain text and mutual TLS traffic
     mode: STRICT
 
+tracing:
+  enabled: true
+
 monitoring:
   enabled: true
 
@@ -58,7 +64,7 @@ bbtests:
 
 waitJob:
   enabled: true
-  image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.8
+  image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.6
   permissions:
     apiGroups:
       - apps
@@ -73,7 +79,7 @@ upstream:
 
   image:
     repo: registry1.dso.mil/ironbank/opensource/kiali/kiali-operator
-    tag: v2.31.0
+    tag: v2.28.0
     pullPolicy: IfNotPresent
     pullSecrets:
       - private-registry
@@ -114,7 +120,7 @@ upstream:
         network_policy:
           enabled: false
         image_name: registry1.dso.mil/ironbank/opensource/kiali/kiali
-        image_version: v2.31.0
+        image_version: v2.28.0
         image_pull_secrets:
           - private-registry
         resources:

@@ -37,10 +37,10 @@ tests:
           content:
             expression: >-
               variables.allContainers.all(container,
-              container.?securityContext.?allowPrivilegeEscalation.orValue(false) == false)
+              container.?securityContext.?allowPrivilegeEscalation.orValue(true) == false)
             message: >-
               Privilege escalation is disallowed.
-              All containers must leave securityContext.allowPrivilegeEscalation undefined or set it to `false`.
+              All containers must set securityContext.allowPrivilegeEscalation to `false`.
 
   - it: "severity: defaults to high"
     set:

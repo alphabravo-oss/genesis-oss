@@ -1,5 +1,3 @@
-alloy:
-  enabled: false
 monitoring:
   enabled: false
 grafana:
@@ -29,8 +27,8 @@ kyvernoPolicies:
       legacyEnabled: false
       kyvernoCliEnabled: true
     excludeContainers:
-      - not-me
-      - or-me
+    - not-me
+    - or-me
     policies:
       require-image-signature:
         enabled: false
@@ -41,75 +39,75 @@ kyvernoPolicies:
       add-default-capability-drop:
         exclude:
           any:
-            - resources:
-                namespaces:
-                  - default
-                names:
-                  - require-drop-all-capabilities*
+          - resources:
+              namespaces:
+              - default
+              names:
+              - require-drop-all-capabilities*
         enabled: false
       disallow-annotations:
         parameters:
           disallow:
-            - 'kyverno-policies-bbtest/test: disallowed'
-            - kyverno-policies-bbtest/disallowed
+          - 'kyverno-policies-bbtest/test: disallowed'
+          - kyverno-policies-bbtest/disallowed
         enabled: false
       disallow-labels:
         parameters:
           disallow:
-            - 'kyverno-policies-bbtest/test: disallowed'
-            - kyverno-policies-bbtest/disallowed
+          - 'kyverno-policies-bbtest/test: disallowed'
+          - kyverno-policies-bbtest/disallowed
         enabled: false
       require-annotations:
         parameters:
           require:
-            - 'kyverno-policies-bbtest/test: required'
-            - kyverno-policies-bbtest/required
+          - 'kyverno-policies-bbtest/test: required'
+          - kyverno-policies-bbtest/required
         enabled: false
       require-labels:
         parameters:
           require:
-            - 'kyverno-policies-bbtest/test: required'
-            - kyverno-policies-bbtest/required
+          - 'kyverno-policies-bbtest/test: required'
+          - kyverno-policies-bbtest/required
         enabled: false
       restrict-external-ips:
         parameters:
           allow:
-            - 192.168.0.1
+          - 192.168.0.1
         enabled: false
       restrict-external-names:
         parameters:
           allow:
-            - allowed
+          - allowed
         enabled: false
       restrict-host-path-mount:
         parameters:
           allow:
-            - /tmp/allowed
+          - /tmp/allowed
         enabled: false
       restrict-host-path-mount-pv:
         parameters:
           allow:
-            - /tmp/allowed
-            - /var/lib/rancher/k3s/storage/pvc-*
+          - /tmp/allowed
+          - /var/lib/rancher/k3s/storage/pvc-*
         enabled: false
       restrict-host-path-write:
         parameters:
           allow:
-            - /tmp/allowed
+          - /tmp/allowed
         enabled: false
       restrict-host-ports:
         parameters:
           allow:
-            - '63999'
-            - '>= 64000 & < 65000'
-            - '> 65000'
+          - '63999'
+          - '>= 64000 & < 65000'
+          - '> 65000'
         enabled: false
       restrict-image-registries:
         exclude:
           any:
-            - resources:
-                namespaces:
-                  - gitlab
+          - resources:
+              namespaces:
+              - gitlab
         enabled: false
       sample:
         enabled: false
@@ -197,17 +195,17 @@ kyvernoPolicies:
         enabled: true
         parameters:
           clone:
-            - name: clone-source
-              kind: ConfigMap
-              namespace: default
+          - name: clone-source
+            kind: ConfigMap
+            namespace: default
       disallow-annotations-cel:
         enabled: true
         validationFailureAction: Audit
         parameters:
           disallow:
-            - key: kyverno-policies-bbtest/disallowed
-            - key: kyverno-policies-bbtest/test
-              value: disallowed
+          - key: kyverno-policies-bbtest/disallowed
+          - key: kyverno-policies-bbtest/test
+            value: disallowed
       disallow-deprecated-apis-cel:
         enabled: true
         validationFailureAction: Audit
@@ -235,48 +233,29 @@ kyvernoPolicies:
       disallow-nodeport-services-cel:
         enabled: true
         validationFailureAction: Audit
-      disallow-pod-exec-cel:
-        enabled: true
-        validationFailureAction: Audit
       disallow-privilege-escalation-cel:
         enabled: true
         validationFailureAction: Audit
       disallow-privileged-containers-cel:
         enabled: true
         validationFailureAction: Audit
-      disallow-rbac-on-default-serviceaccounts-cel:
-        enabled: true
-        validationFailureAction: Audit
       disallow-selinux-options-cel:
         enabled: true
         validationFailureAction: Audit
-      disallow-tolerations-cel:
-        enabled: true
-        validationFailureAction: Audit
-        parameters:
-          disallow:
-            - key: 'node-role\.kubernetes\.io/master'
-            - key: 'taint-with-value'
-              value: 'forbidden-value'
-            - key: 'taint-with-effect'
-              effect: 'PreferNoSchedule'
       require-annotations-cel:
         enabled: true
         validationFailureAction: Audit
         parameters:
           require:
-            - key: app\.kubernetes\.io/name
-            - key: app\.kubernetes\.io/version
-              value: v1
-            - key: app\.kubernetes\.io/component
-              value: frontend|backend
+          - key: app\.kubernetes\.io/name
+          - key: app\.kubernetes\.io/version
+            value: v1
+          - key: app\.kubernetes\.io/component
+            value: frontend|backend
       require-cpu-limit-cel:
         enabled: true
         validationFailureAction: Audit
       require-drop-all-capabilities-cel:
-        enabled: true
-        validationFailureAction: Audit
-      require-image-signature-cel:
         enabled: true
         validationFailureAction: Audit
       require-istio-on-namespaces-cel:
@@ -287,11 +266,11 @@ kyvernoPolicies:
         validationFailureAction: Audit
         parameters:
           require:
-            - key: app\.kubernetes\.io/name
-            - key: app\.kubernetes\.io/version
-              value: v1
-            - key: app\.kubernetes\.io/component
-              value: frontend|backend
+          - key: app\.kubernetes\.io/name
+          - key: app\.kubernetes\.io/version
+            value: v1
+          - key: app\.kubernetes\.io/component
+            value: frontend|backend
       require-memory-limit-cel:
         enabled: true
         validationFailureAction: Audit
@@ -304,25 +283,13 @@ kyvernoPolicies:
       require-probes-cel:
         enabled: true
         validationFailureAction: Audit
-      restrict-apparmor-cel:
-        enabled: true
-        validationFailureAction: Audit
-      restrict-capabilities-cel:
-        enabled: true
-        validationFailureAction: Audit
       restrict-proc-mount-cel:
         enabled: true
         validationFailureAction: Audit
       restrict-seccomp-cel:
         enabled: true
         validationFailureAction: Audit
-      restrict-selinux-type-cel:
-        enabled: true
-        validationFailureAction: Audit
       restrict-sysctls-cel:
-        enabled: true
-        validationFailureAction: Audit
-      require-requests-equal-limits-cel:
         enabled: true
         validationFailureAction: Audit
       require-ro-rootfs-cel:
@@ -333,68 +300,19 @@ kyvernoPolicies:
         validationFailureAction: Audit
         parameters:
           allow:
-            - 192\.168\.0\.1
+          - 192\.168\.0\.1
       restrict-external-names-cel:
         enabled: true
         validationFailureAction: Audit
         parameters:
           allow:
-            - .*\.allowed\.internal
-      restrict-group-id-cel:
-        enabled: true
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - min: 1000
-          deny:
-            - min: 1500
-              max: 1599
-      restrict-host-path-mount-cel:
-        enabled: true
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - /tmp/allowed
-            - /var/log/.*
-      restrict-host-path-mount-pv-cel:
-        enabled: true
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - /tmp/allowed
-            - /var/lib/rancher/k3s/storage/pvc-*
-      restrict-host-path-write-cel:
-        enabled: true
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - /tmp/allowed
-            - /var/log/.*
-      restrict-host-ports-cel:
-        enabled: true
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - min: 63999
-              max: 63999
-            - min: 64000
-              max: 64999
-            - min: 65001
+          - .*\.allowed\.internal
       restrict-image-registries-cel:
         enabled: true
         validationFailureAction: Audit
         parameters:
           allow:
-            - registry1.dso.mil/
-      restrict-user-id-cel:
-        enabled: true
-        validationFailureAction: Audit
-        parameters:
-          allow:
-            - min: 1000
-          deny:
-            - min: 1500
-              max: 1599
+          - registry1.dso.mil/
       restrict-volume-types-cel:
         enabled: true
         validationFailureAction: Audit
@@ -402,44 +320,14 @@ kyvernoPolicies:
         enabled: true
         autogenControllers: Deployment,StatefulSet
         namespaces:
-          - namespace: update-automountserviceaccounttokens-2
-            serviceAccounts:
-              - update-token-automount-2
-              - update-token-automount-wild-.*
-            pods:
-              allow:
-                - api-access-allowed-.*
-                - api-access-overlap-.*
-              deny:
-                - api-access-denied-.*
-                - api-access-overlap-.*
-      update-automountserviceaccounttokens-default-cel:
-        enabled: true
-        namespaces:
-          - update-automountserviceaccounttokens-default-2
-      update-image-pull-policy-cel:
-        enabled: true
-        parameters:
-          # Chained config so the live/offline suites exercise the from filter
-          # and last-wins ordering, not just an unconditional set. Entry 1
-          # forces every tagged image to Never; entry 2 rewrites Never to
-          # Always. A tagged image ending at Always proves entry 2's from
-          # matched entry 1's output (chaining). Net result still matches the
-          # simple fixtures: tagged -> Always, digest -> IfNotPresent.
-          update:
-            - to: Never
-            - from: Never
-              to: Always
-      update-image-registry-cel:
-        enabled: true
-        parameters:
-          # `from` is an RE2 regex (anchored, escaped dots here). Chained so the
-          # suite exercises multi-entry ordering: entry 1 rewrites
-          # replace.image.registry -> intermediate.registry, entry 2 rewrites
-          # that to registry1.dso.mil. A container image ending at
-          # registry1.dso.mil proves entry 2's from matched entry 1's output.
-          update:
-            - from: '^replace\.image\.registry'
-              to: intermediate.registry
-            - from: '^intermediate\.registry'
-              to: registry1.dso.mil
+        - namespace: update-automountserviceaccounttokens-2
+          serviceAccounts:
+          - update-token-automount-2
+          - update-token-automount-wild-.*
+          pods:
+            allow:
+            - api-access-allowed-.*
+            - api-access-overlap-.*
+            deny:
+            - api-access-denied-.*
+            - api-access-overlap-.*
