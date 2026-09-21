@@ -1,3 +1,17 @@
+#########################
+# Disable Core Packages #
+#########################
+neuvector:
+  enabled: false
+loki:
+  enabled: false
+tempo:
+  enabled: false
+kiali:
+  enabled: false
+addons:
+  minioOperator:
+    enabled: false
 ########################
 # Required for package #
 ########################

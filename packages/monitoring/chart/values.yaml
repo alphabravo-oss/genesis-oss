@@ -40,7 +40,7 @@ upstream:
       image:
         registry: registry1.dso.mil
         repository: ironbank/opensource/prometheus/alertmanager
-        tag: v0.34.0
+        tag: v0.33.1
         sha: ""
         imagePullSecrets:
           - name: private-registry
@@ -126,7 +126,7 @@ upstream:
       image:
         registry: registry1.dso.mil
         repository: ironbank/kiwigrid/k8s-sidecar
-        tag: 2.10.3
+        tag: 2.10.1
         imagePullSecrets:
           - name: private-registry
       resources:
@@ -196,7 +196,7 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/kubernetes/kube-state-metrics
-      tag: v2.20.0
+      tag: v2.19.1
       imagePullSecrets:
         - name: private-registry
     resources:
@@ -273,13 +273,7 @@ upstream:
       image: null # We don't use the prometheus-operator image for the webhook
       patch:
         enabled: false
-        # Legacy patch mode is disabled by default. Set all image fields when enabling it.
-        image:
-          registry: null
-          repository: null
-          tag: null
-          sha: null
-          pullPolicy: null
+        image: null # We don't use the prometheus-operator image for the webhook
         resources:
           limits:
             cpu: 50m
@@ -356,7 +350,7 @@ upstream:
       image:
         registry: registry1.dso.mil
         repository: ironbank/opensource/prometheus/prometheus
-        tag: v3.14.0
+        tag: v3.13.2
         sha: ""
         imagePullSecrets:
           - name: private-registry
@@ -528,18 +522,14 @@ bbtests:
     envs:
       cypress_prometheus_url: "http://monitoring-kube-prometheus-prometheus:9090"
       cypress_alertmanager_url: "http://monitoring-kube-prometheus-alertmanager:9093"
-
   scripts:
-    image: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35
     envs:
       MONITORING_NAMESPACE: "{{ .Release.Namespace }}"
       ADMISSION_CERTIFICATE_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-admission'
       ADMISSION_WEBHOOK_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-admission'
       ADMISSION_SERVICE_NAME: '{{ printf "%s-%s" .Release.Name "kube-prometheus-stack" | trunc 26 | trimSuffix "-" }}-operator'
       PROMETHEUS_RULE_NAME: "{{ .Release.Name }}-cert-manager-webhook-smoke"
-      KIALI_URL: "http://kiali.kiali:20001"
-      GRAFANA_URL: "http://monitoring-grafana:80"
-      GRAFANA_PASSWORD: "prom-operator"
     permissions:
       apiGroups:
         - cert-manager.io
@@ -554,7 +544,6 @@ bbtests:
         - list
         - patch
         - update
-        - watch
 
 istio:
   enabled: false

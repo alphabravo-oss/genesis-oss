@@ -3,27 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [6.55.0-bb.7] (2026-09-05)
-### Changed
-- gluon 1.1.6 -> 1.1.7
-- registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar 2.10.3 -> 2.11.1
-- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.35.8 -> v1.36.4
-- registry1.dso.mil/ironbank/opensource/nginx/nginx 1.30.4 -> 1.31.4
-
-## [6.55.0-bb.6] (2026-08-31)
-### Changed
-- bb-common 1.4.0 -> 1.5.0
-- gluon 1.1.5 -> 1.1.6
-- registry1.dso.mil/ironbank/bigbang/grafana/loki-canary 3.7.4 -> 3.7.7
-- registry1.dso.mil/ironbank/grafana/grafana-enterprise-logs v3.6.11 -> v3.6.13
-- registry1.dso.mil/ironbank/ironbank/opensource/grafana/enterprise-logs-provisioner 3.6.11 -> 3.6.13
-- registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar 2.10.0 -> 2.10.3
-- registry1.dso.mil/ironbank/opensource/grafana/loki 3.7.4 -> 3.7.7
-- registry1.dso.mil/ironbank/opensource/grafana/rollout-operator v0.38.1 -> v0.39.0
-- registry1.dso.mil/ironbank/opensource/kubernetes/kubectl v1.35.7 -> v1.35.8
-- rollout-operator 0.50.1 -> 0.51.1
-- Removed deprecated bigbang.dev/applicationVersions annotation from Chart.yaml
-
 ## [6.55.0-bb.5] (2026-08-25)
 ### Fixed
 - Removed unused values from package values file

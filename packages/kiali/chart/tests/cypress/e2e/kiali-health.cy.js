@@ -63,6 +63,31 @@ describe('Kiali', function () {
     cy.get('svg[fill="var(--pf-global--danger-color--100)"]').should('not.exist');
   })
 
+  it('should verify Kiali sidecar metrics are up', { retries: 3 }, function () {
+    // assuming cypress env url is kiali.dev.bigbang.mil, use the base domain to compute prometheus url
+    cy.env(['url', 'pod_monitor_name', 'ambient_enabled']).then(({ url, pod_monitor_name, ambient_enabled }) => {
+      // Skip this test when ambient mode is enabled (no sidecars)
+      if (ambient_enabled === 'true' || ambient_enabled === true) {
+        cy.log('Skipping sidecar metrics test - ambient mode enabled')
+        this.skip()
+      }
+      const prometheusBaseUrl = url.replace('kiali', 'prometheus')
+      const podMonitorName = pod_monitor_name || "monitoring-monitoring-kube-istio-envoy"
+
+      // Load the Prometheus targets page with a specific scrape pool and filter (Kiali)
+      cy.visit(`${prometheusBaseUrl}/targets?pool=podMonitor%2Fmonitoring%2F${podMonitorName}%2F0&search=kiali`)
+
+      // Verify the scrape pool is displayed
+      cy.contains(`podMonitor/monitoring/${podMonitorName}/0`).should('exist')
+
+      // Get all table rows with target data and verify each shows "up" status (should be at least two)
+      cy.get('table tbody tr').should('have.length.gte', 2).each(($row) => {
+        // Each row should contain "up" status indicator
+        cy.wrap($row).should('contain.text', 'up')
+      })
+    })
+  })
+
   // Skip remaining tests if check_data is not set
   // These tests should only run in BB CI since nothing is istio injected in Package CI
   context('if check_data is set', function () {

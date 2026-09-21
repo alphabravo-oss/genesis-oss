@@ -1,8 +1,0 @@
-{{- define "neuvector.script-runner" }}
-spec:
-  automountServiceAccountToken: true
-{{- end }}
-{{- if and .Values.bbtests.enabled .Values.bbtests.scripts.enabled }}
-{{- include "gluon.tests.script-configmap.base" .}}
-{{- include "gluon.tests.script-runner.overrides" (list . "neuvector.script-runner") }}
-{{- end }}

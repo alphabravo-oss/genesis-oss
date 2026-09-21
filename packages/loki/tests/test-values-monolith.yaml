@@ -3,11 +3,6 @@ alloy:
   values:
     bbtests:
       enabled: false
-certManager:
-  enabled: true
-  values:
-    bbtests:
-      enabled: false
 loki:
   enabled: true
   strategy: monolith
@@ -35,8 +30,6 @@ monitoring:
   values:
     bbtests:
       enabled: false
-certManager:
-  enabled: true
 kyverno:
   values:
     bbtests:
@@ -45,3 +38,6 @@ kyvernoPolicies:
   values:
     bbtests:
       enabled: false
+addons:
+  minioOperator:
+    enabled: false

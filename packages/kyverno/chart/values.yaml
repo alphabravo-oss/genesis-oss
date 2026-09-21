@@ -64,7 +64,7 @@ openshift: false
 bbtests:
   enabled: false
   scripts:
-    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.37
+    image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35
     additionalVolumeMounts:
       - name: "kyverno-bbtest-manifest"
         mountPath: /yaml
@@ -99,7 +99,7 @@ upstream:
       image:
         defaultRegistry: registry1.dso.mil
         repository: ironbank/opensource/kyverno/kyvernocli
-        tag: 'v1.19.1'
+        tag: 'v1.19.0'
       imagePullSecrets:
       - name: private-registry
 
@@ -111,7 +111,7 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/kubernetes/kubectl
-      tag: 'v1.37'
+      tag: 'v1.35'
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -167,7 +167,7 @@ upstream:
       image:
         defaultRegistry: registry1.dso.mil
         repository: ironbank/opensource/kyverno/kyvernopre
-        tag: 'v1.19.1'
+        tag: 'v1.19.0'
       resources:
         limits:
           cpu: 1
@@ -179,7 +179,7 @@ upstream:
       image:
         defaultRegistry: registry1.dso.mil
         repository: ironbank/opensource/kyverno
-        tag: 'v1.19.1'
+        tag: 'v1.19.0'
       resources:
         limits:
           cpu: 500m
@@ -260,7 +260,7 @@ upstream:
     image:
       defaultRegistry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/background-controller
-      tag: 'v1.19.1'
+      tag: 'v1.19.0'
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -278,7 +278,7 @@ upstream:
     image:
       defaultRegistry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/cleanup-controller
-      tag: 'v1.19.1'
+      tag: 'v1.19.0'
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -315,7 +315,7 @@ upstream:
     image:
       defaultRegistry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/reports-controller
-      tag: 'v1.19.1'
+      tag: 'v1.19.0'
     imagePullSecrets:
       - name: private-registry
     podSecurityContext:
@@ -330,6 +330,6 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/kyverno/kyverno/readiness-checker
-      tag: 'v1.19.1'
+      tag: 'v1.19.0'
     imagePullSecrets:
       - name: private-registry

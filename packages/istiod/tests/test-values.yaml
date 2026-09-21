@@ -1,3 +1,30 @@
+#########################
+# Disable Core Packages #
+#########################
+monitoring:
+  enabled: false
+grafana:
+  enabled: false
+neuvector:
+  enabled: false
+loki:
+  enabled: false
+tempo:
+  enabled: false
+kyvernoReporter:
+  enabled: false
+kiali:
+  enabled: false
+bbctl:
+  enabled: false
+alloy:
+  enabled: false
+addons:
+  minioOperator:
+    enabled: false
+########################
+# Required for package #
+########################
 istioCRDs:
   enabled: true
 istiod:
@@ -12,3 +39,5 @@ kyverno:
   values:
     bbtests:
       enabled: false
+
+
