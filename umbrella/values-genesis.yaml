@@ -139,6 +139,7 @@ alloy:
             registry: ghcr.io
             repository: grafana/helm-chart-toolbox-kubectl
             tag: 0.1.6
+          enabled: false
         image:
           registry: ghcr.io
           repository: grafana/alloy-operator
@@ -330,6 +331,15 @@ monitoring:
           imagePullSecrets: []
           distroless: false
       prometheusOperator:
+        admissionWebhooks:
+          patch:
+            image:
+              registry: registry.k8s.io
+              repository: ingress-nginx/kube-webhook-certgen
+              tag: v1.6.9
+              sha: ''
+              pullPolicy: IfNotPresent
+              imagePullSecrets: []
         image:
           registry: quay.io
           repository: prometheus-operator/prometheus-operator
