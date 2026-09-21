@@ -323,6 +323,15 @@ monitoring:
           imagePullSecrets: []
           distroless: false
       prometheusOperator:
+        admissionWebhooks:
+          patch:
+            image:
+              registry: registry.k8s.io
+              repository: ingress-nginx/kube-webhook-certgen
+              tag: v1.6.9
+              sha: ''
+              pullPolicy: IfNotPresent
+              imagePullSecrets: []
         image:
           registry: quay.io
           repository: prometheus-operator/prometheus-operator
