@@ -1,6 +1,5 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "fortify" }}
-{{- $fluxSettingsFortify := mergeOverwrite (deepCopy .Values.flux) .Values.addons.fortify.flux -}}
+{{- $fluxSettingsFortify := merge .Values.addons.fortify.flux .Values.flux -}}
 {{- if (get .Values.addons $pkg).enabled }}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
 apiVersion: helm.toolkit.fluxcd.io/v2

@@ -191,7 +191,7 @@ upstream:
     registry: registry1.dso.mil
     repository: ironbank/big-bang/grafana/grafana-plugins
     # Overrides the Grafana image tag whose default is the chart appVersion
-    tag: "13.1.0"
+    tag: "13.0.1"
     pullPolicy: Always
 
     pullSecrets:
@@ -201,7 +201,7 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/bats/bats
-      tag: "1.14.0"
+      tag: "1.13.0"
     imagePullPolicy: Always
 
   securityContext:
@@ -288,7 +288,7 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/kiwigrid/k8s-sidecar
-      tag: 2.10.1
+      tag: 2.8.1
     imagePullPolicy: Always
     resources:
       requests:
@@ -323,7 +323,7 @@ upstream:
     image:
       registry: registry1.dso.mil
       repository: ironbank/opensource/grafana/grafana-image-renderer
-      tag: v5.12.1
+      tag: v5.9.1
     service:
       portName: 'http-web'
 

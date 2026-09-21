@@ -2,14 +2,6 @@
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.3.2-bb.0] (2026-08-04)
-### Changed
-- bb-common 1.3.1 -> 1.4.0
-- registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader v0.92.1 -> v0.93.0
-- Updated k8s-monitoring and aligned Alloy subcharts
-- k8s-monitoring updated from 4.3.1 to 4.3.2
-
-
 ## [4.3.1-bb.1] (2026-07-30)
 ### Changed
 - bb-common updated from 1.2.0 → 1.3.1

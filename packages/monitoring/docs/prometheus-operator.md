@@ -30,12 +30,6 @@ Configure the fundamentals of Prometheus like versions, persistence, retention p
 
 Automatically generate monitoring target configurations based on familiar Kubernetes label queries; no need to learn a Prometheus specific configuration language.
 
-### Admission Webhook Certificates
-
-The Prometheus Operator admission webhooks are enabled to validate PrometheusRule and related resources. Monitoring uses cert-manager to issue and inject the admission webhook certificates by default. This avoids the upstream create/patch webhook certificate jobs and the kube-webhook-certgen image in the default deployment path.
-
-If an environment needs the upstream patch job temporarily, disable cert-manager mode, provide a supported `upstream.prometheusOperator.admissionWebhooks.patch.image`, and re-enable the patch job with `upstream.prometheusOperator.admissionWebhooks.certManager.enabled=false` and `upstream.prometheusOperator.admissionWebhooks.patch.enabled=true`.
-
 ## Prometheus Operator Stack Components
 
 ### Prometheus Server

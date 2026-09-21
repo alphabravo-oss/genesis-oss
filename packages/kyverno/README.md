@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # kyverno
 
-![Version: 3.9.1-bb.0](https://img.shields.io/badge/Version-3.9.1--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.19.1](https://img.shields.io/badge/AppVersion-v1.19.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 3.8.2-bb.0](https://img.shields.io/badge/Version-3.8.2--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v1.18.2](https://img.shields.io/badge/AppVersion-v1.18.2-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 Kubernetes Native Policy Management
 
@@ -63,16 +63,18 @@ helm install kyverno chart/
 | networkPolicies.egress.from.kyverno-admission-controller.to.definition.kubeAPI | bool | `true` |  |
 | networkPolicies.egress.from.kyverno-migrate-resources.podSelector.matchLabels."batch.kubernetes.io/job-name" | string | `"kyverno-kyverno-migrate-resources"` |  |
 | networkPolicies.egress.from.kyverno-migrate-resources.to.definition.kubeAPI | bool | `true` |  |
+| networkPolicies.externalRegistries | object | `{"allowEgress":false,"ports":[]}` | This section will be deprecated in the next major release in favor of the bb-common definition |
 | networkPolicies.additionalPolicies | list | `[]` |  |
 | istio.enabled | bool | `false` |  |
 | openshift | bool | `false` |  |
 | bbtests.enabled | bool | `false` |  |
-| bbtests.scripts.image | string | `"registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.37"` |  |
+| bbtests.scripts.image | string | `"registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.7"` |  |
 | bbtests.scripts.additionalVolumeMounts[0].name | string | `"kyverno-bbtest-manifest"` |  |
 | bbtests.scripts.additionalVolumeMounts[0].mountPath | string | `"/yaml"` |  |
 | bbtests.scripts.additionalVolumes[0].name | string | `"kyverno-bbtest-manifest"` |  |
 | bbtests.scripts.additionalVolumes[0].configMap.name | string | `"kyverno-bbtest-manifest"` |  |
-| global.image.registry | string | `"registry1.dso.mil"` |  |
+| global.image.registry | string | `"registry1.dso.mil"` | Global value that allows to set a single image registry across all deployments. When set, it will override any values set under `.image.registry` across the chart. |
+| global.image.pullPolicy | string | `"IfNotPresent"` |  |
 | global.imagePullSecrets[0].name | string | `"private-registry"` |  |
 | global.resyncPeriod | string | `"15m"` |  |
 | global.templating.enabled | bool | `false` |  |

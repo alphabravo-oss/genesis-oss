@@ -1,8 +1,7 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "kyvernoPolicies" }}
 
 {{- if (get .Values $pkg).enabled }}
-{{- include "values-secret" (dict "root" $ "package" (dict "values" (fromYaml (include "bigbang.overlays.kyverno-policies" .))) "name" "kyverno-policies" "defaults" (include "bigbang.defaults.kyverno-policies" .) "injectCommonDefaults" false) }}
+{{- include "values-secret" (dict "root" $ "package" (dict "values" (fromYaml (include "bigbang.overlays.kyverno-policies" .))) "name" "kyverno-policies" "defaults" (include "bigbang.defaults.kyverno-policies" .)) }}
 {{- end }}
 
 {{- define "bigbang.defaults.kyverno-policies" -}}
@@ -1094,6 +1093,10 @@ policies:
           - logging-ek-es-master*
           - logging-ek-kb*
           - logging-ek-metrics*
+      - namespace: fluentbit
+        pods:
+          allow:
+          - fluentbit-script-test
       - namespace: minio-operator
         pods:
           allow:
@@ -1228,7 +1231,6 @@ policies:
         pods:
           allow:
           - fluentbit-fluent-bit-*
-          - fluentbit-script-test
       - namespace: eck-operator
         pods:
           allow:

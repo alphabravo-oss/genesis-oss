@@ -29,48 +29,6 @@ Source: https://github.com/prometheus-community/helm-charts/blob/main/charts/kub
   {{- end -}}
 {{- end -}}
 
-{{/* Allow Kubernetes component job names used by the synced dashboards to be overridden. */}}
-{{- define "kube-prometheus-stack-kubelet.name" -}}
-{{- default "kubelet" .Values.kubelet.jobNameOverride -}}
-{{- end -}}
-
-{{- define "kube-prometheus-stack-kube-controller-manager.name" -}}
-{{- default "kube-controller-manager" .Values.kubeControllerManager.jobNameOverride -}}
-{{- end -}}
-
-{{- define "kube-prometheus-stack-kube-scheduler.name" -}}
-{{- default "kube-scheduler" .Values.kubeScheduler.jobNameOverride -}}
-{{- end -}}
-
-{{- define "kube-prometheus-stack-kube-proxy.name" -}}
-{{- default "kube-proxy" .Values.kubeProxy.jobNameOverride -}}
-{{- end -}}
-
-{{- define "kube-prometheus-stack-kube-apiserver.name" -}}
-{{- default "apiserver" .Values.kubeApiServer.jobNameOverride -}}
-{{- end -}}
-
-{{/* Configure the destination folder for Grafana operator dashboards. */}}
-{{- define "kube-prometheus-stack.grafana.operator.folder" }}
-{{- $folder := .Values.grafana.operator.folder }}
-{{- $folderUID := .Values.grafana.operator.folderUID }}
-{{- $folderRef := .Values.grafana.operator.folderRef }}
-{{- if not (or
-  (and $folder (not $folderUID) (not $folderRef))
-  (and (not $folder) $folderUID (not $folderRef))
-  (and (not $folder) (not $folderUID) $folderRef)
-) }}
-{{- fail "grafana.operator: only one of folder, folderUID, or folderRef must be set" }}
-{{- end }}
-{{- if $folder }}
-folder: {{ $folder | quote }}
-{{- else if $folderUID }}
-folderUID: {{ $folderUID | quote }}
-{{- else if $folderRef }}
-folderRef: {{ $folderRef | quote }}
-{{- end }}
-{{- end }}
-
 {{- define "kube-prometheus-stack.chartref" -}}
 {{- replace "+" "_" .Chart.Version | printf "%s-%s" .Chart.Name -}}
 {{- end }}

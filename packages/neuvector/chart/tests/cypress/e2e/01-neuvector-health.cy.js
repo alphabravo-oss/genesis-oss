@@ -44,50 +44,6 @@ beforeEach(function () {
   cy.viewport(1920, 1080)
 
   cy.env(['url', 'password']).then(({ url, password }) => {
-    if (Cypress.env('keycloak_test_enable')) {
-      cy.session('keycloak-sso', () => {
-        cy.visit(url)
-        cy.title().should('contain', 'NeuVector')
-        cy.get('body').then($body => {
-          if ($body.find('div.mdc-checkbox').length > 0) {
-            cy.get('div.mdc-checkbox').find('input').click({ force: true })
-          }
-        })
-        cy.contains('button', 'OpenID', { matchCase: false, timeout: 30000 })
-          .should('not.be.disabled')
-          .click()
-        const keycloakOrigin = new URL(Cypress.env('keycloak_url')).origin
-        cy.origin(
-          keycloakOrigin,
-          { args: { username: Cypress.env('tnr_username'), password: Cypress.env('tnr_password') } },
-          ({ username, password }) => {
-            cy.url({ timeout: 30000 }).then(currentUrl => {
-              if (!currentUrl.includes('required-action')) {
-                cy.get('input#username', { timeout: 30000 }).type(username)
-                cy.get('input#password').type(password, { log: false })
-                cy.get('input#kc-login').click()
-              }
-            })
-
-            for (let i = 0; i < 2; i++) {
-              cy.url({ timeout: 30000 }).then(currentUrl => {
-                if (currentUrl.includes('TERMS_AND_CONDITIONS')) {
-                  cy.get('input#kc-accept', { timeout: 30000 }).click()
-                } else if (currentUrl.includes('OAUTH_GRANT')) {
-                  cy.get('input#kc-login', { timeout: 30000 }).click()
-                }
-              })
-            }
-          }
-        )
-        cy.url({ timeout: 30000 }).should('include', new URL(url).hostname)
-        cy.get('app-exposure-chart', { timeout: 60000 })
-      })
-      cy.visit(url)
-      cy.get('app-exposure-chart', { timeout: 60000 })
-      return
-    }
-
     const passPrimary = changedPassword || password || 'changeme$!'
     const passFallback = 'cypressPwd!1' // fallback password
 
@@ -203,29 +159,3 @@ it('Scan an image',
           })
       })
   })
-
-// Check compliance and validate Kubernetes CIS results
-it('Check Host Compliance',
-  {
-    retries: {
-      runMode: 4,
-      openMode: 4
-    }
-  }, () => {
-    cy.wait(1000)
-    cy.get('nav.sidebar > ul').contains('Security Risks').click()
-    cy.get('nav.sidebar > ul').contains('Compliance Profile').click()
-    
-    cy.get('mat-form-field.quick-filter input')
-      .click()
-      .clear()
-      .type('kubernetes')
-      .type('{enter}')
-      .click();
-
-    cy.contains('kubernetes')
-      .first()
-      .click()
-      .should('contain', 'kubernetes', { timeout: 1000 })
-  })
-

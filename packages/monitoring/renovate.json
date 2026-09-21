@@ -95,18 +95,6 @@
             "depNameTemplate": "kube-prometheus-stack",
             "datasourceTemplate": "helm",
             "registryUrlTemplate": "https://prometheus-community.github.io/helm-charts"
-        },
-        {
-            "customType": "regex",
-            "description": "Update Big Bang base image in unittest values",
-            "managerFilePatterns": [
-                "/^chart/unittests/values/.+\\.yaml$/"
-            ],
-            "matchStrings": [
-                "repository:\\s*ironbank/big-bang/base\\s*\\n\\s*tag:\\s*(?<currentValue>\\S+)"
-            ],
-            "depNameTemplate": "registry1.dso.mil/ironbank/big-bang/base",
-            "datasourceTemplate": "docker"
         }
     ]
 }

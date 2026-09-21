@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.keycloak.enabled }}
 {{- /* Create a cleaned copy of keycloak config and merge deprecated paths into current paths */ -}}
 {{- $keycloakPackage := deepCopy .Values.addons.keycloak -}}
@@ -17,6 +16,7 @@
 {{- define "bigbang.defaults.keycloak" -}}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
 {{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.keycloak.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.addons.keycloak) "enabled") }}
 {{- $monitoringEnabled := eq (include "metricScrapingEnabled" .) "true" }}
 {{- $tlsEnabled := and .Values.addons.keycloak.ingress.cert .Values.addons.keycloak.ingress.key -}}
 {{- $externalPostgresEnabled := or (ne .Values.addons.keycloak.database.host "") (ne (dig "upstream" "database" "hostname" "" .Values.addons.keycloak.values) "") -}}
@@ -26,8 +26,19 @@
 domain: {{ $domainName }}
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
     enabled: {{ $istioHardenedEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.keycloak.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.keycloak.values .) }}
 
 routes:
   inbound:
@@ -48,10 +59,14 @@ routes:
       - repo1.dso.mil
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   egress:
     defaults:
       allowIstiod:
         enabled: {{ .Values.istiod.enabled }}
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       keycloak:
         to:
@@ -60,6 +75,7 @@ networkPolicies:
           definition:
             database-subnets: {{ $externalPostgresEnabled }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     defaults:
       allowPrometheusToIstioSidecar:
         enabled: {{ and .Values.monitoring.enabled .Values.istiod.enabled }}
@@ -94,7 +110,7 @@ upstream:
     password: {{ coalesce .password "keycloak" | quote }}
   {{- end }}
 
-  {{- if $istioEnabled }}
+  {{- if $istioInjection }}
   podAnnotations:
     {{ include "istioAnnotation" . }}
   {{- end }}
@@ -142,8 +158,8 @@ upstream:
 
   serviceMonitor:
     enabled: {{ $monitoringEnabled }}
-    {{- if eq (include "metricsSidecarMtls" (list .Values.addons.keycloak .)) "true" }}
     scheme: https
+    {{- if eq (include "metricsSidecarMtls" (list .Values.addons.keycloak .)) "true" }}
     tlsConfig:
       caFile: /etc/prom-certs/root-cert.pem
       certFile: /etc/prom-certs/cert-chain.pem
@@ -210,14 +226,14 @@ postgresql:
         database: keycloak
   {{- end }}
 
-  {{- if $istioEnabled }}
+  {{- if $istioInjection }}
   primary:
-    {{- if $istioEnabled }}
+    {{- if $istioInjection }}
     annotations:
       {{- include "istioAnnotation" . | nindent 6 }}
     {{- end }}
   readReplicas:
-    {{- if $istioEnabled }}
+    {{- if $istioInjection }}
     annotations:
       {{- include "istioAnnotation" . | nindent 6 }}
     {{- end }}

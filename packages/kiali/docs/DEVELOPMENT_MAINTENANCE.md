@@ -2,24 +2,23 @@
 
 ## Code Changes for Updates/Renovates
 
-**NOTE:** Updated kiali-operator images can be requested by creating an issue in the [Iron Bank kiali-operator project](https://repo1.dso.mil/dsop/opensource/kiali/kiali-operator/-/work_items)
+**NOTE:** Updated kiali-operator images can be requested by creating an issue in the [Iron Bank kiali-operator project](https://repo1.dso.mil/dsop/opensource/kiali/kiali-operator/-/issues)
 
 `Kiali` is a passthrough chart. That means it does not fork an upstream chart but instead embeds one as a dependency. Because of this, the upgrade
 process is incredibly simple.
 
-1. Checkout the `renovate/kiali` branch. You can either work off of this branch or branch off of it.
+1. Checkout the `renovate/ironbank` branch. You can either work off of this branch or branch off of it.
 1. Check the [upstream repo](https://github.com/kiali/helm-charts/tags) for chart updates.
 1. Update dependencies to latest versions.
 
     ```sh
     helm dependency update ./chart
     ```
-   **NOTE:** On a Renovate-created branch, the next three steps are already handled by the `postUpgradeTasks` in [renovate.json](../renovate.json) (`bump-chart-bb-suffix`, `bump-changelog`, `regenerate-helm-docs`). Verify their output rather than redoing them by hand.
-
 1. Update version references for the chart in `Chart.yaml`. `version` should be
    `<version>-bb.0` (ex: `1.25.1-bb.0`) and `appVersion` should be `<version>`
-   (ex: `1.25.1`). Also validate that the  `helm.sh/images` annotations are update
-   to reflect the chart's new image versions.
+   (ex: `1.25.1`). Also validate that the Big Bang
+   `bigbang.dev/applicationVersions` and `helm.sh/images` annotations are update
+   to reflect the chart's new application and image versions.
 1. Update [CHANGELOG.md](../CHANGELOG.md) adding an entry for the new version and noting all changes (at minimum this should include the line `Updated Kiali to x.x.x`).
 1. Generate the [README.md](../README.md) using the [gluon library script](https://repo1.dso.mil/big-bang/apps/library-charts/gluon/-/blob/master/docs/bb-package-readme.md) guidelines noting any additional chart changes you make during development testing.
 1. Push your changes, validate that the CI pipeline passes. If there are any failures follow the information in the pipeline to make the necessary updates and reach out to the team if needed.
@@ -33,7 +32,7 @@ You should perform these steps on both a clean install and an upgrade from BB ma
 
 If you'd like to install from a specific branch or tag, then the code block under kiali needs to be uncommented and used to target your changes.
 
-For example, this would target the `renovate/kiali` branch.
+For example, this would target the `renovate/ironbank` branch.
 
 ```yaml
 kiali:
@@ -45,7 +44,7 @@ kiali:
   # Must set the unused label to null
   git:
     tag: null
-    branch: "renovate/kiali"
+    branch: "renovate/ironbank"
 ```
 
 ### Cluster setup
@@ -73,10 +72,18 @@ e.g.
 export BIGBANG_REPO_DIR=~/repos/bigbang
 ```
 
-1. Run the [k3d_dev.sh](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/reference/scripts/developer/k3d-dev.sh) script to deploy a dev cluster. The same invocation works for either Keycloak option:
+1. Run the [k3d_dev.sh](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/assets/scripts/developer/k3d-dev.sh) script to deploy a dev cluster:
+
+    For `login.dso.mil` Keycloak:
 
     ```sh
-    "${BIGBANG_REPO_DIR}"/docs/reference/scripts/developer/k3d-dev.sh
+    "${BIGBANG_REPO_DIR}"/docs/assets/scripts/developer/k3d-dev.sh
+    ```
+
+    For local `keycloak.dev.bigbang.mil` Keycloak:
+
+    ```sh
+    "${BIGBANG_REPO_DIR}"/docs/assets/scripts/developer/k3d-dev.sh
     ```
 
 1. Export your kubeconfig:
@@ -108,7 +115,7 @@ For `login.dso.mil` Keycloak:
   --set registryCredentials.username=${REGISTRY_USERNAME} --set registryCredentials.password=${REGISTRY_PASSWORD} \
   -f https://repo1.dso.mil/big-bang/bigbang/-/raw/master/tests/test-values.yaml \
   -f https://repo1.dso.mil/big-bang/bigbang/-/raw/master/chart/ingress-certs.yaml \
-  -f https://repo1.dso.mil/big-bang/bigbang/-/raw/master/docs/reference/configs/example/dev-sso-values.yaml \
+  -f https://repo1.dso.mil/big-bang/bigbang/-/raw/master/docs/assets/configs/example/dev-sso-values.yaml \
   -f docs/dev-overrides/minimal.yaml \
   -f docs/dev-overrides/kiali-testing.yaml
   ```
@@ -139,22 +146,33 @@ This will deploy the following apps for testing:
 1. Navigate to [Kiali](https://kiali.dev.bigbang.mil/) and validate you are prompted to login with SSO and that the login is successful.
 1. On the main menu, choose `Overview` and verify that the panels that appear populate and that there are no errors.
 1. Still on the main menu, choose `Workloads`, then `Kiali` (if you see "no namespace is selected" here you may need to select the Kiali namespace in the `Select Namespaces` drop-down menu).
-    - Check both `Inbound Metrics` and `Outbound Metrics`. Verify that graphs populate for at least some of the items in each. *Note: Sometimes it takes a while for the graphs to populate on the Inbound Metrics tab. Logging on to grafana.dev.bigbang.mil and clicking around for a while tends to speed this up.*
+    - Check both `Inbound Metrics` and `Outbound Metrics`. Verify that graphs populate for at least some of the items in each. *Note: Sometimes it takes a while for the graphs to populate on the Inbound Metrics tab. Logging on to grafana.bigbang.dev and clicking around for a while tends to speed this up.*
 1. Click on `Traces` and verify that at least some traces appear on the graph.
-1. Once you've confirmed that the package tests above pass, also test your branch against Big Bang per the steps in [this document](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/community/development/test-package-against-bb.md).
+1. Once you've confirmed that the package tests above pass, also test your branch against Big Bang per the steps in [this document](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/developer/test-package-against-bb.md).
 
 ## Files That Require Integration Testing
 
-- ./chart/templates/bigbang/istio.yaml
+- ./chart/templates/bigbang/grafanaServiceEntry.yaml
+- ./chart/templates/bigbang/istio/authorizationPolicies/allow-intra-namespace-policy.yaml
+- ./chart/templates/bigbang/istio/authorizationPolicies/ingressgateway-authz-policy.yaml
+- ./chart/templates/bigbang/istio/authorizationPolicies/template.yaml
 - ./chart/templates/bigbang/kiali-clusterrolebinding-openshift-scc.yaml
 - ./chart/templates/bigbang/network-attachment-definition.yaml
-- ./chart/templates/bigbang/network-policies.yaml
+- ./chart/templates/bigbang/networkpolicies/additional-networkpolicies.yaml
+- ./chart/templates/bigbang/networkpolicies/egress-kube-dns.yaml
+- ./chart/templates/bigbang/networkpolicies/helm-test-egress.yaml
 - ./chart/templates/bigbang/oidc-ca-cm.yaml
-- ./chart/templates/bigbang/routes.yaml
+- ./chart/templates/bigbang/peerAuthentication.yaml
+- ./chart/templates/bigbang/serviceEntry.yaml
+- ./chart/templates/bigbang/sidecar.yaml
+- ./chart/templates/bigbang/ssoServiceEntry.yaml
+- ./chart/templates/bigbang/svc-patch-job.yaml
+- ./chart/templates/bigbang/tracingServiceEntry.yaml
+- ./chart/templates/bigbang/virtualservice.yaml
 
 ### Instructions for Integration Testing
 
-See the [Big Bang Doc](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/community/development/test-package-against-bb.md?ref_type=heads)
+See the [Big Bang Doc](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/developer/test-package-against-bb.md?ref_type=heads)
 
 ## automountServiceAccountToken
 
@@ -164,5 +182,9 @@ This policy revokes access to the K8s API for Pods utilizing said ServiceAccount
 
 ## Modifications made to the upstream chart
 
-- `oidcCaCert` is consumed by `chart/templates/bigbang/oidc-ca-cm.yaml`, added in [#52](https://repo1.dso.mil/big-bang/product/packages/kiali/-/work_items/52).
+### [chart/values.yaml](../chart/values.yaml)
+
+- Ensure renovate does not remove `oidcCaCert` key and associated comment. This corresponds to `chart/templates/bigbang/oidc-ca-cm.yaml` added in [#52](https://repo1.dso.mil/big-bang/product/packages/kiali/-/issues/52)
+
+- Add `sso` key that defaults to false. Needed for downstream changes that rely on this in `chart/templates/bigbang/ssoServiceEntry.yaml` and `chart/templates/bigbang/networkpolicies/egress-sso.yml`.
 

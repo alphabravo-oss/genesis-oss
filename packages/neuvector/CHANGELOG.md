@@ -3,33 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-
-## [2.11.1-bb.0] (2026-09-04)
-### Changed
-- bb-common 1.4.0 -> 1.5.0
-- core 2.11.0 -> 2.11.1
-- crd 2.11.0 -> 2.11.1
-- gluon 1.1.3 -> 1.1.7
-- monitor 2.11.0 -> 2.11.1
-- registry1.dso.mil/ironbank/neuvector/neuvector/controller 5.6.0 -> 5.6.1
-- registry1.dso.mil/ironbank/neuvector/neuvector/enforcer 5.6.0 -> 5.6.1
-- registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.6.0 -> 5.6.1
-- registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.9 -> v0.2.10
-
-## [2.11.0-bb.4] (2026-09-04)
-
-### Changed
-
-- Updated Cypress test to support SSO integration
-- Added SSO test file
-
-## [2.11.0-bb.3] (2026-09-03)
-
-### Changed
-
-- Added Cypress test for compliance check
-- Added test script to check prometheues sevice monitor connectivity.
-
 ## [2.11.0-bb.2] (2026-07-30)
 ### Changed
 - bb-common 1.2.0 -> 1.4.0
@@ -59,9 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.7 -> v0.2.8
 
 ## [2.10.3-bb.0] (2026-06-23)
-
 ### Changed
-
 - bb-common 0.15.0 -> 1.0.2
 - core 2.10.2 -> 2.10.3
 - crd 2.10.2 -> 2.10.3
@@ -72,9 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - registry1.dso.mil/ironbank/neuvector/neuvector/manager 5.5.2 -> 5.5.3
 
 ## [2.10.2-bb.0] (2026-06-02)
-
 ### Changed
-
 - bb-common 0.14.2 -> 0.15.0
 - core 2.8.13 -> 2.10.2
 - crd 2.8.13 -> 2.10.2
@@ -88,7 +57,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [2.8.13-bb.1] (2026-04-30)
 
 ### Changed
-
 - Removed the unnecessary Big Bang-specific updater CronJob override introduced in `2.8.13-bb.0`; the upstream `neuvector-updater-pod` CronJob remains the package updater path.
 - Clarified maintainer validation for manual updater jobs so test jobs preserve the `neuvector-updater-pod-*` Kyverno exception pattern.
 - Added a Helm test hook that verifies the updater can restart the scanner deployment through the Kubernetes API.
@@ -96,11 +64,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [2.8.13-bb.0] (2026-04-25)
 
 ### Added
-
 - Added a Big Bang-specific full-template override for `neuvector-updater-pod` to restore `automountServiceAccountToken: true`, which the upstream updater requires for its in-cluster scanner restart PATCH call.
 
 ### Changed
-
 - bb-common 0.14.1 -> 0.14.2
 - core 2.8.12 -> 2.8.13
 - crd 2.8.12 -> 2.8.13
@@ -112,9 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.4 -> v0.2.6
 
 ## [2.8.12-bb.0] (2026-03-20)
-
 ### Changed
-
 - bb-common 0.14.0 -> 0.14.1
 - core 2.8.11 -> 2.8.12
 - crd 2.8.11 -> 2.8.12
@@ -125,9 +89,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.3 -> v0.2.4
 
 ## [2.8.11-bb.0] (2026-02-13)
-
 ### Changed
-
 - core 2.8.10 -> 2.8.11
 - crd 2.8.10 -> 2.8.11
 - monitor 2.8.10 -> 2.8.11
@@ -137,9 +99,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter v0.2.2 -> v0.2.3
 
 ## [2.8.10-bb.4] (2026-02-12)
-
 ### Changed
-
 - bb-common 0.13.0 -> 0.14.0
 - gluon 0.9.7 -> 0.9.8
 - Migrated Cypress tests from Cypress.env() to cy.env() for Cypress 15.10.0 compatibility

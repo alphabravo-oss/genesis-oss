@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if eq (include "authserviceEnabled" .) "true" }}
 
 {{- /* Create a cleaned copy of package config and merge deprecated paths into current paths */ -}}
@@ -18,6 +17,7 @@
 {{- end }}
 
 {{- define "bigbang.defaults.authservice" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
 {{- $ambientEnabled := eq (include "ambientEnabled" .) "true" }}
 # hostname is deprecated and replaced with domain. But if hostname exists then use it.
 {{- $domainName := default .Values.domain .Values.hostname }}
@@ -32,17 +32,22 @@
 }}
 
 istio:
+  enabled: {{ $istioEnabled }}
+
   hardened:
     enabled: {{ $istioHardenedEnabled }}
 
-  clusterWideHardenedEnabled: {{ dig "hardened" "enabled" false .Values.istiod.values }}
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
 
-routes:
-  outbound:
-    bb-tests:
-      enabled: {{ dig "bbtests" "enabled" false .Values.addons.authservice.values }}
-      hosts:
-      - repo1.dso.mil
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.authservice.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.authservice.values .) }}
+
+  clusterWideHardenedEnabled: {{ dig "hardened" "enabled" false .Values.istiod.values }}
 
 image: 
   pullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
@@ -63,7 +68,11 @@ monitoring:
   enabled: {{ .Values.monitoring.enabled | default false }}
 
 networkPolicies:
-  ingress:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress: 
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       # gRPC connections for pods with protect=keycloak label
       authservice:10003:
@@ -82,12 +91,6 @@ networkPolicies:
               podSelector:
                 matchLabels:
                   gateway.networking.k8s.io/gateway-name: monitoring-monitoring-waypoint
-            {{- end }}
-            {{- if eq (include "thanos.authservice.waypointEnabled" .) "true" }}
-            thanos/waypoint:
-              podSelector:
-                matchLabels:
-                  gateway.networking.k8s.io/gateway-name: thanos-waypoint
             {{- end }}
       # Grafana redis client connection
       redis-bb:6379:
@@ -113,6 +116,7 @@ networkPolicies:
             "istio-gateway/*": {{ and $ambientEnabled .Values.istioGateway.enabled }}
             kiali-service-account@kiali/kiali: {{ and $ambientEnabled .Values.kiali.enabled }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       authservice:
         to:
@@ -121,6 +125,13 @@ networkPolicies:
           k8s:
             # Tempo trace data
             tempo/tempo:9411: {{ .Values.tempo.enabled }}
+      # Waypoint egress to thanos when the shared authservice waypoint fronts it for SSO (ambient).
+      # Monitoring no longer uses this waypoint: prometheus/alertmanager are fronted by the
+      # monitoring package's own waypoint, which makes the ext_authz call back to authservice:10003.
+      authservice-waypoint:
+        to:
+          k8s:
+            thanos/thanos:9090: {{ and $ambientEnabled .Values.addons.thanos.enabled .Values.addons.thanos.sso.enabled }}
       haproxy:
         to:
           k8s:

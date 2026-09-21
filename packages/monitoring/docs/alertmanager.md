@@ -48,7 +48,7 @@ alertmanager:
 
 ### Chat Webhook Alert Configuration
 
-Alertmanager contains built in support for a few chat apps: slack, telegram & wechat. The included slack configuration can be used to send to [Mattermost Incoming Webhooks](https://developers.mattermost.com/integrate/webhooks/incoming/) within an installation. Just like the example above we'll want to keep the existing receiver and route for the 'null' receiver so that the built in Watchdog alert isn't sent to your new receiver. [Here is a link to the full list of options available](https://prometheus.io/docs/alerting/latest/configuration/#slack_config) for the `slack_config` section within alertmanager, however to send to a mattermost incoming webhook, only the value show below is needed.
+Alertmanager contains built in support for a few chat apps: slack, telegram & wechat. The included slack configuration can be used to send to [Mattermost Incoming Webhooks](https://docs.mattermost.com/developer/webhooks-incoming.html#simple-incoming-webhook) within an installation. Just like the example above we'll want to keep the existing receiver and route for the 'null' receiver so that the built in Watchdog alert isn't sent to your new receiver. [Here is a link to the full list of options available](https://prometheus.io/docs/alerting/latest/configuration/#slack_config) for the `slack_config` section within alertmanager, however to send to a mattermost incoming webhook, only the value show below is needed.
 
 ```yaml
 alertmanager:

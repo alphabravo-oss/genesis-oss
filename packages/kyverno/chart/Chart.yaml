@@ -1,8 +1,8 @@
 apiVersion: v2
 type: application
 name: kyverno
-version: 3.9.1-bb.0
-appVersion: v1.19.1
+version: 3.8.2-bb.0
+appVersion: v1.18.2
 icon: https://github.com/kyverno/kyverno/raw/main/img/logo.png
 description: Kubernetes Native Policy Management
 home: https://kyverno.io/
@@ -17,29 +17,31 @@ annotations:
   # Kubectl image is used if webhooksCleanup.enable or bbtests.enabled
   helm.sh/images: |
     - name: kyverno
-      image: registry1.dso.mil/ironbank/opensource/kyverno:v1.19.1
+      image: registry1.dso.mil/ironbank/opensource/kyverno:v1.18.2
     - name: kyvernopre
-      image: registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre:v1.19.1
+      image: registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre:v1.18.2
     - name: kubectl
-      image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.37
+      image: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.7
     - name: reports-controller
-      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller:v1.19.1
+      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller:v1.18.2
     - name: background-controller
-      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller:v1.19.1
+      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller:v1.18.2
     - name: cleanup-controller
-      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller:v1.19.1
+      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller:v1.18.2
     - name: kyvernocli
-      image: registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli:v1.19.1
+      image: registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli:v1.18.2
+    - name: busybox
+      image: registry1.dso.mil/ironbank/frontiertechnology/cortex/busybox:v1.37.0
     - name: readiness-checker
-      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker:v1.19.1
+      image: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker:v1.18.2
 dependencies:
   - name: kyverno
-    version: 3.9.1
+    version: 3.8.2
     repository: https://kyverno.github.io/kyverno/
     alias: "upstream"
   - name: gluon
-    version: 1.1.7
+    version: 1.1.3
     repository: oci://registry1.dso.mil/bigbang
   - name: bb-common
-    version: 1.6.0
+    version: 1.2.0
     repository: "oci://registry1.dso.mil/bigbang"

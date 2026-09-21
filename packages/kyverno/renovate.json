@@ -8,8 +8,7 @@
   "labels": [
     "kyverno",
     "renovate",
-    "kind::maintenance",
-    "team::Package Maintenance"
+    "kind::maintenance"
   ],
   "enabledManagers": [
     "custom.regex",
@@ -63,7 +62,8 @@
         "/^chart/Chart\\.yaml$/"
       ],
       "matchStrings": [
-        "appVersion:\\s+(?<currentValue>.+)"
+        "appVersion:\\s+(?<currentValue>.+)",
+        "- Kyverno:\\s+(?<currentValue>.+)"
       ],
       "depNameTemplate": "registry1.dso.mil/ironbank/opensource/kyverno",
       "datasourceTemplate": "docker"

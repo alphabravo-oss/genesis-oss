@@ -1,5 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettingsPrometheusOperatorCRDs:= mergeOverwrite (deepCopy .Values.flux) .Values.prometheusOperatorCRDs.flux -}}
+{{- $fluxSettingsPrometheusOperatorCRDs:= merge .Values.prometheusOperatorCRDs.flux .Values.flux -}}
 {{- if and .Values.prometheusOperatorCRDs.enabled }}
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease

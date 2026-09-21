@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.elasticsearchKibana.enabled }}
 {{- /* Create a cleaned copy of elasticsearchKibana config and merge deprecated paths into current paths */ -}}
 {{- $elasticsearchKibanaPackage := deepCopy .Values.elasticsearchKibana -}}
@@ -13,6 +12,8 @@
 # hostname is deprecated and replaced with domain. But if hostname exists then use it.
 {{- $domainName := default .Values.domain .Values.hostname }}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.elasticsearchKibana) "enabled") }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.elasticsearchKibana.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
 {{- $disableDefaultFLB := dig "additionalOutputs" "disableDefault" false .Values.fluentbit.values }}
 hostname: {{ $domainName }}
 domain: {{ $domainName }}
@@ -21,7 +22,25 @@ openshift: {{ .Values.openshift }}
 
 imagePullPolicy: {{ .Values.imagePullPolicy }}
 
+istio:
+  enabled: {{ $istioEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.elasticsearchKibana.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.elasticsearchKibana.values .) }}
+
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+
   egress:
     definitions:
       sso:

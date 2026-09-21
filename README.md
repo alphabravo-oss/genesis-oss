@@ -32,4 +32,4 @@ The install entrypoint is the umbrella chart in this repo. Package charts for th
 
 ## Status
 
-This tree is the generated `3.33.0` snapshot. The engine can regenerate it. Hand edits here are overwritten on the next sync.
+This tree is the generated `3.30.0` snapshot. The engine can regenerate it. Hand edits here are overwritten on the next sync.

@@ -13,7 +13,6 @@
   ],
   "enabledManagers": [
     "helmv3",
-    "helm-values",
     "custom.regex"
   ],
   "packageRules": [
@@ -60,6 +59,29 @@
       "description": "Update images in Chart.yaml",
       "managerFilePatterns": [
         "/^chart/Chart\\.yaml$/"
+      ],
+      "matchStrings": [
+        "image:[^\\S\\r\\n]+(?<depName>.+):(?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Update image references in values.yaml",
+      "managerFilePatterns": [
+        "/^chart/values\\.yaml$/"
+      ],
+      "matchStrings": [
+        "registry:[^\\S\\r\\n]+(?<registry>\\S+)\\s+repository:[^\\S\\r\\n]+(?<depName>\\S+)[\\s\\S]*?tag:[^\\S\\r\\n]+\"?(?<currentValue>[^\"\\s]+)\"?"
+      ],
+      "depNameTemplate": "{{registry}}/{{depName}}",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Update inline image references in values.yaml",
+      "managerFilePatterns": [
+        "/^chart/values\\.yaml$/"
       ],
       "matchStrings": [
         "image:[^\\S\\r\\n]+(?<depName>.+):(?<currentValue>\\S+)"

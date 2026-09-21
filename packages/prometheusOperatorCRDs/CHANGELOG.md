@@ -3,10 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
-## [31.0.1-bb.0] (2026-08-11)
-### Changed
-- Prometheus Operator CRDs updated from 30.0.1 to 31.0.1
-
 ## [30.0.1-bb.0] (2026-07-02)
 ### Changed
 - prometheus-operator-crds updated from 28.0.1 to 30.0.1

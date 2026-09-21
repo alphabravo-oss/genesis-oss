@@ -3,32 +3,6 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ---
-## [3.10.0-bb.2] (2026-09-03)
-### Changed
-- gluon 1.1.6 -> 1.1.7
-
-## [3.10.0-bb.1] (2026-09-02)
-### Changed
-- Updated cypress test to support sso testing
-- Added SSO test values file
-
-## [3.10.0-bb.0] (2026-08-28)
-### Changed
-- policy-reporter 3.9.1 -> 3.10.0
-- registry1.dso.mil/ironbank/nirmata/policy-reporter/policy-reporter-ui 2.7.3 -> 2.8.1
-- registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter 3.9.0 -> 3.10.0
-
-## [3.9.0-bb.2] (2026-08-25)
-### Changed
-- bb-common 1.4.0 -> 1.5.0
-- gluon 1.1.3 -> 1.1.6
-- registry1.dso.mil/ironbank/nirmata/policy-reporter/policy-reporter-ui 2.7.1 -> 2.7.3
-
-## [3.9.0-bb.1] (2026-08-05)
-### Changed
-- bb-common 1.3.1 -> 1.4.0
-- registry1.dso.mil/ironbank/nirmata/policy-reporter/policy-reporter-ui 2.7.0 -> 2.7.1
-
 ## [3.9.0-bb.0] (2026-07-28)
 ### Changed
 - bb-common 1.2.0 -> 1.3.1

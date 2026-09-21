@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "gatewayAPI" }}
 
 {{- /* Create secret */ -}}

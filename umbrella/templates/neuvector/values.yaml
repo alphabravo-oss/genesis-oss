@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- define "bigbang.defaults.neuvector" -}}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
 {{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.neuvector) "enabled") -}}
@@ -13,11 +12,24 @@
   {{- $neuvectorMetricsPass = join "" (list (randAlphaNum 12) (randAlpha 2 | upper) (randAlpha 2 | lower) (randNumeric 2)) }}
 {{- end }}
 
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.neuvector.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+
 # hostname is deprecated and replaced with domain. But if hostname exists then use it.
 domain: {{ default .Values.domain .Values.hostname }}
 
 istio:
+  enabled: {{ $istioEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
   injection: {{ ternary "enabled" "disabled" $istioInjection }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.neuvector.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.neuvector.values .) }}
 
 routes:
   inbound:
@@ -31,7 +43,16 @@ routes:
       - repo1.dso.mil
 
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       controller:
         podSelector:
@@ -56,9 +77,9 @@ upstream:
   {{- include "secretsImagePullSecretsSingle" . | nindent 2 }}
 
   openshift: {{ .Values.openshift }}
-  {{- if or .Values.monitoring.enabled $istioEnabled .Values.neuvector.sso.enabled }}
+  {{- if or .Values.monitoring.enabled $istioInjection .Values.neuvector.sso.enabled }}
   controller:
-    {{- if $istioEnabled }}
+    {{- if $istioInjection }}
     podAnnotations:
       {{ include "istioAnnotation" . }}
     {{- end }}
@@ -99,22 +120,6 @@ upstream:
     {{- end }}
   {{- end }}
 
-  {{- if $istioEnabled }}
-  enforcer:
-    podAnnotations:
-      {{ include "istioAnnotation" . }}
-  cve:
-    updater:
-      podAnnotations:
-        {{ include "istioAnnotation" . }}
-    scanner:
-      podAnnotations:
-        {{ include "istioAnnotation" . }}
-  manager:
-    podAnnotations:
-      {{ include "istioAnnotation" . }}
-  {{- end }}
-
 monitor:
   install: {{ eq (include "metricScrapingEnabled" .) "true" }}
 
@@ -122,12 +127,12 @@ monitor:
 
   exporter:
     enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
-    {{- if or (eq (include "metricScrapingEnabled" .) "true") $istioEnabled }}
+    {{- if or (eq (include "metricScrapingEnabled" .) "true") $istioInjection }}
     podAnnotations:
       {{- if eq (include "metricScrapingEnabled" .) "true" }}
       checksum/metrics-pass: {{ sha256sum $neuvectorMetricsPass }}
       {{- end }}
-      {{- if $istioEnabled }}
+      {{- if $istioInjection }}
       {{ include "istioAnnotation" . }}
       {{- end }}
     {{- end }}
@@ -147,6 +152,23 @@ monitor:
       type: ClusterIP
     CTRL_USERNAME: metrics
     CTRL_PASSWORD: {{ $neuvectorMetricsPass }}
+
+
+  {{- if $istioInjection }}
+  enforcer:
+    podAnnotations:
+      {{ include "istioAnnotation" . }}
+  cve:
+    updater:
+      podAnnotations:
+        {{ include "istioAnnotation" . }}
+    scanner:
+      podAnnotations:
+        {{ include "istioAnnotation" . }}
+  manager:
+    podAnnotations:
+      {{ include "istioAnnotation" . }}
+  {{- end }}
 
 {{- end }}
 
