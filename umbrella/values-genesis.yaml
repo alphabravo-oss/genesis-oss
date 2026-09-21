@@ -26,6 +26,12 @@ alloy:
               tag: v0.93.0
     bbtests:
       enabled: false
+    global:
+      image:
+        registry: ''
+        pullSecrets: []
+      imagePullSecrets: []
+      imageRegistry: ''
 certManager:
   values:
     upstream:
@@ -70,6 +76,11 @@ grafana:
         fsGroup: 472
     bbtests:
       enabled: false
+    global:
+      image:
+        registry: ''
+      imagePullSecrets: []
+      imageRegistry: ''
 istiod:
   values:
     upstream:
@@ -101,33 +112,39 @@ kyverno:
             defaultRegistry: ghcr.io
             repository: kyverno/kyverno
             tag: v1.19.1
+            registry: ghcr.io
         initContainer:
           image:
             defaultRegistry: ghcr.io
             repository: kyverno/kyvernopre
             tag: v1.19.1
+            registry: ghcr.io
         replicas: 1
       backgroundController:
         image:
           defaultRegistry: ghcr.io
           repository: kyverno/background-controller
           tag: v1.19.1
+          registry: ghcr.io
       cleanupController:
         image:
           defaultRegistry: ghcr.io
           repository: kyverno/cleanup-controller
           tag: v1.19.1
+          registry: ghcr.io
       reportsController:
         image:
           defaultRegistry: ghcr.io
           repository: kyverno/reports-controller
           tag: v1.19.1
+          registry: ghcr.io
       crds:
         migration:
           image:
             defaultRegistry: ghcr.io
             repository: kyverno/kyverno-cli
             tag: v1.19.1
+            registry: ghcr.io
       test:
         image:
           registry: ghcr.io
@@ -140,6 +157,10 @@ kyverno:
           tag: v1.37.0
     bbtests:
       enabled: false
+    global:
+      image:
+        registry: ''
+      imagePullSecrets: []
 kyvernoReporter:
   values:
     upstream:
