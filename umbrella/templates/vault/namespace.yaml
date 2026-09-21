@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.vault.enabled }}
 {{- include "bigbang.namespace" (dict "root" . "name" "vault" "appName" "vault" "component" "security-tools" "package" .Values.addons.vault) }}
 {{- end }}

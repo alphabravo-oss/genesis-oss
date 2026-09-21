@@ -148,6 +148,9 @@ rg -n "NetworkPolicy|VirtualService" /tmp/loki-render.yaml
       repository: https://grafana.github.io/helm-charts
       version: $ROLLOUT_OPERATOR_VERSION
       condition: rollout_operator.enabled
+  annotations:
+    bigbang.dev/applicationVersions: |
+      - Loki: $LOKI_APP_VERSION
   ```
 
 ### ```chart/values.yaml```

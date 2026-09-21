@@ -121,6 +121,7 @@ Checking Prometheus for Kyverno dashboards
 ### chart/Chart.yaml
 
 - Added `-bb` to chart `version`
+- Added `bigbang.dev/applicationVersions` and `helm.sh/images` to `annotations`
 - Added `gluon` to `dependencies`
 
 ### chart/values.yaml

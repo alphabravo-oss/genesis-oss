@@ -1,7 +1,7 @@
 <!-- Warning: Do not manually edit this file. See notes on gluon + helm-docs at the end of this file for more information. -->
 # monitoring
 
-![Version: 88.6.2-bb.0](https://img.shields.io/badge/Version-88.6.2--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.93.1](https://img.shields.io/badge/AppVersion-v0.93.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
+![Version: 88.3.0-bb.0](https://img.shields.io/badge/Version-88.3.0--bb.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.93.1](https://img.shields.io/badge/AppVersion-v0.93.1-informational?style=flat-square) ![Maintenance Track: bb_integrated](https://img.shields.io/badge/Maintenance_Track-bb_integrated-green?style=flat-square)
 
 kube-prometheus-stack collects Kubernetes manifests, Grafana dashboards, and Prometheus rules combined with documentation and scripts to provide easy to operate end-to-end Kubernetes cluster monitoring with Prometheus using the Prometheus Operator.
 
@@ -63,33 +63,8 @@ helm install monitoring chart/
 | openshift | bool | `false` |  |
 | bbtests.enabled | bool | `false` |  |
 | bbtests.cypress.artifacts | bool | `true` |  |
-| bbtests.cypress.exports | bool | `false` |  |
-| bbtests.cypress.additionalVolumeMounts[0].name | string | `"cypress-exports"` |  |
-| bbtests.cypress.additionalVolumeMounts[0].mountPath | string | `"/test/exports"` |  |
-| bbtests.cypress.additionalVolumes[0].name | string | `"cypress-exports"` |  |
-| bbtests.cypress.additionalVolumes[0].emptyDir | object | `{}` |  |
 | bbtests.cypress.envs.cypress_prometheus_url | string | `"http://monitoring-kube-prometheus-prometheus:9090"` |  |
 | bbtests.cypress.envs.cypress_alertmanager_url | string | `"http://monitoring-kube-prometheus-alertmanager:9093"` |  |
-| bbtests.scripts.image | string | `"registry1.dso.mil/ironbank/big-bang/base:2.1.0"` |  |
-| bbtests.scripts.envs.MONITORING_NAMESPACE | string | `"{{ .Release.Namespace }}"` |  |
-| bbtests.scripts.envs.ADMISSION_CERTIFICATE_NAME | string | `"{{ printf \"%s-%s\" .Release.Name \"kube-prometheus-stack\" \| trunc 26 \| trimSuffix \"-\" }}-admission"` |  |
-| bbtests.scripts.envs.ADMISSION_WEBHOOK_NAME | string | `"{{ printf \"%s-%s\" .Release.Name \"kube-prometheus-stack\" \| trunc 26 \| trimSuffix \"-\" }}-admission"` |  |
-| bbtests.scripts.envs.ADMISSION_SERVICE_NAME | string | `"{{ printf \"%s-%s\" .Release.Name \"kube-prometheus-stack\" \| trunc 26 \| trimSuffix \"-\" }}-operator"` |  |
-| bbtests.scripts.envs.PROMETHEUS_RULE_NAME | string | `"{{ .Release.Name }}-cert-manager-webhook-smoke"` |  |
-| bbtests.scripts.envs.KIALI_URL | string | `"http://kiali.kiali:20001"` |  |
-| bbtests.scripts.envs.GRAFANA_URL | string | `"http://monitoring-grafana:80"` |  |
-| bbtests.scripts.envs.GRAFANA_PASSWORD | string | `"prom-operator"` |  |
-| bbtests.scripts.permissions.apiGroups[0] | string | `"cert-manager.io"` |  |
-| bbtests.scripts.permissions.apiGroups[1] | string | `"monitoring.coreos.com"` |  |
-| bbtests.scripts.permissions.resources[0] | string | `"certificates"` |  |
-| bbtests.scripts.permissions.resources[1] | string | `"prometheusrules"` |  |
-| bbtests.scripts.permissions.verbs[0] | string | `"create"` |  |
-| bbtests.scripts.permissions.verbs[1] | string | `"delete"` |  |
-| bbtests.scripts.permissions.verbs[2] | string | `"get"` |  |
-| bbtests.scripts.permissions.verbs[3] | string | `"list"` |  |
-| bbtests.scripts.permissions.verbs[4] | string | `"patch"` |  |
-| bbtests.scripts.permissions.verbs[5] | string | `"update"` |  |
-| bbtests.scripts.permissions.verbs[6] | string | `"watch"` |  |
 | istio.enabled | bool | `false` |  |
 | istio.mtls.mode | string | `"STRICT"` |  |
 | istio.sidecar.enabled | bool | `false` |  |

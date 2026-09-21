@@ -1,5 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
-{{- $fluxSettingsVault := mergeOverwrite (deepCopy .Values.flux) .Values.addons.vault.flux -}}
+{{- $fluxSettingsVault := merge .Values.addons.vault.flux .Values.flux -}}
 
 {{- if .Values.addons.vault.enabled }}
 {{- $istioEnabled := eq (include "istioEnabled" .) "true" }}

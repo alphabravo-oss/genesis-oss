@@ -2,7 +2,7 @@
 
 ## Code Changes for Updates/Renovates
 
-**NOTE:** Updated kiali-operator images can be requested by creating an issue in the [Iron Bank kiali-operator project](https://repo1.dso.mil/dsop/opensource/kiali/kiali-operator/-/work_items)
+**NOTE:** Updated kiali-operator images can be requested by creating an issue in the [Iron Bank kiali-operator project](https://repo1.dso.mil/dsop/opensource/kiali/kiali-operator/-/issues)
 
 `Kiali` is a passthrough chart. That means it does not fork an upstream chart but instead embeds one as a dependency. Because of this, the upgrade
 process is incredibly simple.
@@ -164,5 +164,5 @@ This policy revokes access to the K8s API for Pods utilizing said ServiceAccount
 
 ## Modifications made to the upstream chart
 
-- `oidcCaCert` is consumed by `chart/templates/bigbang/oidc-ca-cm.yaml`, added in [#52](https://repo1.dso.mil/big-bang/product/packages/kiali/-/work_items/52).
+- `oidcCaCert` is consumed by `chart/templates/bigbang/oidc-ca-cm.yaml`, added in [#52](https://repo1.dso.mil/big-bang/product/packages/kiali/-/issues/52).
 

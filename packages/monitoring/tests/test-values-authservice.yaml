@@ -1,20 +1,12 @@
-#########################
-# Required for package #
-########################
 grafana:
   enabled: true
-kiali:
-  enabled: true
+
+alloy:
+  enabled: false
   values:
     bbtests:
       enabled: false
-    networkPolicies:
-      ingress:
-        to:
-          kiali:20001:
-            from:
-              k8s:
-                monitoring/*: true
+
 monitoring:
   enabled: true
   sso:
@@ -29,8 +21,7 @@ monitoring:
       cypress:
         envs:
           cypress_keycloak_test_enable: "true"
-certManager:
-  enabled: true
+
 kyverno:
   values:
     bbtests:
@@ -39,13 +30,17 @@ kyvernoPolicies:
   values:
     bbtests:
       enabled: false
+
 istio:
   ambient:
     enabled: true
+
 sso:
   url: https://keycloak.dev.bigbang.mil/auth/realms/baby-yoda
+
 addons:
   authservice:
     enabled: true
+
   keycloak:
     enabled: true

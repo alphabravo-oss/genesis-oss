@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if or .Values.addons.gitlab.enabled }}
 {{- include "bigbang.namespace" (dict "root" . "name" "gitlab" "appName" "gitlab" "component" "developer-tools" "package" .Values.addons.gitlab) }}
 {{- end }}

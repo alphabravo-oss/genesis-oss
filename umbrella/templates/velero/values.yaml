@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- if .Values.addons.velero.enabled }}
 {{- /* Create a cleaned copy of loki config and merge deprecated paths into current paths */ -}}
 {{- $veleroPackage := deepCopy .Values.addons.velero -}}
@@ -21,15 +20,34 @@
 
 domain: {{ $domainName }}
 
+{{- if $istioEnabled }}
+podAnnotations:
+  {{ include "istioAnnotation" . }}
+{{- end }}
+
 monitoring:
   enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
 
 istio:
+  enabled: {{ $istioEnabled }}
   hardened:
     enabled: {{ $istioHardenedEnabled }}
 
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.velero.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.velero.values .) }}
+
 networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
   ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
     to:
       velero:8085:
         from:
@@ -37,6 +55,7 @@ networkPolicies:
             alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
             monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
   egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
     from:
       "*":
         to:
@@ -70,10 +89,6 @@ bbtests:
 openshift: {{ .Values.openshift }}
 
 upstream:
-  {{- if $istioEnabled }}
-  podAnnotations:
-    {{ include "istioAnnotation" . }}
-  {{- end }}
   image:
     pullPolicy: {{ .Values.imagePullPolicy }}
     {{- include "secretsImagePullSecrets" . | nindent 4 }}

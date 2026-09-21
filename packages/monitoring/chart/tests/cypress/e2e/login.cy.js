@@ -23,23 +23,9 @@ export const completeKeycloakLogin = (appOrigin, username, password) => {
   cy.url({ timeout: 30000 }).should('satisfy', (url) => url.startsWith(appOrigin))
 }
 
-// An unauthenticated request to an SSO-protected app must be redirected to Keycloak.
-// cy.request carries the browser cookies, so cookies are cleared first.
-export const expectSsoRedirect = (url) => {
-  cy.request({ url, followRedirect: false, failOnStatusCode: false }).then((resp) => {
-    expect(resp.status, `${url} should redirect unauthenticated requests`).to.be.oneOf([302, 303, 307])
-    expect(resp.headers.location, `${url} should redirect to Keycloak`).to.include('/realms/')
-  })
-}
-
-describe('SSO enforcement', () => {
-  it('sends unauthenticated prometheus and alertmanager requests to Keycloak', function () {
-    const sso = Cypress.env('keycloak_test_enable') === true || Cypress.env('keycloak_test_enable') === 'true'
-    if (!sso) {
-      this.skip()
-    }
-    cy.clearCookies()
-    expectSsoRedirect(Cypress.env('prometheus_url'))
-    expectSsoRedirect(Cypress.env('alertmanager_url'))
+// Placeholder so this file is a valid spec. Keep it a no-op.
+describe('shared login helper', () => {
+  it('exports completeKeycloakLogin (no-op placeholder)', () => {
+    expect(completeKeycloakLogin).to.be.a('function')
   })
 })

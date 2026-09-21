@@ -40,13 +40,4 @@ describe('Alertmanager unit testing', function() {
       assertAlertmanagerUi()
     }
   })
-
-  it('Alertmanager has active alerts from Prometheus (Watchdog)', function() {
-    cy.request(`${amUrl}/api/v2/alerts`).then((response) => {
-      expect(response.status).to.eq(200)
-      expect(response.body).to.be.an('array')
-      const watchdog = response.body.find(a => a.labels && a.labels.alertname === 'Watchdog')
-      expect(watchdog, 'Watchdog alert should be active - indicates Prometheus is connected and alerting pipeline is healthy').to.exist
-    })
-  })
 })

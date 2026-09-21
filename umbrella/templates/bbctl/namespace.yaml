@@ -1,0 +1,3 @@
+{{- if and .Values.bbctl.enabled .Values.monitoring.enabled }}
+{{- include "bigbang.namespace" (dict "root" . "name" "bbctl" "appName" "bbctl" "package" .Values.addons.gitlab) }}
+{{- end }}

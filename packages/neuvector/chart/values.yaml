@@ -119,8 +119,6 @@ bbtests:
     artifacts: true
     envs:
       cypress_url: "http://neuvector-service-webui.{{ .Release.Namespace }}.svc.cluster.local:8443"
-      cypress_prometheus_url: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
-      cypress_prometheus_targets_url: "http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090/targets?pool=serviceMonitor%2Fneuvector%2Fneuvector-prometheus-exporter%2F0"
     resources:
       requests:
         cpu: "2"
@@ -129,14 +127,8 @@ bbtests:
         cpu: "2"
         memory: "4Gi"
   scripts:
-    enabled: false
-    #Use a script-test image that explicitly includes `jq`, because `check-prometheus.sh` invokes it.
-    image: registry1.dso.mil/ironbank/big-bang/base:2.1.0
     envs:
-      cypress_prometheus_targets_url: "http://monitoring-monitoring-kube-prometheus.monitoring.svc.cluster.local:9090/targets?pool=serviceMonitor%2Fneuvector%2Fneuvector-prometheus-exporter%2F0"
-      cypress_prometheus_url: "http://monitoring-monitoring-kube-prometheus.monitoring.svc.cluster.local:9090"
       URL: "http://neuvector-service-webui.{{ .Release.Namespace }}.svc.cluster.local:8443"
-
 
 # -- Values to pass to [the upstream NeuVector core subchart](https://github.com/neuvector/neuvector-helm/blob/master/charts/core/values.yaml)
 # @default -- Upstream chart values for Neuvector core
@@ -148,7 +140,7 @@ upstream:
 
   registry: registry1.dso.mil
   imagePullSecrets: private-registry
-  tag: 5.6.1
+  tag: 5.6.0
   crdwebhook:
     enabled: false
 
@@ -227,7 +219,7 @@ upstream:
     adapter:
       image:
         repository: ironbank/opensource/neuvector/registry-adapter
-        tag: v0.2.10
+        tag: v0.2.9
       podAnnotations:
         traffic.sidecar.istio.io/excludeInboundPorts: "18500"
       securityContext:

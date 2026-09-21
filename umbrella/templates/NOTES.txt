@@ -1,17 +1,4 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 Thank you for supporting Platform One!
-
-{{- with .Values._packageAliasMigrations }}
-
-BIG BANG PACKAGE VALUES MIGRATION NOTICE:
-  The unified packages.<name> configuration is active. It takes precedence over
-  the corresponding legacy path. Legacy paths remain supported until Big Bang 4.x.
-  Please visit the 3.x->4.x migration guide for more information.
-  https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/migration/migrating-package-values-for-bb4.0.md
-{{- range . }}
-  - {{ . }}
-{{- end }}
-{{- end }}
 
 {{ if .Values.offline }}
 
@@ -217,6 +204,12 @@ PLATFORM ONE LOKI WARNING:
 {{- if and $.Values.loki.enabled (dig "values" "gel" "enabled" false $.Values.loki) }}
 PLATFORM ONE LOKI WARNING:
   You still have Loki gel values set but this version of Loki has changed significantly, please review the latest grafana enterprise document within the Loki package repo: https://repo1.dso.mil/big-bang/product/packages/loki/-/blob/main/docs/grafana-enterprise.md
+{{- end }}
+
+{{- if and .Values.bbctl.enabled (or (not .Values.loki.enabled) (not .Values.alloy.enabled) (not .Values.alloy.alloyLogs.enabled) (not .Values.monitoring.enabled) (not .Values.grafana.enabled)) }}
+PLATFORM ONE BBCTL WARNING:
+  You have enabled the bbctl Grafana dashboards package but one or more of the dependencies are disabled.
+  Please ensure Loki, Alloy, Grafana, and Monitoring are all enabled when using the bbctl package.
 {{- end }}
 
 {{- if and .Values.renovate.enabled (not .Values.addons.gitlab.enabled) }}

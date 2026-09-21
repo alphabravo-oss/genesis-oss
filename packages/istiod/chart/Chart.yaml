@@ -1,7 +1,7 @@
 apiVersion: v2
 name: istiod
-version: 1.30.4-bb.0
-appVersion: 1.30.4
+version: 1.30.3-bb.0
+appVersion: 1.30.3
 description: Helm chart for istio control plane
 icon: https://istio.io/latest/favicons/android-192x192.png
 keywords:
@@ -13,10 +13,10 @@ sources:
 dependencies:
   - name: istiod
     repository: https://istio-release.storage.googleapis.com/charts
-    version: 1.30.4
+    version: 1.30.3
     alias: upstream
   - name: bb-common
-    version: 1.5.0
+    version: 1.2.0
     repository: oci://registry1.dso.mil/bigbang
 annotations:
   bigbang.dev/passthrough: "true"
@@ -24,8 +24,8 @@ annotations:
   bigbang.dev/maintenanceTrack: bb_integrated
   helm.sh/images: |
     - name: pilot
-      image: registry1.dso.mil/ironbank/opensource/istio/pilot:1.30.4
+      image: registry1.dso.mil/ironbank/opensource/istio/pilot:1.30.3
     - name: proxyv2
-      image: registry1.dso.mil/ironbank/opensource/istio/proxyv2:1.30.4
+      image: registry1.dso.mil/ironbank/opensource/istio/proxyv2:1.30.3
   bigbang.dev/upstreamReleaseNotesMarkdown: |
     - [Find upstream chart's release notes and CHANGELOG here](https://istio.io/latest/news/releases)

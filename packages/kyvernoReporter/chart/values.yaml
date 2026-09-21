@@ -85,7 +85,7 @@ upstream:
     registry: registry1.dso.mil
     repository: ironbank/opensource/kyverno/policy-reporter
     pullPolicy: IfNotPresent
-    tag: 3.10.0
+    tag: 3.9.0
     priorityClassName: ""
 
   ui:
@@ -94,7 +94,7 @@ upstream:
       registry: registry1.dso.mil
       repository: ironbank/nirmata/policy-reporter/policy-reporter-ui
       pullPolicy: IfNotPresent
-      tag: "2.8.1"
+      tag: "2.7.1"
     imagePullSecrets: 
       - name: private-registry
     podLabels:

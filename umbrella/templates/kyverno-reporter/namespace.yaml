@@ -1,4 +1,3 @@
-{{- include "bigbang.normalizePackageAliases" . -}}
 {{- $pkg := "kyvernoReporter" }}
 {{- if (get .Values $pkg).enabled }}
 {{- include "bigbang.namespace" (dict "root" . "name" "kyverno-reporter" "appName" ($pkg | kebabcase) "component" "core" "package" (get .Values $pkg)) }}
