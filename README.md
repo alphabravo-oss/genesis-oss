@@ -20,7 +20,7 @@ Iron Bank image names and security contexts stay in the engine catalog as data. 
 
 ## Tracking
 
-Genesis tags match Big Bang tags. `3.33.0` is the first tag. `3.28.0` through `3.32.0` follow after that deploy works, then each later Big Bang release.
+Genesis tags match Big Bang tags. Each tag is also a GitHub Release. A clone of `main` is the newest snapshot. An older version is that release's tag, for example `git checkout 3.31.0`. `3.33.0` is the newest release. `3.28.0` through `3.32.0` are the support window behind it.
 
 Genesis is an independent project that tracks those upstream tags. It is a separate product from Platform One and from Big Bang. It carries no Platform One approval, no Iron Bank equivalence, and no DoD compliance claim. Images in this edition are the public upstream images.
 
