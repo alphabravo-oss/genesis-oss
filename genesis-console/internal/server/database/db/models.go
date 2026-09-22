@@ -21,6 +21,9 @@ type Finding struct {
 	CriticalCount int32
 	HighCount     int32
 	Cves          string
+	SbomCyclonedx []byte
+	SbomSpdx      []byte
+	SbomError     string
 	CreatedAt     pgtype.Timestamptz
 }
 

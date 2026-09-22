@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,11 +26,14 @@ type finding struct {
 }
 
 type scanReport struct {
-	Digest   string
-	Critical int32
-	High     int32
-	CVEs     []string
-	Findings []finding
+	Digest    string
+	Critical  int32
+	High      int32
+	CVEs      []string
+	Findings  []finding
+	CycloneDX []byte
+	SPDX      []byte
+	SBOMError string
 }
 
 type savedFindings struct {
@@ -57,6 +61,7 @@ func scanRef(ctx context.Context, cacheDir, ref string) (scanReport, error) {
 		"image",
 		"--image-src", "remote",
 		"--scanners", "vuln",
+		"--list-all-pkgs",
 		"--severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
 		"--format", "json",
 	}
@@ -90,7 +95,40 @@ func scanRef(ctx context.Context, cacheDir, ref string) (scanReport, error) {
 	if err != nil {
 		return scanReport{}, err
 	}
+	// Convert the same complete inventory; do not pull or scan the image again.
+	report.CycloneDX, report.SPDX, err = convertSBOM(ctx, bin, cacheDir, tmp, stdout.Bytes())
+	if err != nil {
+		log.Printf("scan SBOM %s: %v", ref, err)
+		report.SBOMError = "SBOM generation failed. Rescan this image to retry. Vulnerability results are saved."
+	}
 	return report, nil
+}
+
+func convertSBOM(ctx context.Context, bin, cacheDir, tmp string, report []byte) ([]byte, []byte, error) {
+	file := filepath.Join(tmp, "report.json")
+	if err := os.WriteFile(file, report, 0o600); err != nil {
+		return nil, nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	documents := make([][]byte, 0, 2)
+	for _, format := range []string{"cyclonedx", "spdx-json"} {
+		cmd := exec.CommandContext(ctx, bin, "--quiet", "--cache-dir", cacheDir, "convert", "--format", format, file)
+		cmd.Env = append(os.Environ(), "TMPDIR="+tmp)
+		out, err := cmd.Output()
+		if err != nil {
+			return nil, nil, fmt.Errorf("trivy convert %s: %w", format, err)
+		}
+		var doc struct {
+			BOMFormat   string `json:"bomFormat"`
+			SPDXVersion string `json:"spdxVersion"`
+		}
+		if json.Unmarshal(out, &doc) != nil || (format == "cyclonedx" && doc.BOMFormat != "CycloneDX") || (format == "spdx-json" && !strings.HasPrefix(doc.SPDXVersion, "SPDX-")) {
+			return nil, nil, fmt.Errorf("trivy convert %s: invalid SBOM", format)
+		}
+		documents = append(documents, out)
+	}
+	return documents[0], documents[1], nil
 }
 
 func parseReport(buf []byte) (scanReport, error) {

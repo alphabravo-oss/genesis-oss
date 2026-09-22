@@ -1,5 +1,7 @@
+import { useSearchParams } from "react-router";
 import type { Vulnerability } from "@/gen/console/v1/console_pb";
 import { DataTable, type ColumnDef } from "@/components/DataTable";
+import { fixableCount, hasFix } from "@/lib/findings";
 
 const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, UNKNOWN: 0 };
 const columns: ColumnDef<Vulnerability, any>[] = [
@@ -7,7 +9,7 @@ const columns: ColumnDef<Vulnerability, any>[] = [
   { accessorKey: "severity", header: "Severity", sortingFn: (a, b) => (severityRank[a.original.severity] ?? 0) - (severityRank[b.original.severity] ?? 0), cell: ({ getValue }) => <span className={getValue() === "CRITICAL" ? "text-[var(--danger)]" : getValue() === "HIGH" ? "text-[var(--amber)]" : "text-[var(--muted)]"}>{getValue() || "UNKNOWN"}</span> },
   { accessorKey: "packageName", header: "Package" },
   { accessorKey: "installed", header: "Installed", cell: ({ getValue }) => getValue() || "—" },
-  { accessorKey: "fixed", header: "Fixed", cell: ({ getValue }) => getValue() || "—" },
+  { accessorKey: "fixed", header: "Fixed in", cell: ({ row }) => hasFix(row.original) ? row.original.fixed : <span className="text-[var(--muted)]">No fix reported</span> },
   { accessorKey: "title", header: "Finding", cell: ({ getValue }) => getValue() || "—" },
 ];
 const defaultSort = [{ id: "severity", desc: true }];
@@ -15,8 +17,29 @@ const search = { placeholder: "Search findings", text: (row: Vulnerability) => [
 const facet = { label: "Severity", value: (row: Vulnerability) => row.severity || "UNKNOWN" };
 
 export function FindingList({ rows, allSeverities, urlKey = "findings" }: { rows: Vulnerability[]; allSeverities: boolean; urlKey?: string }) {
+  const [params, setParams] = useSearchParams();
+  const fix = params.get(`${urlKey}.fix`) ?? "";
+  const filtered = fix === "available" ? rows.filter(hasFix) : fix === "unavailable" ? rows.filter((row) => !hasFix(row)) : rows;
+  const available = rows.filter(hasFix).length;
   return <div className="space-y-3">
     {!allSeverities ? <p role="status" className="text-sm text-[var(--amber)]">This older scan only collected High and Critical findings. Rescan the image to include Medium, Low, and Unknown.</p> : null}
-    {rows.length ? <DataTable columns={columns} data={rows} getRowId={(row) => JSON.stringify([row.id, row.packageName, row.installed])} noun="findings" search={search} facet={facet} defaultSort={defaultSort} urlKey={urlKey} exportName="genesis-vulnerabilities" /> : <p className="text-sm text-[var(--muted)]">{allSeverities ? "No vulnerabilities found." : "No saved detailed findings."}</p>}
+    {rows.length ? <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-xl text-xs text-[var(--muted)]">{fixableCount(rows)} distinct vulnerabilities have a fix reported for at least one affected package. Fixed versions come from Trivy; rebuild the image with updated packages to apply them.</p>
+        <label className="flex flex-wrap items-center gap-2 text-sm">Fix availability
+          <select value={fix === "available" || fix === "unavailable" ? fix : ""} onChange={(event) => setParams((current) => {
+            const next = new URLSearchParams(current);
+            if (event.target.value) next.set(`${urlKey}.fix`, event.target.value);
+            else next.delete(`${urlKey}.fix`);
+            return next;
+          }, { replace: true })} className="h-8 rounded-md border border-[var(--border)] bg-[var(--card)] px-2">
+            <option value="">All findings ({rows.length})</option>
+            <option value="available">Fix available ({available})</option>
+            <option value="unavailable">No fix reported ({rows.length - available})</option>
+          </select>
+        </label>
+      </div>
+      <DataTable key={fix} columns={columns} data={filtered} getRowId={(row) => JSON.stringify([row.id, row.packageName, row.installed])} noun="findings" search={search} facet={facet} defaultSort={defaultSort} urlKey={urlKey} exportName="genesis-vulnerabilities" />
+    </> : <p className="text-sm text-[var(--muted)]">{allSeverities ? "No vulnerabilities found." : "No saved detailed findings."}</p>}
   </div>;
 }

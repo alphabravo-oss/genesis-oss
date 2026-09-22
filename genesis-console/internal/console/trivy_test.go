@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	consolev1 "github.com/alphabravo/genesis-console/gen/console/v1"
@@ -16,19 +17,50 @@ func TestContainerScan(t *testing.T) {
 	dir := t.TempDir()
 	script := `#!/bin/sh
 set -eu
+test -d "$TMPDIR"
+case "$*" in *' convert '*)
+  for input in "$@"; do :; done
+  test -f "$input"
+  test -f "$TMPDIR/layer"
+  case "${TRIVY_TEST_FAILURE:-}" in invalid) printf '{}'; exit 0 ;; failed) exit 9 ;; esac
+  case "$*" in
+    *'--format cyclonedx'*) printf '%s' '{"bomFormat":"CycloneDX","components":[{"name":"clean-package"}]}' ;;
+    *'--format spdx-json'*) printf '%s' '{"spdxVersion":"SPDX-2.3","packages":[{"name":"clean-package"}]}' ;;
+    *) exit 4 ;;
+  esac
+  exit 0
+esac
+printf 'image\n' >> "$TRIVY_TEST_LOG"
 case "$*" in *--skip-db-update*) exit 1 ;; esac
 case "$*" in *'--image-src remote'*) ;; *) exit 2 ;; esac
 case "$*" in *'--severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'*) ;; *) exit 3 ;; esac
-test -d "$TMPDIR"
+case "$*" in *--list-all-pkgs*) ;; *) exit 5 ;; esac
 touch "$TMPDIR/layer"
-printf '%s' '{"Metadata":{"RepoDigests":["example@sha256:abcdef"]}}'
+printf '%s' '{"Metadata":{"RepoDigests":["example@sha256:abcdef"]},"Results":[{"Packages":[{"Name":"clean-package"}],"Vulnerabilities":[{"VulnerabilityID":"CVE-1","Severity":"HIGH"}]}]}'
 `
 	if err := os.WriteFile(filepath.Join(dir, "trivy"), []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	if _, err := scanRef(context.Background(), dir, "example:latest"); err != nil {
-		t.Fatal(err)
+	for _, failure := range []string{"", "invalid", "failed"} {
+		t.Setenv("TRIVY_TEST_FAILURE", failure)
+		trace := filepath.Join(dir, "trace-"+failure)
+		t.Setenv("TRIVY_TEST_LOG", trace)
+		report, err := scanRef(context.Background(), dir, "example:latest")
+		if err != nil || report.High != 1 || len(report.Findings) != 1 {
+			t.Fatalf("lost vulnerability results: %v %v", report, err)
+		}
+		if failure == "" {
+			if report.SBOMError != "" || !strings.Contains(string(report.CycloneDX), "clean-package") || !strings.Contains(string(report.SPDX), "clean-package") {
+				t.Fatalf("SBOM not generated: %v", report)
+			}
+		} else if report.SBOMError == "" || report.CycloneDX != nil || report.SPDX != nil {
+			t.Fatalf("conversion failure advertised an SBOM: %v", report)
+		}
+		calls, err := os.ReadFile(trace)
+		if err != nil || string(calls) != "image\n" {
+			t.Fatalf("SBOM conversion rescanned the image: %q %v", calls, err)
+		}
 	}
 	leftovers, err := filepath.Glob(filepath.Join(dir, "scan-*"))
 	if err != nil || len(leftovers) != 0 {
@@ -92,8 +124,8 @@ func TestSavedSeverityCoverage(t *testing.T) {
 			t.Fatal(err)
 		}
 		image := &consolev1.ImageRow{}
-		applyFinding(image, db.LatestFindingsRow{Cves: string(payload)})
-		if !image.AllSeverities || !image.Scanned || len(image.Vulnerabilities) != len(findings) {
+		applyFinding(image, db.LatestFindingsRow{ID: 42, Cves: string(payload), SbomAvailable: true})
+		if !image.AllSeverities || !image.Scanned || image.SbomId != "42" || len(image.Vulnerabilities) != len(findings) {
 			t.Fatalf("coverage or findings lost: %v", image)
 		}
 	}

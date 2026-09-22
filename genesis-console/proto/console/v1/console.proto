@@ -54,6 +54,9 @@ message ImageRow {
   repeated Vulnerability vulnerabilities = 16;
   // False for older scans that only collected High and Critical findings.
   bool all_severities = 17;
+  // Immutable scan artifact; only metadata is included in image lists.
+  string sbom_id = 18;
+  string sbom_error = 19;
 }
 
 message Vulnerability {
@@ -235,6 +238,8 @@ message ScanItem {
   int32 high = 9;
   string scanned_at = 10;
   bool all_severities = 11;
+  string sbom_id = 12;
+  string sbom_error = 13;
 }
 
 message ScanJob {

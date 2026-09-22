@@ -14,6 +14,7 @@ export default defineConfig({
     proxy: {
       "/auth/": process.env.VITE_API_ORIGIN ?? "http://127.0.0.1:8080",
       "/events/": process.env.VITE_API_ORIGIN ?? "http://127.0.0.1:8080",
+      "/sbom/": process.env.VITE_API_ORIGIN ?? "http://127.0.0.1:8080",
       "/console.v1.ConsoleService": process.env.VITE_API_ORIGIN ?? "http://127.0.0.1:8080",
     },
   },

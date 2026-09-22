@@ -52,16 +52,21 @@ test("live progress follows the scanned digest, including queued images, without
 });
 
 test("new scan results replace old counts and CVEs; failures preserve prior findings", () => {
-  const previous = create(ImageRowSchema, { scanned: true, critical: 1, cves: ["CVE-old"], vulnerabilities: [create(VulnerabilitySchema, { id: "CVE-old" })] });
+  const previous = create(ImageRowSchema, { scanned: true, critical: 1, sbomId: "41", cves: ["CVE-old"], vulnerabilities: [create(VulnerabilitySchema, { id: "CVE-old" })] });
   assert.equal(applyScanResult(previous, create(ScanItemSchema, { state: "failed", error: "registry unavailable" })), previous);
-  const clean = applyScanResult(previous, create(ScanItemSchema, { state: "succeeded", findingsAvailable: true, allSeverities: true, scannedAt: "2026-09-22T00:00:00Z" }));
+  const clean = applyScanResult(previous, create(ScanItemSchema, { state: "succeeded", findingsAvailable: true, allSeverities: true, sbomId: "42", scannedAt: "2026-09-22T00:00:00Z" }));
   assert.equal(clean.scanned, true);
   assert.equal(clean.critical, 0);
   assert.equal(clean.allSeverities, true);
+  assert.equal(clean.sbomId, "42");
   assert.deepEqual(clean.cves, []);
   assert.deepEqual(clean.vulnerabilities, []);
-  const [group] = groupDeployedImages([create(RuntimeImageSchema, { digest: "sha256:aaa", scanned: true })], [create(ImageRowSchema, { id: "sha256:aaa", vulnerabilities: previous.vulnerabilities, scannedAt: clean.scannedAt, allSeverities: true })]);
+  const [group] = groupDeployedImages([create(RuntimeImageSchema, { digest: "sha256:aaa", scanned: true })], [create(ImageRowSchema, { id: "sha256:aaa", vulnerabilities: previous.vulnerabilities, scannedAt: clean.scannedAt, allSeverities: true, sbomId: clean.sbomId })]);
   assert.deepEqual(group.vulnerabilities, previous.vulnerabilities);
   assert.equal(group.scannedAt, clean.scannedAt);
   assert.equal(group.allSeverities, true);
+  assert.equal(group.sbomId, "42");
+  const partial = applyScanResult(group, create(ScanItemSchema, { state: "succeeded", findingsAvailable: true, sbomError: "SBOM generation failed" }));
+  assert.equal(partial.sbomId, "");
+  assert.equal(partial.sbomError, "SBOM generation failed");
 });

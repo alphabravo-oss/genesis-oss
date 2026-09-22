@@ -1,0 +1,11 @@
+version: "2"
+sql:
+  - engine: postgresql
+    queries: internal/server/database/queries
+    schema: internal/server/database/schema.sql
+    gen:
+      go:
+        package: db
+        out: internal/server/database/db
+        sql_package: pgx/v5
+        emit_pointers_for_null_types: true

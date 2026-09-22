@@ -76,6 +76,23 @@ func (q *Queries) GetJob(ctx context.Context, id string) (ScanJob, error) {
 	return i, err
 }
 
+const getSBOM = `-- name: GetSBOM :one
+SELECT CASE WHEN $1::text = 'cyclonedx' THEN sbom_cyclonedx ELSE sbom_spdx END::bytea AS document
+FROM findings WHERE id = $2
+`
+
+type GetSBOMParams struct {
+	Format string
+	ID     int64
+}
+
+func (q *Queries) GetSBOM(ctx context.Context, arg GetSBOMParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getSBOM, arg.Format, arg.ID)
+	var document []byte
+	err := row.Scan(&document)
+	return document, err
+}
+
 const getSettings = `-- name: GetSettings :one
 SELECT auto_clean
 FROM scan_settings
@@ -90,8 +107,8 @@ func (q *Queries) GetSettings(ctx context.Context) (bool, error) {
 }
 
 const insertFinding = `-- name: InsertFinding :exec
-INSERT INTO findings (digest, ref, db_version, critical_count, high_count, cves)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO findings (digest, ref, db_version, critical_count, high_count, cves, sbom_cyclonedx, sbom_spdx, sbom_error)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type InsertFindingParams struct {
@@ -101,6 +118,9 @@ type InsertFindingParams struct {
 	CriticalCount int32
 	HighCount     int32
 	Cves          string
+	SbomCyclonedx []byte
+	SbomSpdx      []byte
+	SbomError     string
 }
 
 func (q *Queries) InsertFinding(ctx context.Context, arg InsertFindingParams) error {
@@ -111,6 +131,9 @@ func (q *Queries) InsertFinding(ctx context.Context, arg InsertFindingParams) er
 		arg.CriticalCount,
 		arg.HighCount,
 		arg.Cves,
+		arg.SbomCyclonedx,
+		arg.SbomSpdx,
+		arg.SbomError,
 	)
 	return err
 }
@@ -185,18 +208,22 @@ func (q *Queries) InterruptJobs(ctx context.Context) error {
 
 const latestFindings = `-- name: LatestFindings :many
 SELECT DISTINCT ON (digest)
+    id,
     digest,
     ref,
     db_version,
     critical_count,
     high_count,
     cves,
-    created_at
+    created_at,
+    (sbom_cyclonedx IS NOT NULL AND sbom_spdx IS NOT NULL)::boolean AS sbom_available,
+    sbom_error
 FROM findings
 ORDER BY digest, created_at DESC
 `
 
 type LatestFindingsRow struct {
+	ID            int64
 	Digest        string
 	Ref           string
 	DbVersion     string
@@ -204,6 +231,8 @@ type LatestFindingsRow struct {
 	HighCount     int32
 	Cves          string
 	CreatedAt     pgtype.Timestamptz
+	SbomAvailable bool
+	SbomError     string
 }
 
 func (q *Queries) LatestFindings(ctx context.Context) ([]LatestFindingsRow, error) {
@@ -216,6 +245,7 @@ func (q *Queries) LatestFindings(ctx context.Context) ([]LatestFindingsRow, erro
 	for rows.Next() {
 		var i LatestFindingsRow
 		if err := rows.Scan(
+			&i.ID,
 			&i.Digest,
 			&i.Ref,
 			&i.DbVersion,
@@ -223,6 +253,8 @@ func (q *Queries) LatestFindings(ctx context.Context) ([]LatestFindingsRow, erro
 			&i.HighCount,
 			&i.Cves,
 			&i.CreatedAt,
+			&i.SbomAvailable,
+			&i.SbomError,
 		); err != nil {
 			return nil, err
 		}

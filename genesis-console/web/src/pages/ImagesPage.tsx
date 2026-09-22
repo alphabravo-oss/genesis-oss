@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useOutletContext, useParams, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { create } from "@bufbuild/protobuf";
-import { ArrowLeft, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Download, LoaderCircle } from "lucide-react";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 import { ListScanJobsResponseSchema, type ImageRow, type ListScanJobsResponse, type ScanItem } from "@/gen/console/v1/console_pb";
 import type { ShellContext } from "@/pages/shell-context";
@@ -11,6 +11,7 @@ import { FindingList } from "@/components/FindingList";
 import { consoleClient } from "@/lib/connect";
 import { formatWhen, jobActive } from "@/lib/cluster";
 import { errorText } from "@/lib/errors";
+import { fixableCount } from "@/lib/findings";
 import { applyScanResult, groupDeployedImages, imageHref, imageScan, type DeployedImage } from "@/lib/images";
 
 function severity(row: ImageRow) {
@@ -41,6 +42,7 @@ const runtimeColumns: ColumnDef<DeployedImage, any>[] = [
   { accessorKey: "critical", header: "Critical", cell: ({ row }) => row.original.scanned ? row.original.critical : "Not scanned" },
   { accessorKey: "high", header: "High", cell: ({ row }) => row.original.scanned ? row.original.high : "Not scanned" },
   { id: "findings", accessorFn: findingSummary, header: "All findings" },
+  { id: "fixable", accessorFn: (row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, header: "Fixable", cell: ({ row }) => row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{fixableCount(row.original.vulnerabilities)}</span> : "Not scanned" },
 ];
 const runtimeSearch = { placeholder: "Search images or pods", text: (row: DeployedImage) => [row.references.join(" "), row.digest, row.packages.join(" "), row.namespaces.join(" "), ...row.containers.map((container) => `${container.pod} ${container.container}`)].join(" ") };
 const runtimeFacet = { label: "Package", value: (row: DeployedImage) => row.packages };
@@ -107,6 +109,7 @@ const imageColumns: ColumnDef<ImageRow, any>[] = [
     enableSorting: false,
   }),
   columns.accessor("scannedAt", { header: "Scanned", cell: (info) => (info.getValue() ? formatWhen(info.getValue()) : "—") }),
+  columns.accessor((row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, { id: "fixable", header: "Fixable", cell: (info) => info.row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{info.getValue()}</span> : "—" }),
 ];
 
 export function ImagesPage() {
@@ -134,7 +137,7 @@ export function ImagesPage() {
   const observedColumns = useMemo(() => [{ ...runtimeColumns[0], cell: ({ row }: { row: { original: DeployedImage } }) => <Link to={imageHref("deployed", row.original.id, params)} className="block min-w-48 max-w-sm space-y-1 break-all font-mono text-xs text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.references.map((ref) => <div key={ref}>{ref}</div>)}</Link> }, {
     id: "scan", header: "Scan status", accessorFn: (row: DeployedImage) => scanLabel(imageScan(row, currentScan), row.scanned, busy && selected.includes(row.id)),
     cell: ({ row }: { row: { original: DeployedImage } }) => <ScanStatus item={imageScan(row.original, currentScan)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
-  }, ...runtimeColumns.slice(1).map((column) => findingsUnavailable && (column.id === "findings" || ("accessorKey" in column && ["critical", "high"].includes(String(column.accessorKey)))) ? { ...column, cell: () => "Not checked" } : column)], [findingsUnavailable, currentScan, busy, selected, params]);
+  }, ...runtimeColumns.slice(1).map((column) => findingsUnavailable && (["findings", "fixable"].includes(column.id ?? "") || ("accessorKey" in column && ["critical", "high"].includes(String(column.accessorKey)))) ? { ...column, cell: () => "Not checked" } : column)], [findingsUnavailable, currentScan, busy, selected, params]);
   const catalogColumns = useMemo(() => [imageColumns[0], { ...imageColumns[1], cell: ({ row }: { row: { original: ImageRow } }) => <Link to={imageHref("catalog", row.original.id, params)} className="block text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.name}</Link> }, {
     id: "scan", header: "Scan status", accessorFn: (row: ImageRow) => scanLabel(imageScan(row, currentScan, tag), row.scanned, busy && selected.includes(row.id)),
     cell: ({ row }: { row: { original: ImageRow } }) => <ScanStatus item={imageScan(row.original, currentScan, tag)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
@@ -270,7 +273,7 @@ function ImageDetails({ image, item, busy, scanning, findingsUnavailable, onScan
   const facts = [
     { label: "Scan status", value: <ScanStatus item={item} scanned={image.scanned} starting={busy} /> },
     { label: image.allSeverities ? "Vulnerabilities" : "Known vulnerabilities", value: findingsUnavailable ? "Not checked" : image.scanned ? new Set(image.vulnerabilities.map((finding) => finding.id)).size : "Not scanned" },
-    { label: "Severity coverage", value: findingsUnavailable ? "Not checked" : image.scanned ? image.allSeverities ? "All severities" : "High/Critical only" : "Not scanned" },
+    { label: "Fixable vulnerabilities", value: findingsUnavailable ? "Not checked" : image.scanned ? fixableCount(image.vulnerabilities) : "Not scanned" },
     { label: deployed ? "Containers" : "Signature", value: deployed ? deployed.containers.length : catalog?.signature || "Not checked" },
   ];
   return <>
@@ -291,6 +294,16 @@ function ImageDetails({ image, item, busy, scanning, findingsUnavailable, onScan
       {deployed ? <div><dt className="text-xs text-[var(--muted)]">Namespaces</dt><dd className="mt-1 break-words">{deployed.namespaces.join(", ")}</dd></div> : null}
       {catalog?.ironbank ? <div><dt className="text-xs text-[var(--muted)]">Upstream reference</dt><dd className="mt-1 break-all font-mono text-xs">{catalog.ironbank}</dd></div> : null}
     </dl>
+    <section className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+      <h2 className="text-lg font-semibold">Software bill of materials</h2>
+      {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved SBOM availability could not be checked.</p> : image.sbomId ? <>
+        <p className="text-sm text-[var(--muted)]">Generated by Trivy from the same image scan, including detected packages without known vulnerabilities. Saved {formatWhen(image.scannedAt)}.</p>
+        {item && jobActive(item.state) ? <p role="status" className="text-xs text-[var(--muted)]">Previous scan’s SBOM is available while the new scan runs.</p> : null}
+        <div className="flex flex-wrap gap-2">
+          {[["cyclonedx", "CycloneDX JSON"], ["spdx-json", "SPDX JSON"]].map(([format, label]) => <a key={format} href={`/sbom/${encodeURIComponent(image.sbomId)}/${format}`} download className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--off)]"><Download className="size-4" aria-hidden />{label}</a>)}
+        </div>
+      </> : <p role="status" className={`text-sm ${image.sbomError ? "text-[var(--amber)]" : "text-[var(--muted)]"}`}>{image.sbomError || (item && jobActive(item.state) ? "The SBOM will be available when this scan finishes." : image.scanned ? "This older scan has no saved SBOM. Rescan the image to generate one." : "Scan this image to generate its SBOM.")}</p>}
+    </section>
     <div className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
       {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved scan findings could not be read. Finding counts are unknown.</p> : <ImageFindings image={image} item={item} />}
     </div>

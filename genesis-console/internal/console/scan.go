@@ -150,6 +150,7 @@ func (s *Scanner) runJob(ctx context.Context, id string) {
 		if err := s.store.q.InsertFinding(ctx, db.InsertFindingParams{
 			Digest: report.Digest, Ref: item.Ref, DbVersion: version,
 			CriticalCount: report.Critical, HighCount: report.High, Cves: string(payload),
+			SbomCyclonedx: report.CycloneDX, SbomSpdx: report.SPDX, SbomError: report.SBOMError,
 		}); err != nil {
 			_ = s.store.q.UpdateJobItem(ctx, db.UpdateJobItemParams{
 				JobID: id, ImageID: item.ImageID, State: "failed", Error: err.Error(), Digest: report.Digest,
@@ -354,6 +355,8 @@ func (s *Service) GetScanJob(ctx context.Context, id string) (*consolev1.ScanJob
 				item.High = image.High
 				item.ScannedAt = image.ScannedAt
 				item.AllSeverities = image.AllSeverities
+				item.SbomId = image.SbomId
+				item.SbomError = image.SbomError
 			}
 		}
 	}

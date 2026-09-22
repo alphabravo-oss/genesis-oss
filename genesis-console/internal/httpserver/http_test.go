@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -75,6 +76,40 @@ func TestPackagedServer(t *testing.T) {
 	}
 	if w := request("GET", "/events/scans", "", false, ""); w.Code != 302 {
 		t.Fatal("event stream not protected")
+	}
+	q := db.New(pool)
+	cyclonedx, spdx := `{"bomFormat":"CycloneDX"}`, `{"spdxVersion":"SPDX-2.3"}`
+	if err := q.InsertFinding(context.Background(), db.InsertFindingParams{
+		Digest: "sha256:abc", Ref: "example:latest", Cves: "[]",
+		SbomCyclonedx: []byte(cyclonedx), SbomSpdx: []byte(spdx),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	saved, err := q.LatestFindings(context.Background())
+	if err != nil || len(saved) != 1 || !saved[0].SbomAvailable {
+		t.Fatalf("SBOM metadata not saved: %v %v", saved, err)
+	}
+	id := strconv.FormatInt(saved[0].ID, 10)
+	for _, format := range []struct{ name, body, mime, suffix string }{
+		{"cyclonedx", cyclonedx, "application/vnd.cyclonedx+json", "cdx.json"},
+		{"spdx-json", spdx, "application/spdx+json", "spdx.json"},
+	} {
+		url := "/sbom/" + id + "/" + format.name
+		if w := request("GET", url, "", false, ""); w.Code != 302 {
+			t.Fatal("SBOM download not protected")
+		}
+		w := request("GET", url, "", true, "")
+		if w.Code != 200 || w.Body.String() != format.body || w.Header().Get("Content-Type") != format.mime || w.Header().Get("Cache-Control") != "no-store" || w.Header().Get("Content-Disposition") != `attachment; filename="genesis-scan-`+id+`.`+format.suffix+`"` {
+			t.Fatalf("invalid SBOM download: %v", w)
+		}
+	}
+	if err := q.InsertFinding(context.Background(), db.InsertFindingParams{Digest: "sha256:legacy", Cves: "[]"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, url := range []string{"/sbom/0/cyclonedx", "/sbom/-1/cyclonedx", "/sbom/invalid/cyclonedx", "/sbom/9223372036854775808/cyclonedx", "/sbom/999999/cyclonedx", "/sbom/" + id + "/html", "/sbom/2/cyclonedx"} {
+		if w := request("GET", url, "", true, ""); w.Code != 404 {
+			t.Fatalf("invalid/missing SBOM should be 404: %s %d", url, w.Code)
+		}
 	}
 	if w := request("POST", "/console.v1.ConsoleService/GetCluster", "{}", true, "https://foreign.test"); w.Code != 403 {
 		t.Fatal("cross-origin mutation allowed")

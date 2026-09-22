@@ -43,6 +43,9 @@ CREATE TABLE findings (
     critical_count integer NOT NULL,
     high_count integer NOT NULL,
     cves text NOT NULL,
+    sbom_cyclonedx bytea,
+    sbom_spdx bytea,
+    sbom_error text NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now()
 );
 

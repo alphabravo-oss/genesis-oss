@@ -1,6 +1,7 @@
 package console
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,6 +84,10 @@ func applyFinding(row *consolev1.ImageRow, found db.LatestFindingsRow) {
 	row.Critical = found.CriticalCount
 	row.High = found.HighCount
 	row.DbVersion = found.DbVersion
+	if found.SbomAvailable {
+		row.SbomId = strconv.FormatInt(found.ID, 10)
+	}
+	row.SbomError = found.SbomError
 	if found.CreatedAt.Valid {
 		row.ScannedAt = found.CreatedAt.Time.UTC().Format(time.RFC3339)
 	}

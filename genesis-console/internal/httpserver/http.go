@@ -18,6 +18,7 @@ func Handler(apiPath string, api http.Handler, assets fs.FS, ping func(context.C
 	auth := newAuthentication(user, password, sessions)
 	auth.register(mux)
 	mux.HandleFunc("GET /events/scans", auth.scanEvents(scanChanges))
+	mux.Handle("GET /sbom/{id}/{format}", sbomDownload(sessions))
 	mux.Handle(apiPath, http.TimeoutHandler(api, 30*time.Second, "request timed out"))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("ok\n")) })
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {

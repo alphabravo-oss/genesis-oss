@@ -1,18 +1,25 @@
 -- name: LatestFindings :many
 SELECT DISTINCT ON (digest)
+    id,
     digest,
     ref,
     db_version,
     critical_count,
     high_count,
     cves,
-    created_at
+    created_at,
+    (sbom_cyclonedx IS NOT NULL AND sbom_spdx IS NOT NULL)::boolean AS sbom_available,
+    sbom_error
 FROM findings
 ORDER BY digest, created_at DESC;
 
 -- name: InsertFinding :exec
-INSERT INTO findings (digest, ref, db_version, critical_count, high_count, cves)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO findings (digest, ref, db_version, critical_count, high_count, cves, sbom_cyclonedx, sbom_spdx, sbom_error)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- name: GetSBOM :one
+SELECT CASE WHEN sqlc.arg(format)::text = 'cyclonedx' THEN sbom_cyclonedx ELSE sbom_spdx END::bytea AS document
+FROM findings WHERE id = sqlc.arg(id);
 
 -- name: InsertJob :exec
 INSERT INTO scan_jobs (id, release_tag, scope, state, total)
