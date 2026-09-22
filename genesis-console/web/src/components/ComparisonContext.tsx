@@ -20,7 +20,7 @@ export function ComparisonContext({ tag, cluster, selection, recorded, following
         <p className="text-xs font-medium text-[var(--muted)]">Comparison standard</p>
         <p className="font-semibold">{tag ? `Genesis OSS ${tag}` : "No standard available"} <span className="text-xs font-normal text-[var(--muted)]">· {following ? crossVersion ? "Fallback standard" : "Follows installed version" : "Manually selected version"}</span></p>
         <p className="break-words text-xs text-[var(--muted)]">{profileSummary(cluster, selection.profiles ?? "", recorded)}</p>
-        <Link to={withSearch("/packages", tag, selection) + "#comparison-profiles"} className="text-xs text-[var(--primary)] underline underline-offset-2">Edit comparison profiles</Link>
+        <Link to={withSearch("/packages", tag, selection) + "#comparison-profiles"} className="text-xs text-[var(--primary)] underline underline-offset-2">Profile options (advanced)</Link>
       </div>
       <div className="min-w-0 space-y-1">
         <p className="text-xs font-medium text-[var(--muted)]">Observed cluster</p>

@@ -6,7 +6,7 @@ import { PackageComparisonSchema, type PackageComparison, type ConfigurationChan
 import type { ShellContext } from "@/pages/shell-context";
 import { DataTable, type ColumnDef } from "@/components/DataTable";
 import { consoleClient } from "@/lib/connect";
-import { comparisonLabel } from "@/lib/comparison";
+import { comparisonLabel, comparisonRowClass } from "@/lib/comparison";
 
 function PackageLink({ name }: { name: string }) {
   const [params] = useSearchParams();
@@ -69,8 +69,9 @@ export function PackagesPage() {
       <div><dt className="font-medium">Installed packages</dt><dd className="mt-1 text-[var(--muted)]">Deployed chart versions; package details also read the installed Helm values. Flux reports runtime drift separately.</dd></div>
     </dl>
     <details id="comparison-profiles" className="scroll-mt-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-3">
-      <summary className="text-sm font-medium">Edit comparison profiles · {profiles.length ? `${profiles.length} selected` : "No profiles"}</summary>
-      <p className="mt-2 text-sm text-[var(--muted)]">Profiles change the comparison baseline only. They do not change the cluster. The Genesis installer records profiles for automatic comparison. For older installations, select the profiles you intended to apply.</p>
+      <summary className="text-sm font-medium">Advanced: comparison profile override · {profiles.length ? `${profiles.length} selected` : "No profiles"}</summary>
+      <p className="mt-2 text-sm text-[var(--muted)]">Normally, use the profiles recorded by the Genesis installer. Override them only for an installation without a profile record, or to compare against a different intended setup. Selecting a profile changes what is expected in the standard; it does not install or change anything in the cluster.</p>
+      <p className="mt-2 text-xs text-[var(--muted)]">For example, selecting gitlab makes GitLab enabled in the comparison standard. Leave it unselected if GitLab was not part of your intended installation.</p>
       <p className="mt-2 text-xs text-[var(--muted)]">{useRecordedProfiles ? "Using recorded installation profiles when available." : "Using manually selected profiles."} {!useRecordedProfiles ? <button type="button" className="underline" onClick={() => setParams((current) => { const next = new URLSearchParams(current); next.delete("profiles"); next.delete("profileMode"); return next; })}>Use recorded profiles</button> : null}</p>
       <fieldset className="mt-3 flex flex-wrap gap-x-5 gap-y-3">
         <legend className="sr-only">Comparison standard profiles</legend>
@@ -82,7 +83,8 @@ export function PackagesPage() {
       {[["all", "All packages"], ["attention", "Needs attention"], ["customized", "Differs from standard"], ["drift", "Flux drift detected"]].map(([value, label]) => <button type="button" key={value} aria-pressed={state === value} onClick={() => set("state", value === "all" ? "" : value)} className={`rounded-md border px-3 py-2 text-sm ${state === value ? "border-[var(--primary)] bg-[var(--accent)]" : "border-[var(--border)] bg-[var(--card)]"}`}>{label}</button>)}
     </div>
     {clusterPending ? <p role="status" className="text-sm text-[var(--muted)]">Reading deployment configuration…</p> : null}
-    <DataTable columns={tableColumns} data={rows} getRowId={(row) => row.key} noun="packages" search={search} exportName={`genesis-${tag}-packages`} urlKey="pkgtable" />
+    <p className="text-xs text-[var(--muted)]">Amber rows differ from the selected standard. Open a package to see the settings that differ. Unknown comparisons stay unhighlighted; Flux runtime drift is reported separately.</p>
+    <DataTable columns={tableColumns} data={rows} getRowId={(row) => row.key} rowClassName={(row) => comparisonRowClass(row.comparison)} noun="packages" search={search} exportName={`genesis-${tag}-packages`} urlKey="pkgtable" />
     {key ? <section id="package-details" tabIndex={-1} aria-label={`${key} configuration details`} className="scroll-mt-4 space-y-3">
       <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">{key === "global" ? "Global settings" : key}</h2><button type="button" className="text-sm text-[var(--primary)] underline" onClick={() => set("pkg", "")}>Close details</button></div>
       <PackageDetails packageKey={key} tag={tag} profiles={selection.profiles ?? ""} observedAt={cluster.observedAt} useRecordedProfiles={useRecordedProfiles} />
@@ -99,6 +101,6 @@ function PackageDetails({ packageKey, tag, profiles, observedAt, useRecordedProf
   return <div className="space-y-3">
     <p className="text-sm">{pkg.health} · Runtime drift: {pkg.drift}. {pkg.note}</p>
     <p className="text-sm text-[var(--muted)]">Standard = Genesis {tag} plus the comparison profiles. Cluster configuration = declared values. Installed values = the deployed Helm revision. Compares enablement, sources and images, replicas, resources, storage, and ingress; sensitive settings are omitted. “Installed differs from configured” can indicate a pending or failed rollout.</p>
-    {pkg.changes.length ? <DataTable columns={valueColumns} data={pkg.changes} getRowId={(row) => `${row.source}/${row.path}`} noun="differences" search={valueSearch} exportName={`genesis-${tag}-${packageKey}-differences`} urlKey="settings" /> : <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">{pkg.valuesChecked ? "No differences were found in the compared settings." : "A complete comparison is unavailable. No differences shown does not confirm that this package is standard."}</p>}
+    {pkg.changes.length ? <DataTable columns={valueColumns} data={pkg.changes} getRowId={(row) => `${row.source}/${row.path}`} rowClassName={(row) => comparisonRowClass(row.status)} noun="differences" search={valueSearch} exportName={`genesis-${tag}-${packageKey}-differences`} urlKey="settings" /> : <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">{pkg.valuesChecked ? "No differences were found in the compared settings." : "A complete comparison is unavailable. No differences shown does not confirm that this package is standard."}</p>}
   </div>;
 }

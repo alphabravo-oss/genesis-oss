@@ -38,6 +38,7 @@ type Props<T> = {
   columns: ColumnDef<T, any>[];
   data: T[];
   getRowId: (row: T) => string;
+  rowClassName?: (row: T) => string;
   noun?: string;
   search?: { placeholder: string; text?: (row: T) => string };
   facet?: Facet<T>;
@@ -92,6 +93,7 @@ function TableCore<T>({
   columns,
   data,
   getRowId,
+  rowClassName,
   noun = "rows",
   search,
   facet,
@@ -339,7 +341,7 @@ function TableCore<T>({
               return (
                 <Fragment key={row.id}>
                   <tr
-                    className={`border-t border-[var(--border)] align-top ${panel ? "cursor-pointer hover:bg-[var(--off)]" : ""}`}
+                    className={`border-t border-[var(--border)] align-top ${panel ? "cursor-pointer hover:bg-[var(--off)]" : ""} ${rowClassName?.(row.original) ?? ""}`}
                     onClick={(event) => {
                       if (!panel) return;
                       const target = event.target as HTMLElement;

@@ -16,6 +16,8 @@ The installed version comes from Helm metadata. The fetched Flux Git revision is
 
 Every page shows the selected Genesis standard and ordered profiles alongside the observed cluster and installed version. Cross-version differences are labeled explicitly. Package columns separate the standard, cluster configuration, installed chart/values, and Flux runtime drift. Image catalogs and bulk scans are version-specific; comparison profiles do not modify the image catalog or the cluster.
 
+Amber package and setting rows identify confirmed differences; matching and unknown rows remain unhighlighted. Profile options are an advanced override for installations without a profile record or a deliberate alternative comparison. Normally, keep the recorded profiles so intended optional packages are part of the expected standard.
+
 **Configured differences** compare selected safe settings with the standard plus profiles. **Runtime drift** is reported only from a current Flux drift condition when detection is enabled. Missing permissions, unsupported reference expressions, missing baselines, and unavailable APIs stay unknown. This is not an exhaustive audit of every Kubernetes resource, a cryptographic authenticity check, or a conformance certification. The Overview coverage panel explains what was read.
 
 Secret/ConfigMap reads are needed for Helm release records and referenced values. Scope them to the umbrella and child release namespaces. Cluster writes are never granted. Raw values remain on the server and sensitive fields are omitted from comparison output. Public image scans require outbound registry access; no Docker socket is mounted.
