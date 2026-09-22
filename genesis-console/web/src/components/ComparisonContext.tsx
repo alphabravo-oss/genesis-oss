@@ -22,9 +22,9 @@ export function ComparisonContext() {
         <p className="break-words text-xs text-[var(--muted)]">{cluster.namespace && cluster.releaseName ? `Helm release ${cluster.namespace}/${cluster.releaseName}` : "Helm release not confirmed"}{cluster.observedAt ? ` · Observed ${formatWhen(cluster.observedAt)}` : ""}</p>
       </div>
     </div>
-    <p className="text-xs text-[var(--muted)]">Compares cluster configuration and installed packages with the selected release’s defaults plus the profiles above. Differences can reflect release changes, profiles, or intentional configuration; they do not indicate a problem on their own. Flux runtime drift is a separate check. Changing this comparison never changes the cluster.</p>
+    <details className="text-xs text-[var(--muted)]"><summary className="font-medium text-[var(--foreground)]">How this comparison works</summary><p className="mt-2">Differences can reflect release changes, profiles, or intentional configuration; they do not indicate a problem. Flux runtime drift is separate. Changing this comparison never changes the cluster.</p></details>
     {cluster.baselineError ? <p role="status" className="text-sm text-[var(--amber)]">{cluster.baselineError}</p> : null}
-    {crossVersion ? <p role="status" className="text-sm text-[var(--muted)]">Comparing releases: installed Genesis {cluster.tag} vs comparison release Genesis {tag}. Release changes can explain differences.</p> : null}
+    {crossVersion ? <p role="status" className="text-sm text-[var(--muted)]">Installed Genesis {cluster.tag} vs comparison Genesis {tag}. Release changes can explain differences.</p> : null}
     <details className="border-t border-[var(--border)] pt-3 text-sm">
       <summary className="font-medium">Release notes and upgrade guidance</summary>
       <ul className="mt-2 space-y-2 text-[var(--primary)]">

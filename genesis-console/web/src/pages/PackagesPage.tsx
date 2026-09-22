@@ -15,7 +15,7 @@ function PackageLink({ name }: { name: string }) {
   return <Link to={packageHref(name, params)} className="font-medium text-[var(--primary)] underline underline-offset-2">{name === "global" ? "Global settings" : name}</Link>;
 }
 function ComparisonStatus({ pkg }: { pkg: PackageComparison }) {
-  return <span title={pkg.note} className={hasComparisonDifference(pkg.comparison) ? "inline-block rounded-md bg-[var(--off)] px-2 py-0.5 text-xs text-[var(--foreground)]" : "text-[var(--muted)]"}>{packageDifferenceSummary(pkg)}{!pkg.valuesChecked && hasComparisonDifference(pkg.comparison) ? " · partial" : ""}</span>;
+  return <span title={pkg.note} className={hasComparisonDifference(pkg.comparison) ? "difference-summary inline-block text-xs" : "text-[var(--muted)]"}>{packageDifferenceSummary(pkg)}{!pkg.valuesChecked && hasComparisonDifference(pkg.comparison) ? " · partial" : ""}</span>;
 }
 const columns: ColumnDef<PackageComparison, any>[] = [
   { accessorKey: "key", header: "Package", cell: ({ row }) => <PackageLink name={row.original.key} /> },
@@ -32,7 +32,7 @@ const valueColumns: ColumnDef<ConfigurationChange, any>[] = [
   ...[["standard", "Comparison release"], ["configured", "Cluster configuration"], ["deployed", "Installed values"]].map(([key, header]) => ({ accessorKey: key, header, cell: ({ row, getValue }: { row: { original: ConfigurationChange }; getValue: () => unknown }) => {
     const difference = settingDifference(row.original);
     const changed = key === "configured" && difference.configured || key === "deployed" && difference.installed;
-    return <span className={`block min-w-24 max-w-sm break-all font-mono text-xs ${changed ? "rounded bg-[var(--off)] px-1" : ""}`}>{String(getValue())}</span>;
+    return <span className={`block min-w-24 max-w-sm break-all font-mono text-xs ${changed ? "difference-value" : ""}`}>{String(getValue())}</span>;
   } })),
 ];
 const search = { placeholder: "Search packages", text: (pkg: PackageComparison) => `${pkg.key} ${pkg.health} ${packageDifferenceSummary(pkg)} ${pkg.drift}` };
@@ -107,7 +107,7 @@ export function PackagePage() {
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [packageKey]);
   return <div className="space-y-5">
     <Link to={packageHref("", params)} className="inline-flex items-center gap-2 text-sm text-[var(--primary)] hover:underline"><ArrowLeft className="size-4" aria-hidden />Back to packages</Link>
-    <h1 ref={heading} tabIndex={-1} className="break-words text-2xl font-semibold tracking-tight">{packageKey === "global" ? "Global settings" : packageKey}</h1>
+    <h1 ref={heading} tabIndex={-1} className="break-words text-2xl font-semibold tracking-tight focus:outline-none">{packageKey === "global" ? "Global settings" : packageKey}</h1>
     <ComparisonContext />
     <section aria-label={`${packageKey} configuration details`} className="space-y-3">
       <h2 className="text-lg font-semibold">Configuration comparison</h2>
@@ -124,9 +124,10 @@ function PackageDetails({ packageKey, tag, profiles, observedAt, useRecordedProf
   if (!query.data) return <p role="status">Reading installed package values…</p>;
   const pkg = query.data;
   return <div className="space-y-3">
-    <p className="text-sm font-medium">{packageDifferenceSummary(pkg)}{!pkg.valuesChecked ? " · Comparison incomplete" : ""}</p>
+    <p className={`${hasComparisonDifference(pkg.comparison) ? "difference-summary" : ""} inline-block text-sm font-medium`}>{packageDifferenceSummary(pkg)}{!pkg.valuesChecked && hasComparisonDifference(pkg.comparison) ? " · Comparison incomplete" : ""}</p>
     <p className="text-sm">{pkg.health} · Runtime drift: {pkg.drift}. {pkg.note}</p>
-    <p className="text-sm text-[var(--muted)]">Comparison release = Genesis {tag} defaults plus the comparison profiles. Cluster configuration = declared values. Installed values = the deployed Helm revision. Compares enablement, sources and images, replicas, resources, storage, and ingress; sensitive settings are omitted. Differences between configured and installed values can reflect a pending rollout; check package health and Flux status. Flux source-reference rows have no corresponding installed Helm value and remain “Not checked.”</p>
+    <p className="text-sm text-[var(--muted)]">Genesis {tag} defaults and profiles → cluster configuration → installed Helm values. Sensitive settings are omitted.</p>
+    <details className="text-sm text-[var(--muted)]"><summary className="font-medium text-[var(--foreground)]">About these differences</summary><p className="mt-2">The comparison covers enablement, sources and images, replicas, resources, storage, and ingress. Configured values that differ from installed values can reflect a pending rollout; check package health and Flux status. Flux source-reference rows have no corresponding installed Helm value and remain “Not checked.”</p></details>
     {pkg.changes.length ? <DataTable columns={tableColumns} data={pkg.changes} getRowId={(row) => `${row.source}/${row.path}`} noun="settings" search={valueSearch} exportName={`genesis-${tag}-${packageKey}-differences`} urlKey="settings" /> : <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">{pkg.valuesChecked ? "No differences were found in the compared settings." : "A complete comparison is unavailable. No differences shown does not confirm a match with the comparison release."}</p>}
   </div>;
 }
