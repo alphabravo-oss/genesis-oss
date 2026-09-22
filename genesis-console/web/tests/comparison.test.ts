@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { create } from "@bufbuild/protobuf";
 import { ClusterStatusSchema, ConfigurationChangeSchema, InstallationProvenanceSchema, PackageComparisonSchema } from "../src/gen/console/v1/console_pb.ts";
-import { comparisonLabel, comparisonReady, hasComparisonDifference, packageDifferenceSummary, packageHref, profileSummary } from "../src/lib/comparison.ts";
+import { comparisonLabel, comparisonReady, hasComparisonDifference, packageDifferenceSummary, packageHref, profileSummary, settingDifference } from "../src/lib/comparison.ts";
 
 test("comparison labels distinguish chosen profiles, unconfirmed observations, and the sides that differ", () => {
   const cluster = create(ClusterStatusSchema);
@@ -72,4 +72,14 @@ test("automatic comparison waits for the installed release instead of substituti
   assert.equal(comparisonReady("3.32.0", "3.33.0", false), true);
   assert.equal(comparisonReady("3.32.0", "", false), true);
   assert.equal(comparisonReady("", "3.33.0", false), false);
+});
+
+test("setting explanations identify which comparison sides differ without claiming a cause", () => {
+  const explain = (standard: string, configured: string, deployed: string, status: string) => settingDifference(create(ConfigurationChangeSchema, { standard, configured, deployed, status }));
+  assert.deepEqual(explain("1", "2", "2", "Customized"), { configured: true, installed: false, explanation: "Cluster configuration differs from the comparison release." });
+  assert.deepEqual(explain("1", "2", "3", "Not applied"), { configured: true, installed: true, explanation: "Cluster configuration differs from the comparison release. Installed value differs from cluster configuration." });
+  assert.deepEqual(explain("1", "1", "3", "Not applied"), { configured: false, installed: true, explanation: "Installed value differs from cluster configuration." });
+  assert.deepEqual(explain("1", "2", "Not checked", "Customized"), { configured: true, installed: false, explanation: "Cluster configuration differs from the comparison release." });
+  assert.deepEqual(explain("1", "Not checked", "Not checked", "Unknown"), { configured: false, installed: false, explanation: "Comparison incomplete; a release or cluster value could not be checked." });
+  assert.deepEqual(explain("1.0", "Not checked", "2.0", "Different version"), { configured: false, installed: true, explanation: "The installed chart version differs from the comparison release." });
 });

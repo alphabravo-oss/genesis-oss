@@ -1,4 +1,4 @@
-import type { ClusterStatus, PackageComparison } from "../gen/console/v1/console_pb";
+import type { ClusterStatus, ConfigurationChange, PackageComparison } from "../gen/console/v1/console_pb";
 
 export function profileSummary(cluster: Pick<ClusterStatus, "profiles" | "observedAt" | "provenance">, selected: string, recorded: boolean) {
   if (!recorded) return selected ? `Manual profiles, in order: ${selected.split(",").join(" → ")}` : "Manual selection: no profiles; release defaults only";
@@ -27,6 +27,18 @@ export function packageDifferenceSummary(pkg: PackageComparison) {
   if (settings) reasons.push(`${settings} configuration ${settings === 1 ? "difference" : "differences"}`);
   if (reasons.length) return reasons.join(" · ");
   return pkg.comparison === "Standard" && !pkg.valuesChecked ? "Comparison incomplete" : comparisonLabel(pkg.comparison);
+}
+
+export function settingDifference(change: ConfigurationChange) {
+  if (change.status === "Unknown") return { configured: false, installed: false, explanation: "Comparison incomplete; a release or cluster value could not be checked." };
+  if (change.status === "Different version") return { configured: false, installed: true, explanation: "The installed chart version differs from the comparison release." };
+  const configured = change.standard !== change.configured;
+  const installed = change.status === "Not applied";
+  const explanation = [
+    configured && "Cluster configuration differs from the comparison release.",
+    installed && "Installed value differs from cluster configuration.",
+  ].filter(Boolean).join(" ");
+  return { configured, installed, explanation };
 }
 
 export function comparisonReady(tag: string, installed: string, following: boolean) {
