@@ -12,8 +12,8 @@ export function comparisonLabel(status: string) {
   return ({ Standard: "Matches standard", Customized: "Differs from standard", "Not applied": "Installed differs from configured", "Different version": "Installed version differs from standard" } as Record<string, string>)[status] ?? status;
 }
 
-export function comparisonRowClass(status: string) {
-  return ["Customized", "Different version", "Not applied"].includes(status) ? "comparison-difference" : "";
+export function hasComparisonDifference(status: string) {
+  return ["Customized", "Different version", "Not applied"].includes(status);
 }
 
 export function packageHref(key: string, search: URLSearchParams) {

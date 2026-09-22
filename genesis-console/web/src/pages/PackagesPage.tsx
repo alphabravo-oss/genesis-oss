@@ -7,12 +7,15 @@ import { PackageComparisonSchema, type PackageComparison, type ConfigurationChan
 import type { ShellContext } from "@/pages/shell-context";
 import { DataTable, type ColumnDef } from "@/components/DataTable";
 import { consoleClient } from "@/lib/connect";
-import { comparisonLabel, comparisonRowClass, packageHref } from "@/lib/comparison";
+import { comparisonLabel, hasComparisonDifference, packageHref } from "@/lib/comparison";
 import { ComparisonContext } from "@/components/ComparisonContext";
 
 function PackageLink({ name }: { name: string }) {
   const [params] = useSearchParams();
   return <Link to={packageHref(name, params)} className="font-medium text-[var(--primary)] underline underline-offset-2">{name === "global" ? "Global settings" : name}</Link>;
+}
+function ComparisonStatus({ status, note, partial = false }: { status: string; note?: string; partial?: boolean }) {
+  return <span title={note} className={hasComparisonDifference(status) ? "inline-block rounded-md bg-[var(--amber-bg)] px-2 py-0.5 text-xs font-medium text-[var(--amber)]" : "text-[var(--muted)]"}>{comparisonLabel(status)}{partial ? " · partial" : ""}</span>;
 }
 const columns: ColumnDef<PackageComparison, any>[] = [
   { accessorKey: "key", header: "Package", cell: ({ row }) => <PackageLink name={row.original.key} /> },
@@ -20,14 +23,14 @@ const columns: ColumnDef<PackageComparison, any>[] = [
   { id: "configured", header: "Cluster configuration", accessorFn: (p) => p.configuredKnown ? `${p.configuredEnabled ? "Enabled" : "Disabled"}${p.configuredVersion ? ` · ${p.configuredVersion}` : ""}` : "Unknown" },
   { accessorKey: "deployedVersion", header: "Installed chart", cell: ({ getValue }) => getValue() || "Not confirmed" },
   { accessorKey: "health", header: "Health", cell: ({ getValue }) => <span className={getValue() === "Not ready" ? "font-medium text-[var(--danger)]" : ["Reconciling", "Suspended", "Not installed"].includes(getValue()) ? "text-[var(--amber)]" : ""}>{getValue()}</span> },
-  { id: "comparison", accessorFn: (row) => comparisonLabel(row.comparison), header: "Difference from standard", cell: ({ row, getValue }) => <span title={row.original.note}>{getValue()}{!row.original.valuesChecked ? " · partial" : ""}</span> },
+  { id: "comparison", accessorFn: (row) => comparisonLabel(row.comparison), header: "Difference from standard", cell: ({ row }) => <ComparisonStatus status={row.original.comparison} note={row.original.note} partial={!row.original.valuesChecked} /> },
   { accessorKey: "drift", header: "Flux runtime drift", cell: ({ getValue }) => <span className={getValue() === "Drifted" ? "font-medium text-[var(--danger)]" : getValue() === "Not checked" ? "text-[var(--muted)]" : ""}>{getValue()}</span> },
 ];
 const valueColumns: ColumnDef<ConfigurationChange, any>[] = [
   { accessorKey: "source", header: "Source" },
   { accessorKey: "path", header: "Setting", cell: ({ getValue }) => <span className="break-all font-mono text-xs">{getValue()}</span> },
   ...[["standard", "Selected standard"], ["configured", "Cluster configuration"], ["deployed", "Installed values"]].map(([key, header]) => ({ accessorKey: key, header, cell: ({ getValue }: { getValue: () => unknown }) => <span className="block min-w-24 max-w-sm break-all font-mono text-xs">{String(getValue())}</span> })),
-  { id: "status", accessorFn: (row) => comparisonLabel(row.status), header: "What differs" },
+  { id: "status", accessorFn: (row) => comparisonLabel(row.status), header: "What differs", cell: ({ row }) => <ComparisonStatus status={row.original.status} /> },
 ];
 const search = { placeholder: "Search packages", text: (pkg: PackageComparison) => `${pkg.key} ${pkg.health} ${comparisonLabel(pkg.comparison)} ${pkg.drift}` };
 const valueSearch = { placeholder: "Search settings", text: (value: ConfigurationChange) => `${value.source} ${value.path} ${value.category}` };
@@ -87,8 +90,7 @@ export function PackagesPage() {
       {[["all", "All packages"], ["attention", "Needs attention"], ["customized", "Differs from standard"], ["drift", "Flux drift detected"]].map(([value, label]) => <button type="button" key={value} aria-pressed={state === value} onClick={() => set("state", value === "all" ? "" : value)} className={`rounded-md border px-3 py-2 text-sm ${state === value ? "border-[var(--primary)] bg-[var(--accent)]" : "border-[var(--border)] bg-[var(--card)]"}`}>{label}</button>)}
     </div>
     {clusterPending ? <p role="status" className="text-sm text-[var(--muted)]">Reading deployment configuration…</p> : null}
-    <p className="text-xs text-[var(--muted)]">Amber rows differ from the selected standard. Open a package to see the settings that differ. Unknown comparisons stay unhighlighted; Flux runtime drift is reported separately.</p>
-    <DataTable columns={tableColumns} data={rows} getRowId={(row) => row.key} rowHref={(row) => packageHref(row.key, params)} rowClassName={(row) => comparisonRowClass(row.comparison)} noun="packages" search={search} exportName={`genesis-${tag}-packages`} urlKey="pkgtable" />
+    <DataTable columns={tableColumns} data={rows} getRowId={(row) => row.key} rowHref={(row) => packageHref(row.key, params)} noun="packages" search={search} exportName={`genesis-${tag}-packages`} urlKey="pkgtable" />
   </div>;
 }
 
@@ -118,6 +120,6 @@ function PackageDetails({ packageKey, tag, profiles, observedAt, useRecordedProf
   return <div className="space-y-3">
     <p className="text-sm">{pkg.health} · Runtime drift: {pkg.drift}. {pkg.note}</p>
     <p className="text-sm text-[var(--muted)]">Standard = Genesis {tag} plus the comparison profiles. Cluster configuration = declared values. Installed values = the deployed Helm revision. Compares enablement, sources and images, replicas, resources, storage, and ingress; sensitive settings are omitted. “Installed differs from configured” can indicate a pending or failed rollout. Flux source-reference rows have no corresponding installed Helm value and remain “Not checked.”</p>
-    {pkg.changes.length ? <DataTable columns={valueColumns} data={pkg.changes} getRowId={(row) => `${row.source}/${row.path}`} rowClassName={(row) => comparisonRowClass(row.status)} noun="differences" search={valueSearch} exportName={`genesis-${tag}-${packageKey}-differences`} urlKey="settings" /> : <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">{pkg.valuesChecked ? "No differences were found in the compared settings." : "A complete comparison is unavailable. No differences shown does not confirm that this package is standard."}</p>}
+    {pkg.changes.length ? <DataTable columns={valueColumns} data={pkg.changes} getRowId={(row) => `${row.source}/${row.path}`} noun="differences" search={valueSearch} exportName={`genesis-${tag}-${packageKey}-differences`} urlKey="settings" /> : <p className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">{pkg.valuesChecked ? "No differences were found in the compared settings." : "A complete comparison is unavailable. No differences shown does not confirm that this package is standard."}</p>}
   </div>;
 }

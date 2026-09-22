@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { create } from "@bufbuild/protobuf";
 import { ClusterStatusSchema } from "../src/gen/console/v1/console_pb.ts";
-import { comparisonLabel, comparisonRowClass, packageHref, profileSummary } from "../src/lib/comparison.ts";
+import { comparisonLabel, hasComparisonDifference, packageHref, profileSummary } from "../src/lib/comparison.ts";
 
 test("comparison labels distinguish chosen profiles, unconfirmed observations, and the sides that differ", () => {
   const cluster = create(ClusterStatusSchema);
@@ -18,8 +18,8 @@ test("comparison labels distinguish chosen profiles, unconfirmed observations, a
   assert.equal(comparisonLabel("Different version"), "Installed version differs from standard");
   assert.equal(comparisonLabel("Standard"), "Matches standard");
   assert.equal(comparisonLabel("Unknown"), "Unknown");
-  for (const status of ["Customized", "Different version", "Not applied"]) assert.equal(comparisonRowClass(status), "comparison-difference");
-  for (const status of ["Standard", "Unknown", "Not checked", ""]) assert.equal(comparisonRowClass(status), "");
+  for (const status of ["Customized", "Different version", "Not applied"]) assert.equal(hasComparisonDifference(status), true);
+  for (const status of ["Standard", "Unknown", "Not checked", ""]) assert.equal(hasComparisonDifference(status), false);
 });
 
 test("package pages preserve the comparison and list filters without leaking detail filters", () => {

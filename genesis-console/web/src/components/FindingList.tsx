@@ -1,9 +1,9 @@
 import { useSearchParams } from "react-router";
 import type { Vulnerability } from "@/gen/console/v1/console_pb";
 import { DataTable, type ColumnDef } from "@/components/DataTable";
-import { fixableCount, hasFix } from "@/lib/findings";
+import { fixableCount, hasFix, severityRank, vulnerabilityCounts } from "@/lib/findings";
+import { VulnerabilitySummary } from "@/components/VulnerabilitySummary";
 
-const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, UNKNOWN: 0 };
 const columns: ColumnDef<Vulnerability, any>[] = [
   { accessorKey: "id", header: "CVE", cell: ({ row }) => row.original.url ? <a className="text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2" href={row.original.url} target="_blank" rel="noreferrer">{row.original.id}</a> : row.original.id },
   { accessorKey: "severity", header: "Severity", sortingFn: (a, b) => (severityRank[a.original.severity] ?? 0) - (severityRank[b.original.severity] ?? 0), cell: ({ getValue }) => <span className={getValue() === "CRITICAL" ? "text-[var(--danger)]" : getValue() === "HIGH" ? "text-[var(--amber)]" : "text-[var(--muted)]"}>{getValue() || "UNKNOWN"}</span> },
@@ -21,7 +21,9 @@ export function FindingList({ rows, allSeverities, urlKey = "findings" }: { rows
   const fix = params.get(`${urlKey}.fix`) ?? "";
   const filtered = fix === "available" ? rows.filter(hasFix) : fix === "unavailable" ? rows.filter((row) => !hasFix(row)) : rows;
   const available = rows.filter(hasFix).length;
+  const counts = vulnerabilityCounts(rows).map((count, index) => !allSeverities && index > 1 ? null : count);
   return <div className="space-y-3">
+    {rows.length || allSeverities ? <VulnerabilitySummary counts={counts} /> : null}
     {!allSeverities ? <p role="status" className="text-sm text-[var(--amber)]">This older scan only collected High and Critical findings. Rescan the image to include Medium, Low, and Unknown.</p> : null}
     {rows.length ? <>
       <div className="flex flex-wrap items-center justify-between gap-3">

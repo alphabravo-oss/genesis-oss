@@ -3,7 +3,7 @@ import { Link, useOutletContext, useParams, useSearchParams } from "react-router
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { create } from "@bufbuild/protobuf";
 import { ArrowLeft, Download, LoaderCircle } from "lucide-react";
-import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
+import { createColumnHelper, type ColumnDef, type Row } from "@tanstack/react-table";
 import { ListScanJobsResponseSchema, type ImageRow, type ListScanJobsResponse, type ScanItem } from "@/gen/console/v1/console_pb";
 import type { ShellContext } from "@/pages/shell-context";
 import { DataTable } from "@/components/DataTable";
@@ -12,19 +12,25 @@ import { ReleaseSelect } from "@/components/ReleaseSelect";
 import { consoleClient } from "@/lib/connect";
 import { formatWhen, jobActive } from "@/lib/cluster";
 import { errorText } from "@/lib/errors";
-import { fixableCount } from "@/lib/findings";
+import { fixableCount, scanSeverityCounts, severities } from "@/lib/findings";
+import { VulnerabilitySummary } from "@/components/VulnerabilitySummary";
 import { applyScanResult, groupDeployedImages, imageHref, imageScan, type DeployedImage } from "@/lib/images";
 
-function severity(row: ImageRow) {
-  if (!row.scanned) return -1;
-  return row.critical * 100000 + row.high;
-}
-
-function findingSummary(image: Pick<ImageRow, "scanned" | "allSeverities" | "vulnerabilities">) {
-  if (!image.scanned) return "Not scanned";
-  const count = image.vulnerabilities.length;
-  return `${count} ${count === 1 ? "finding" : "findings"}${image.allSeverities ? "" : " (limited)"}`;
-}
+const vulnerabilityColumn = {
+  id: "critical", // Preserve existing saved sort URLs.
+  header: "Vulnerabilities",
+  accessorFn: scanSeverityCounts,
+  meta: { csv: (image: ImageRow | DeployedImage) => image.scanned ? scanSeverityCounts(image).map((count, index) => `${severities[index]}: ${count ?? "not collected"}`).join("; ") : "Not scanned" },
+  sortingFn: (a: Pick<Row<ImageRow>, "getValue">, b: Pick<Row<ImageRow>, "getValue">) => {
+    const left = a.getValue<(number | null)[]>("critical"), right = b.getValue<(number | null)[]>("critical");
+    for (let i = 0; i < left.length; i++) {
+      const difference = (left[i] ?? -1) - (right[i] ?? -1);
+      if (difference) return difference;
+    }
+    return 0;
+  },
+  cell: ({ row, getValue }: { row: { original: ImageRow | DeployedImage }; getValue: () => (number | null)[] }) => row.original.scanned ? <div className="space-y-1"><VulnerabilitySummary counts={getValue()} />{!row.original.allSeverities ? <span className="block text-xs text-[var(--muted)]">Limited scan · rescan for all severities</span> : null}</div> : <span className="text-[var(--muted)]">Not scanned</span>,
+};
 
 const columns = createColumnHelper<ImageRow>();
 const defaultSort = [{ id: "critical", desc: true }];
@@ -35,15 +41,13 @@ const search = {
 const facet = { label: "Registry", value: (row: ImageRow) => row.registry || "No public source" };
 const runtimeColumns: ColumnDef<DeployedImage, any>[] = [
   { id: "ref", accessorFn: (row) => row.references.join("\n"), header: "Image" },
+  vulnerabilityColumn,
+  { id: "fixable", accessorFn: (row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, header: "Fixable", cell: ({ row }) => row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{fixableCount(row.original.vulnerabilities)}</span> : "Not scanned" },
   { accessorKey: "digest", header: "Observed digest", cell: ({ getValue }) => <span className="block max-w-36 truncate font-mono text-xs" title={getValue()}>{getValue() || "Not observed"}</span> },
   { id: "packageKey", accessorFn: (row) => row.packages.join(", "), header: "Packages", cell: ({ getValue }) => <span className="line-clamp-2 max-w-44" title={getValue()}>{getValue()}</span> },
   { id: "namespace", accessorFn: (row) => row.namespaces.join(", "), header: "Namespaces", cell: ({ getValue }) => <span className="line-clamp-2 max-w-44" title={getValue()}>{getValue()}</span> },
   { id: "containers", accessorFn: (row) => row.containers.length, header: "Containers" },
   { id: "ready", accessorFn: (row) => row.containers.filter((container) => container.ready).length, header: "Ready", cell: ({ row, getValue }) => `${getValue()}/${row.original.containers.length}` },
-  { accessorKey: "critical", header: "Critical", cell: ({ row }) => row.original.scanned ? row.original.critical : "Not scanned" },
-  { accessorKey: "high", header: "High", cell: ({ row }) => row.original.scanned ? row.original.high : "Not scanned" },
-  { id: "findings", accessorFn: findingSummary, header: "All findings" },
-  { id: "fixable", accessorFn: (row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, header: "Fixable", cell: ({ row }) => row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{fixableCount(row.original.vulnerabilities)}</span> : "Not scanned" },
 ];
 const runtimeSearch = { placeholder: "Search images or pods", text: (row: DeployedImage) => [row.references.join(" "), row.digest, row.packages.join(" "), row.namespaces.join(" "), ...row.containers.map((container) => `${container.pod} ${container.container}`)].join(" ") };
 const runtimeFacet = { label: "Package", value: (row: DeployedImage) => row.packages };
@@ -88,6 +92,8 @@ function ImageFindings({ image, item }: { image: ImageRow | DeployedImage; item?
 const imageColumns: ColumnDef<ImageRow, any>[] = [
   columns.accessor("packageKey", { header: "Package" }),
   columns.accessor("name", { header: "Image" }),
+  vulnerabilityColumn,
+  columns.accessor((row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, { id: "fixable", header: "Fixable", cell: (info) => info.row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{info.getValue()}</span> : "—" }),
   columns.accessor("registry", {
     header: "Registry",
     cell: (info) => <span className={info.row.original.ref ? "" : "text-[var(--amber)]"}>{info.getValue()}</span>,
@@ -98,19 +104,7 @@ const imageColumns: ColumnDef<ImageRow, any>[] = [
   }),
   columns.accessor("digest", { header: "Digest", cell: (info) => <span className="block max-w-28 truncate font-mono text-xs" title={info.getValue()}>{info.getValue() || "—"}</span> }),
   columns.accessor("signature", { header: "Signature", cell: (info) => info.getValue() || "—" }),
-  columns.accessor("critical", {
-    header: "Critical",
-    sortingFn: (a, b) => severity(a.original) - severity(b.original),
-    cell: (info) => (info.row.original.scanned ? <span className={info.getValue() > 0 ? "font-semibold text-[var(--danger)]" : "text-[var(--muted)]"}>{info.getValue()}</span> : "—"),
-  }),
-  columns.accessor("high", { header: "High", cell: (info) => (info.row.original.scanned ? info.getValue() : "—") }),
-  columns.accessor(findingSummary, {
-    id: "findings",
-    header: "All findings",
-    enableSorting: false,
-  }),
   columns.accessor("scannedAt", { header: "Scanned", cell: (info) => (info.getValue() ? formatWhen(info.getValue()) : "—") }),
-  columns.accessor((row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, { id: "fixable", header: "Fixable", cell: (info) => info.row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{info.getValue()}</span> : "—" }),
 ];
 
 export function ImagesPage() {
@@ -138,7 +132,7 @@ export function ImagesPage() {
   const observedColumns = useMemo(() => [{ ...runtimeColumns[0], cell: ({ row }: { row: { original: DeployedImage } }) => <Link to={imageHref("deployed", row.original.id, params)} className="block min-w-48 max-w-sm space-y-1 break-all font-mono text-xs text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.references.map((ref) => <div key={ref}>{ref}</div>)}</Link> }, {
     id: "scan", header: "Scan status", accessorFn: (row: DeployedImage) => scanLabel(imageScan(row, currentScan), row.scanned, busy && selected.includes(row.id)),
     cell: ({ row }: { row: { original: DeployedImage } }) => <ScanStatus item={imageScan(row.original, currentScan)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
-  }, ...runtimeColumns.slice(1).map((column) => findingsUnavailable && (["findings", "fixable"].includes(column.id ?? "") || ("accessorKey" in column && ["critical", "high"].includes(String(column.accessorKey)))) ? { ...column, cell: () => "Not checked" } : column)], [findingsUnavailable, currentScan, busy, selected, params]);
+  }, ...runtimeColumns.slice(1).map((column) => findingsUnavailable && ["critical", "fixable"].includes(column.id ?? "") ? { ...column, cell: () => "Not checked" } : column)], [findingsUnavailable, currentScan, busy, selected, params]);
   const catalogColumns = useMemo(() => [imageColumns[0], { ...imageColumns[1], cell: ({ row }: { row: { original: ImageRow } }) => <Link to={imageHref("catalog", row.original.id, params)} className="block text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.name}</Link> }, {
     id: "scan", header: "Scan status", accessorFn: (row: ImageRow) => scanLabel(imageScan(row, currentScan, tag), row.scanned, busy && selected.includes(row.id)),
     cell: ({ row }: { row: { original: ImageRow } }) => <ScanStatus item={imageScan(row.original, currentScan, tag)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
@@ -244,7 +238,7 @@ export function ImagesPage() {
         {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved scan findings could not be read. Scan coverage and finding counts are unknown.</p> : null}
         <p className="text-xs text-[var(--muted)]">“Unassigned” means package ownership could not be determined.</p>
         {clusterPending ? <p role="status">Reading running containers…</p> : !cluster.checks.some((check) => check.name === "Pods" && check.checked) ? <p role="status" className="text-sm text-[var(--amber)]">Pod inventory could not be read. Use the catalog tabs to browse release images.</p> : null}
-        <DataTable key="runtime" columns={observedColumns} data={deployedImages} getRowId={(row) => row.id} rowHref={(row) => imageHref("deployed", row.id, params)} noun="images" selectable selected={selected} onSelected={setSelected} search={runtimeSearch} facet={runtimeFacet} exportName={`genesis-${tag}-deployed-images`} urlKey="liveimg" />
+        <DataTable key="runtime" columns={observedColumns} data={deployedImages} getRowId={(row) => row.id} rowHref={(row) => imageHref("deployed", row.id, params)} noun="images" defaultSort={defaultSort} selectable selected={selected} onSelected={setSelected} search={runtimeSearch} facet={runtimeFacet} exportName={`genesis-${tag}-deployed-images`} urlKey="liveimg" />
       </> : <DataTable
         key="catalog"
         columns={catalogColumns}

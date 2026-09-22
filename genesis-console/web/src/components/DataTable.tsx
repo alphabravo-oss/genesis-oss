@@ -38,7 +38,6 @@ type Props<T> = {
   columns: ColumnDef<T, any>[];
   data: T[];
   getRowId: (row: T) => string;
-  rowClassName?: (row: T) => string;
   rowHref?: (row: T) => string;
   noun?: string;
   search?: { placeholder: string; text?: (row: T) => string };
@@ -94,7 +93,6 @@ function TableCore<T>({
   columns,
   data,
   getRowId,
-  rowClassName,
   rowHref,
   noun = "rows",
   search,
@@ -344,7 +342,7 @@ function TableCore<T>({
               return (
                 <Fragment key={row.id}>
                   <tr
-                    className={`border-t border-[var(--border)] align-top ${panel || rowHref ? "cursor-pointer hover:bg-[var(--off)]" : ""} ${rowClassName?.(row.original) ?? ""}`}
+                    className={`border-t border-[var(--border)] align-top ${panel || rowHref ? "cursor-pointer hover:bg-[var(--off)]" : ""}`}
                     onClick={(event) => {
                       const target = event.target as HTMLElement;
                       if (target.closest("a, button, input, label, select, summary") || window.getSelection()?.toString()) return;
