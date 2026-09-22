@@ -7,6 +7,7 @@ const KEY = "genesis-console-theme";
 type ThemeValue = {
   preference: ThemePreference;
   resolved: "light" | "dark";
+  setPreference: (preference: ThemePreference) => void;
   cycle: () => void;
 };
 
@@ -40,7 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolved;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", resolved === "dark" ? "#090909" : "#f4f7f5");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", getComputedStyle(document.documentElement).getPropertyValue("--background").trim());
     try {
       localStorage.setItem(KEY, preference);
     } catch {
@@ -52,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setPreference((current) => (current === "system" ? "light" : current === "light" ? "dark" : "system"));
   };
 
-  return <ThemeContext.Provider value={{ preference, resolved, cycle }}>{children}</ThemeContext.Provider>;
+  return <ThemeContext.Provider value={{ preference, resolved, setPreference, cycle }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

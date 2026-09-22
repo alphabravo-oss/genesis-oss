@@ -87,15 +87,15 @@ export function ScansPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Scans</h1>
         <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-          Scan public images for vulnerabilities and review saved results. Cleaning images frees disk space and keeps your findings.
+          Scan public images from the Genesis {tag} catalog for vulnerabilities. Use Images → Deployed images to scan what is running in the cluster. Profiles do not change the scan catalog. Cleaning images keeps findings and SBOMs.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" className="rounded-md bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-foreground)] disabled:opacity-50" disabled={busy || scanning} onClick={() => void start("default-on")}>
-          {busy ? "Working…" : `Scan ${defaultOn} default-on images`}
+          {busy ? "Working…" : `Scan ${defaultOn} catalog default-on images`}
         </button>
         <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm disabled:opacity-50" disabled={busy || scanning} onClick={() => void start("public")}>
-          Scan {publicRefs} public images
+          Scan {publicRefs} catalog public images
         </button>
         <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm disabled:opacity-50" disabled={busy || scanning} onClick={() => void clean()}>
           Clean images
@@ -163,7 +163,7 @@ export function ScansPage() {
 function ScanDrilldown({ jobId }: { jobId: string }) {
   const job = useQuery({
     queryKey: ["job", jobId],
-    queryFn: () => consoleClient.getScanJob({ id: jobId }),
+    queryFn: ({ signal }) => consoleClient.getScanJob({ id: jobId }, { signal }),
   });
   if (job.error) return <p role="alert" className="text-sm text-[var(--danger)]">{errorText(job.error)}</p>;
   if (!job.data) return <p role="status" className="text-sm text-[var(--muted)]">Loading findings…</p>;

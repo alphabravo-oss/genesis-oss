@@ -47,11 +47,11 @@ const runtimeColumns: ColumnDef<DeployedImage, any>[] = [
 const runtimeSearch = { placeholder: "Search images or pods", text: (row: DeployedImage) => [row.references.join(" "), row.digest, row.packages.join(" "), row.namespaces.join(" "), ...row.containers.map((container) => `${container.pod} ${container.container}`)].join(" ") };
 const runtimeFacet = { label: "Package", value: (row: DeployedImage) => row.packages };
 
-function ContainerList({ image }: { image: DeployedImage }) {
+function ContainerList({ image, tag }: { image: DeployedImage; tag: string }) {
   return <div className="overflow-x-auto">
     <table className="w-full text-left text-sm">
       <caption className="mb-2 text-left text-[var(--muted)]">{image.containers.length} containers use this image</caption>
-      <thead><tr>{["Package", "Namespace", "Pod", "Container", "Ready", "Catalog comparison"].map((heading) => <th key={heading} scope="col" className="px-3 py-2 font-medium">{heading}</th>)}</tr></thead>
+      <thead><tr>{["Package", "Namespace", "Pod", "Container", "Ready", `Image vs Genesis ${tag} catalog`].map((heading) => <th key={heading} scope="col" className="px-3 py-2 font-medium">{heading}</th>)}</tr></thead>
       <tbody>{image.containers.map((container) => <tr key={`${container.namespace}/${container.pod}/${container.init}/${container.container}`} className="border-t border-[var(--border)]">
         <td className="px-3 py-2">{container.packageKey}</td><td className="px-3 py-2">{container.namespace}</td><td className="px-3 py-2">{container.pod}</td><td className="px-3 py-2">{container.container}{container.init ? " (init)" : ""}</td><td className="px-3 py-2">{container.ready ? "Yes" : "No"}</td>
         <td className="px-3 py-2">{container.comparison}{container.standard ? <span className="mt-1 block break-all font-mono text-xs text-[var(--muted)]">{container.standard}</span> : null}</td>
@@ -179,7 +179,7 @@ export function ImagesPage() {
     return <div className="space-y-5">
       <Link to={`/images${params.size ? `?${params}` : ""}`} className="inline-flex items-center gap-2 text-sm text-[var(--primary)] hover:underline"><ArrowLeft className="size-4" aria-hidden />Back to images</Link>
       {error || scanQuery.error ? <p role="alert" className="text-sm text-[var(--danger)]">{error || errorText(scanQuery.error)}</p> : null}
-      {image ? <ImageDetails key={image.id} image={image} item={imageScan(image, currentScan, source === "catalog" ? tag : undefined)} busy={busy} scanning={scanning} findingsUnavailable={source === "deployed" && findingsUnavailable} onScan={() => void scanSelected([image.id])} /> : <div className="space-y-2">
+      {image ? <ImageDetails key={image.id} image={image} tag={tag} item={imageScan(image, currentScan, source === "catalog" ? tag : undefined)} busy={busy} scanning={scanning} findingsUnavailable={source === "deployed" && findingsUnavailable} onScan={() => void scanSelected([image.id])} /> : <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">{source === "deployed" && clusterPending ? "Loading image…" : "Image unavailable"}</h1>
         <p role="status" className="text-sm text-[var(--muted)]">{source === "deployed" ? (clusterPending ? "Reading deployed images." : "This image is no longer in the observed pod inventory, or the cluster could not be read.") : "This image is not in the selected release catalog."}</p>
       </div>}
@@ -191,7 +191,7 @@ export function ImagesPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Images</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">{view === "deployed" ? `${deployedImages.length} unique images across ${cluster.images.length} containers. Open an image to see findings and where it runs.` : "Images listed in the selected release catalog, and their latest saved scans."}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">{view === "deployed" ? `${deployedImages.length} unique images across ${cluster.images.length} observed containers. Image details compare their references and digests with the Genesis ${tag} catalog.` : `Images listed in the Genesis ${tag} catalog, and their latest saved scans. This is the catalog inventory, not the list of running containers.`}</p>
         </div>
         <button
           type="button"
@@ -205,8 +205,8 @@ export function ImagesPage() {
       <div className="flex flex-wrap gap-2">
         {[
           ["deployed", "Deployed images"],
-          ["default-on", "Default-on"],
-          ["all", "All listed"],
+          ["default-on", "Catalog: default-on"],
+          ["all", "Catalog: all images"],
           ["unscanned", "Unscanned"],
           ["critical", "Critical"],
           ["missing", "No public source"],
@@ -240,7 +240,7 @@ export function ImagesPage() {
       {view === "deployed" ? <>
         <p className="text-sm text-[var(--muted)]">Select images to scan once per digest, regardless of replica count. Images without an observed digest are grouped and scanned by configured reference.</p>
         {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved scan findings could not be read. Scan coverage and finding counts are unknown.</p> : null}
-        <p className="text-xs text-[var(--muted)]">Catalog differences are not proof of drift. Selected profiles can introduce images outside the catalog. “Unassigned” means package ownership could not be determined.</p>
+        <p className="text-xs text-[var(--muted)]">The Genesis {tag} image catalog is not changed by comparison profiles. Profile-enabled or custom workloads may use additional images. Catalog differences are not proof of runtime drift. “Unassigned” means package ownership could not be determined.</p>
         {clusterPending ? <p role="status">Reading running containers…</p> : !cluster.checks.some((check) => check.name === "Pods" && check.checked) ? <p role="status" className="text-sm text-[var(--amber)]">Pod inventory could not be read. Use the catalog tabs to browse release images.</p> : null}
         <DataTable key="runtime" columns={observedColumns} data={deployedImages} getRowId={(row) => row.id} noun="images" selectable selected={selected} onSelected={setSelected} search={runtimeSearch} facet={runtimeFacet} exportName={`genesis-${tag}-deployed-images`} urlKey="liveimg" />
       </> : <DataTable
@@ -262,8 +262,8 @@ export function ImagesPage() {
   );
 }
 
-function ImageDetails({ image, item, busy, scanning, findingsUnavailable, onScan }: {
-  image: ImageRow | DeployedImage; item?: ScanItem; busy: boolean; scanning: boolean; findingsUnavailable: boolean; onScan: () => void;
+function ImageDetails({ image, tag, item, busy, scanning, findingsUnavailable, onScan }: {
+  image: ImageRow | DeployedImage; tag: string; item?: ScanItem; busy: boolean; scanning: boolean; findingsUnavailable: boolean; onScan: () => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus(); }, []);
@@ -279,7 +279,7 @@ function ImageDetails({ image, item, busy, scanning, findingsUnavailable, onScan
   return <>
     <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
       <div className="min-w-0 flex-1">
-        <p className="mb-1 text-xs text-[var(--muted)]">{deployed ? "Deployed image" : "Catalog image"}</p>
+        <p className="mb-1 text-xs text-[var(--muted)]">{deployed ? "Image observed in the cluster" : `Image from the Genesis ${tag} catalog`}</p>
         <h1 ref={heading} tabIndex={-1} className="break-all text-2xl font-semibold tracking-tight outline-none">{title}</h1>
       </div>
       <button type="button" onClick={onScan} disabled={busy || scanning || !image.ref} className="shrink-0 rounded-md bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-foreground)] disabled:opacity-50">{busy ? "Starting scan…" : image.scanned ? "Rescan image" : "Scan image"}</button>
@@ -307,6 +307,6 @@ function ImageDetails({ image, item, busy, scanning, findingsUnavailable, onScan
     <div className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
       {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved scan findings could not be read. Finding counts are unknown.</p> : <ImageFindings image={image} item={item} />}
     </div>
-    {deployed ? <section className="min-w-0 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"><h2 className="text-lg font-semibold">Where it runs</h2><ContainerList image={deployed} /></section> : null}
+    {deployed ? <section className="min-w-0 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"><h2 className="text-lg font-semibold">Where it runs</h2><ContainerList image={deployed} tag={tag} /></section> : null}
   </>;
 }

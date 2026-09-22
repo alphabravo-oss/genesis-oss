@@ -21,7 +21,7 @@ export function OverviewPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Deployment overview</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">What is installed, how it differs from your baseline, and what needs attention.</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">This cluster’s installed packages, differences from the Genesis {tag} comparison standard and selected profiles, and live health.</p>
       </div>
       {clusterPending ? <p role="status" className="text-sm text-[var(--muted)]">Reading deployment metadata and configuration…</p> : null}
       <dl className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -45,8 +45,8 @@ export function OverviewPage() {
       </section>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Attention label="Packages needing attention" value={packageRead ? attention.length : "—"} note="Readiness and reconciliation" to={link("/packages", { state: "attention" })} hot={attention.length > 0} />
-        <Attention label="Customized packages" value={cluster.packages.length ? customized.length : "—"} note={`${cluster.packages.filter((pkg) => pkg.comparison === "Unknown").length} comparisons unknown`} to={link("/packages", { state: "customized" })} hot={false} />
-        <Attention label="Drift detected" value={packageRead ? drifted.length : "—"} note={`${unchecked} packages not checked`} to={link("/packages", { state: "drift" })} hot={drifted.length > 0} />
+        <Attention label="Packages differing from standard" value={cluster.packages.length ? customized.length : "—"} note={`Compared with Genesis ${tag} + comparison profiles · ${cluster.packages.filter((pkg) => pkg.comparison === "Unknown").length} unknown`} to={link("/packages", { state: "customized" })} hot={false} />
+        <Attention label="Flux runtime drift" value={packageRead ? drifted.length : "—"} note={`Live resources vs Flux intent · ${unchecked} packages not checked`} to={link("/packages", { state: "drift" })} hot={drifted.length > 0} />
         <Attention label="Images with critical findings" value={podsRead && !findingsUnavailable ? critical : "—"} note={findingsUnavailable ? "Saved scan findings are unavailable" : `${scanned} of ${images.length} observed images have saved scans`} to={link("/images", { view: "deployed" })} hot={critical > 0} />
       </div>
       <section className="space-y-3">
@@ -63,7 +63,7 @@ export function OverviewPage() {
       </section>
       <details className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
         <summary className="cursor-pointer font-medium">Observation coverage · {cluster.checks.filter((check) => check.checked).length}/{cluster.checks.length} sources read</summary>
-        <p className="mt-3 text-sm text-[var(--muted)]">Drift results come from Flux and honor its configured exclusions. A customization is a declared difference from the selected baseline; it does not imply drift.</p>
+        <p className="mt-3 text-sm text-[var(--muted)]">Flux checks live resources against its declared configuration and honors its exclusions. Differences from the selected Genesis standard can reflect release changes, selected profiles, or user customizations; they do not imply runtime drift.</p>
         <ul className="mt-3 space-y-2 text-sm">
           {cluster.checks.map((check) => <li key={check.name}><strong>{check.name}:</strong> {check.checked ? "Read successfully" : check.message}</li>)}
         </ul>

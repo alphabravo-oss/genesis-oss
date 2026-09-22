@@ -20,6 +20,9 @@
   --off: #eef1ef;
   --danger: #9f2d2d;
   --shadow: 0 8px 24px rgba(20, 32, 24, 0.08);
+  --sidebar-width: 15rem;
+  --sidebar-collapsed-width: 4rem;
+  --header-height: 3.5rem;
 }
 
 :root[data-theme="dark"] {
@@ -56,6 +59,7 @@ body {
 button, a, input, select, summary { touch-action: manipulation; }
 button:not(:disabled), select, summary { cursor: pointer; }
 button:disabled { cursor: default; }
+summary::-webkit-details-marker { display: none; }
 input[type="checkbox"], progress { accent-color: var(--primary); }
 table, progress { font-variant-numeric: tabular-nums; }
 h1, h2 { text-wrap: balance; }

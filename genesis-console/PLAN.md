@@ -1,6 +1,6 @@
 # Genesis Console, OSS
 
-Read-only console for a Genesis snapshot. It lives in this workspace as `genesis-console/`, next to `genesis-engine` and `genesis-oss`. It is not part of the generated chart repo.
+Read-only console for a Genesis snapshot. It lives in this workspace as `genesis-console/`, next to `genesis-engine` and `genesis-oss`. Its source and required data are packaged into the published OSS repository.
 
 The OSS build observes. It does not install, upgrade, or apply. An enterprise build can add those controls on the same screens later.
 
@@ -12,9 +12,9 @@ Archived generated umbrellas and profiles provide per-release configuration base
 
 ## Overview and packages
 
-Overview prioritizes readiness issues, declared customizations, native Flux drift results, and findings for observed container digests. The coverage panel exposes unavailable data sources.
+Overview prioritizes readiness issues, differences from the selected standard, native Flux drift results, and findings for observed container digests. The coverage panel exposes unavailable data sources.
 
-Packages has one table: Standard, Configured, Deployed chart, Health, Configuration, and Runtime drift. A package disabled by the standard can still appear as configured or deployed. Umbrella network policies are marked Included when confirmed. Package details compare relevant safe values from the rendered baseline, resolved HelmRelease references/inline values, and installed child Helm values at the observed revision.
+Packages has one table: Standard, Cluster configuration, Installed chart, Health, Difference from standard, and Flux runtime drift. Every page shows the selected version and profiles alongside the observed cluster and installed version. A package disabled by the standard can still appear as configured or deployed. Umbrella network policies are marked Included when confirmed. Package details compare relevant safe values from the rendered baseline, resolved HelmRelease references/inline values, and installed child Helm values at the observed revision.
 
 Configuration differences do not imply runtime drift. Only current Flux drift conditions are used, and controller exclusions remain in effect. No condition means Not checked.
 
@@ -38,7 +38,7 @@ The [Technology Selection Guide](https://technology-selection-guide.aws.ablabs.i
 
 - Go service under `cmd/console` and `internal/console` (`handler.go`, `service.go`, `store.go`). Connect-RPC on port 8080. The contract is `proto/console/v1/console.proto`.
 - PostgreSQL 16, pgx v5, and sqlc. Goose applies `internal/server/database/migrations` under a Postgres advisory lock. Startup reloads `genesis-engine/catalogs` into those tables. Scan findings live in the same database.
-- React 19, Vite, Tailwind v4, TanStack Query, TanStack Table, react-router v7 Data Mode, Connect-Web 2. Native select and dialog elements handle release selection and search. The shell has a sidebar, a release in the header, and light, dark, and system appearance. The dev server proxies `/console.v1.ConsoleService` to the API.
+- React 19, Vite, Tailwind v4, TanStack Query, TanStack Table, react-router v7 Data Mode, Connect-Web 2. Native select and dialog elements handle release selection and search. The Astronomer-inspired shell has a sidebar with Collapse at the bottom, a release in the header, and a top-right user menu for sign-out and light, dark, or system appearance. Shared shell dimensions and theme tokens live in the global stylesheet. The dev server proxies `/console.v1.ConsoleService` to the API.
 - Node 24. `pnpm` installs the frontend.
 
 ## Run
