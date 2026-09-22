@@ -261,19 +261,17 @@ function TableCore<T>({
           {q || facetValue ? <button type="button" className="px-2 py-1 text-xs text-[var(--primary)] underline underline-offset-2" onClick={clearFilters}>Clear filters</button> : null}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {search && (
-            <label className="relative">
-              <span className="sr-only">{search.placeholder}</span>
-              <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-[var(--muted)]" aria-hidden />
-              <input
-                type="search"
-                value={q}
-                onChange={(event) => setQ(event.target.value)}
-                placeholder={search.placeholder}
-                className="h-8 w-56 rounded-md border border-[var(--border)] bg-[var(--card)] pr-2 pl-7 text-sm"
-              />
-            </label>
-          )}
+          <label className="relative">
+            <span className="sr-only">{search?.placeholder ?? `Search ${noun}`}</span>
+            <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-[var(--muted)]" aria-hidden />
+            <input
+              type="search"
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder={search?.placeholder ?? `Search ${noun}`}
+              className="h-8 w-56 rounded-md border border-[var(--border)] bg-[var(--card)] pr-2 pl-7 text-sm"
+            />
+          </label>
           {hideable.length > 1 && (
             <details className="relative">
               <summary className={toolClass}>

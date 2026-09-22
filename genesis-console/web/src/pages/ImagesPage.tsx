@@ -52,17 +52,18 @@ const runtimeColumns: ColumnDef<DeployedImage, any>[] = [
 const runtimeSearch = { placeholder: "Search images or pods", text: (row: DeployedImage) => [row.references.join(" "), row.digest, row.packages.join(" "), row.namespaces.join(" "), ...row.containers.map((container) => `${container.pod} ${container.container}`)].join(" ") };
 const runtimeFacet = { label: "Package", value: (row: DeployedImage) => row.packages };
 
+const containerColumns: ColumnDef<DeployedImage["containers"][number], any>[] = [
+  { accessorKey: "packageKey", header: "Package" },
+  { accessorKey: "namespace", header: "Namespace" },
+  { accessorKey: "pod", header: "Pod" },
+  { accessorKey: "container", header: "Container", cell: ({ row, getValue }) => `${getValue()}${row.original.init ? " (init)" : ""}` },
+  { accessorKey: "ready", header: "Ready", cell: ({ getValue }) => getValue() ? "Yes" : "No" },
+  { accessorKey: "comparison", header: "Image vs catalog", cell: ({ row, getValue }) => <>{getValue()}{row.original.standard ? <span className="mt-1 block break-all font-mono text-xs text-[var(--muted)]">{row.original.standard}</span> : null}</> },
+];
+
 function ContainerList({ image, tag }: { image: DeployedImage; tag: string }) {
-  return <div className="overflow-x-auto">
-    <table className="w-full text-left text-sm">
-      <caption className="mb-2 text-left text-[var(--muted)]">{image.containers.length} containers use this image</caption>
-      <thead><tr>{["Package", "Namespace", "Pod", "Container", "Ready", `Image vs Genesis ${tag} catalog`].map((heading) => <th key={heading} scope="col" className="px-3 py-2 font-medium">{heading}</th>)}</tr></thead>
-      <tbody>{image.containers.map((container) => <tr key={`${container.namespace}/${container.pod}/${container.init}/${container.container}`} className="border-t border-[var(--border)]">
-        <td className="px-3 py-2">{container.packageKey}</td><td className="px-3 py-2">{container.namespace}</td><td className="px-3 py-2">{container.pod}</td><td className="px-3 py-2">{container.container}{container.init ? " (init)" : ""}</td><td className="px-3 py-2">{container.ready ? "Yes" : "No"}</td>
-        <td className="px-3 py-2">{container.comparison}{container.standard ? <span className="mt-1 block break-all font-mono text-xs text-[var(--muted)]">{container.standard}</span> : null}</td>
-      </tr>)}</tbody>
-    </table>
-  </div>;
+  const columns = useMemo(() => containerColumns.map((column) => "accessorKey" in column && column.accessorKey === "comparison" ? { ...column, header: `Image vs Genesis ${tag} catalog` } : column), [tag]);
+  return <DataTable columns={columns} data={image.containers} getRowId={(row) => `${row.namespace}/${row.pod}/${row.init}/${row.container}`} noun="containers" search={{ placeholder: "Search containers or pods", text: (row) => `${row.packageKey} ${row.namespace} ${row.pod} ${row.container} ${row.comparison} ${row.standard}` }} urlKey="containers" />;
 }
 
 function scanLabel(item: ScanItem | undefined, scanned: boolean, starting = false) {

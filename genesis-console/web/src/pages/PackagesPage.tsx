@@ -28,7 +28,10 @@ const columns: ColumnDef<PackageComparison, any>[] = [
 ];
 const valueColumns: ColumnDef<ConfigurationChange, any>[] = [
   { accessorKey: "source", header: "Source" },
-  { accessorKey: "path", header: "Setting", cell: ({ row, getValue }) => <><span className="break-all font-mono text-xs">{getValue()}</span><span className="mt-1 block max-w-xs text-xs text-[var(--muted)]">{settingDifference(row.original).explanation}</span></> },
+  { accessorKey: "path", header: "Setting", cell: ({ row, getValue }) => {
+    const difference = settingDifference(row.original);
+    return <div className={difference.configured || difference.installed ? "difference-setting" : ""}><span className="break-all font-mono text-xs">{getValue()}</span><span className="mt-1 block max-w-xs text-xs text-[var(--muted)]">{difference.explanation}</span></div>;
+  } },
   ...[["standard", "Comparison release"], ["configured", "Cluster configuration"], ["deployed", "Installed values"]].map(([key, header]) => ({ accessorKey: key, header, cell: ({ row, getValue }: { row: { original: ConfigurationChange }; getValue: () => unknown }) => {
     const difference = settingDifference(row.original);
     const changed = key === "configured" && difference.configured || key === "deployed" && difference.installed;
