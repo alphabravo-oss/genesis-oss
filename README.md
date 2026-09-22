@@ -4,7 +4,7 @@
 
 # Genesis
 
-Operator guide: [docs/index.md](docs/index.md).
+Operator guide: [docs/README.md](docs/README.md).
 
 Genesis is a public, version-for-version open build of [Big Bang](https://repo1.dso.mil/big-bang/bigbang). A Genesis tag deploys the same default-on package set that Big Bang pins for that release, using anonymously pullable public images.
 
