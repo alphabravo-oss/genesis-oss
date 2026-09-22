@@ -1,0 +1,45 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.17.3
+
+      - name: Render the umbrella and Flux
+        run: |
+          set -euo pipefail
+          helm template bigbang umbrella \
+            --namespace bigbang \
+            --kube-version 1.36.4 \
+            --api-versions metrics.k8s.io/v1beta1 \
+            -f umbrella/values-genesis.yaml \
+            > /tmp/genesis-render.yaml
+          if grep -E 'registry1\.dso\.mil|registry\.dso\.mil' /tmp/genesis-render.yaml base/flux/kustomization.yaml; then
+            echo "Registry1 host found in the release render"
+            exit 1
+          fi
+          echo "render is free of Registry1"
+
+      - name: Tag matches the chart version
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          chart=$(awk '/^version:/{print $2}' umbrella/Chart.yaml)
+          if [ "$chart" != "${GITHUB_REF_NAME}" ]; then
+            echo "chart version ${chart} does not match tag ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+          echo "tag ${GITHUB_REF_NAME} matches chart ${chart}"
