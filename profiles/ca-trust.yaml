@@ -1,0 +1,13 @@
+# Optional private CA trust. Do not commit the certificate.
+# Create the bundle first:
+#   kubectl create secret generic genesis-ca-bundle -n istio-gateway \
+#     --from-file=ca.crt=./your-ca.pem
+# Append that CA to the gateway secret public-cert when clients must trust it.
+# cert-manager issuers that chain to this CA should reference the same secret.
+# GitLab already has a customCAs list. Add your secret name there instead of
+# shipping a new CA inside the chart.
+gitlab:
+  values:
+    certificates:
+      customCAs:
+        - secret: genesis-ca-bundle

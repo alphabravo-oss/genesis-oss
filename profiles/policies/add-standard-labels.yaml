@@ -1,0 +1,22 @@
+# Adds the two labels require-labels checks, only when they are missing.
+# Name comes from an existing app label, then the first container name.
+# Version comes from the first container image tag.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: genesis-add-standard-labels
+spec:
+  background: true
+  rules:
+    - name: add-name-and-version
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              "+(app.kubernetes.io/name)": "{{ request.object.metadata.labels.app || request.object.spec.containers[0].name }}"
+              "+(app.kubernetes.io/version)": "{{ request.object.spec.containers[0].image.split('@')[0].split(':')[-1] || 'unset' }}"

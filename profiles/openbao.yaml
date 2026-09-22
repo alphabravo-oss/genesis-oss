@@ -1,0 +1,26 @@
+# Optional OpenBao instead of HashiCorp Vault for the server.
+# quay.io/openbao/openbao:2.4.4 was verified 2026-09-21.
+# The Big Bang chart starts the process as `vault`. Use this profile only if
+# the OpenBao image still provides that name. The injector and CSI images stay
+# HashiCorp vault-k8s because they speak the same API.
+vault:
+  enabled: true
+  values:
+    bbtests:
+      enabled: false
+    upstream:
+      global:
+        imagePullSecrets: []
+      injector:
+        image:
+          repository: docker.io/hashicorp/vault-k8s
+          tag: v1.7.6
+        agentImage:
+          repository: quay.io/openbao/openbao
+          tag: "2.4.4"
+      server:
+        image:
+          repository: quay.io/openbao/openbao
+          tag: "2.4.4"
+      csi:
+        enabled: false
