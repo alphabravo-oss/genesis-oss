@@ -1,14 +1,14 @@
 import { Link, useOutletContext } from "react-router";
 import type { ShellContext } from "@/pages/shell-context";
 import { formatWhen, withSearch } from "@/lib/cluster";
-import { profileSummary } from "@/lib/comparison";
+import { hasComparisonDifference, profileSummary } from "@/lib/comparison";
 
 export function OverviewPage() {
-  const { cluster, tag, selection, clusterPending, useRecordedProfiles } = useOutletContext<ShellContext>();
+  const { cluster, tag, selection, clusterPending, useRecordedProfiles, comparisonReady } = useOutletContext<ShellContext>();
   const profiles = useRecordedProfiles ? cluster.profiles : (selection.profiles ? selection.profiles.split(",") : []);
   const packages = cluster.packages.filter((pkg) => pkg.key !== "global");
   const attention = packages.filter((pkg) => ["Not ready", "Reconciling", "Suspended"].includes(pkg.health) || (pkg.configuredKnown && pkg.configuredEnabled && pkg.health === "Not installed"));
-  const customized = cluster.packages.filter((pkg) => pkg.comparison === "Customized");
+  const different = cluster.packages.filter((pkg) => hasComparisonDifference(pkg.comparison));
   const drifted = packages.filter((pkg) => pkg.drift === "Drifted");
   const images = [...new Map(cluster.images.map((image) => [image.digest || image.ref, image])).values()];
   const critical = images.filter((image) => image.scanned && image.critical > 0).length;
@@ -25,8 +25,8 @@ export function OverviewPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Deployment overview</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">Installed packages, live health, configuration differences, and image scan coverage.</p>
         <p aria-label="Comparison summary" className="mt-2 text-sm text-[var(--muted)]" title={profileSummary(cluster, selection.profiles ?? "", useRecordedProfiles)}>
-          Compared against Genesis {tag} + {useRecordedProfiles && !cluster.observedAt ? "unconfirmed profiles" : `${profiles.length} profiles`}.
-          {cluster.tag && cluster.tag !== tag ? <span className="text-[var(--amber)]"> Installed {cluster.tag}; release changes can explain differences.</span> : null}{" "}
+          {comparisonReady ? `Comparison release: Genesis ${tag} + ${useRecordedProfiles && !cluster.observedAt ? "unconfirmed profiles" : `${profiles.length} profiles`}.` : clusterPending ? "Detecting the installed release for comparison…" : "Comparison release unavailable."}
+          {comparisonReady && cluster.tag && cluster.tag !== tag ? <span> Installed {cluster.tag}; release changes can explain differences.</span> : null}{" "}
           <Link to={link("/packages")} className="text-[var(--primary)] underline underline-offset-2">Review comparison</Link>
         </p>
         {cluster.baselineError ? <p role="status" className="mt-2 text-sm text-[var(--amber)]">{cluster.baselineError}</p> : null}
@@ -45,7 +45,7 @@ export function OverviewPage() {
       </p>
       <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm" aria-label="Installation provenance">
         <p><strong>Installation provenance:</strong> {cluster.provenance?.status || "Not recorded"}</p>
-        <p className="mt-1 text-[var(--muted)]">Baseline edition: Genesis OSS · Public images · Relaxed conformance. Live configuration may differ.</p>
+        <p className="mt-1 text-[var(--muted)]">Release edition: Genesis OSS · Public images. Installation records identify release inputs; they do not assess compliance.</p>
         <p className="mt-1 text-[var(--muted)]">{cluster.provenance?.note || "Use the Genesis installer to record baseline and profile checksums."}</p>
         {cluster.provenance?.baselineSha256 ? <p className="mt-2 break-all font-mono text-xs">Baseline SHA-256: {cluster.provenance.baselineSha256}</p> : null}
         {cluster.provenance?.profiles.length ? <p className="mt-1">Recorded profiles: {cluster.provenance.profiles.join(" → ")}</p> : null}
@@ -53,7 +53,7 @@ export function OverviewPage() {
       </section>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Attention label="Packages needing attention" value={packageRead ? attention.length : "—"} note="Readiness and reconciliation" to={link("/packages", { state: "attention" })} hot={attention.length > 0} />
-        <Attention label="Packages differing from standard" value={cluster.packages.length ? customized.length : "—"} note={`Compared with Genesis ${tag} + comparison profiles · ${cluster.packages.filter((pkg) => pkg.comparison === "Unknown").length} unknown`} to={link("/packages", { state: "customized" })} hot={false} />
+        <Attention label="Packages with differences" value={comparisonReady && cluster.packages.length ? different.length : "—"} note={comparisonReady ? `Compared with Genesis ${tag} + comparison profiles · ${cluster.packages.filter((pkg) => pkg.comparison === "Unknown").length} unavailable` : "Comparison release not confirmed"} to={link("/packages", { state: "differences" })} hot={false} />
         <Attention label="Flux runtime drift" value={packageRead ? drifted.length : "—"} note={`Live resources vs Flux intent · ${unchecked} packages not checked`} to={link("/packages", { state: "drift" })} hot={drifted.length > 0} />
         <Attention label="Images with critical findings" value={podsRead && !findingsUnavailable ? critical : "—"} note={findingsUnavailable ? "Saved scan findings are unavailable" : `${scanned} of ${images.length} observed images have saved scans`} to={link("/images", { view: "deployed" })} hot={critical > 0} />
       </div>
@@ -71,7 +71,7 @@ export function OverviewPage() {
       </section>
       <details className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
         <summary className="cursor-pointer font-medium">Observation coverage · {cluster.checks.filter((check) => check.checked).length}/{cluster.checks.length} sources read</summary>
-        <p className="mt-3 text-sm text-[var(--muted)]">Flux checks live resources against its declared configuration and honors its exclusions. Differences from the selected Genesis standard can reflect release changes, selected profiles, or user customizations; they do not imply runtime drift.</p>
+        <p className="mt-3 text-sm text-[var(--muted)]">Flux checks live resources against its declared configuration and honors its exclusions. Differences from the comparison release can reflect release changes, selected profiles, or intentional configuration. A difference is not a health or compliance finding and does not imply runtime drift.</p>
         <ul className="mt-3 space-y-2 text-sm">
           {cluster.checks.map((check) => <li key={check.name}><strong>{check.name}:</strong> {check.checked ? "Read successfully" : check.message}</li>)}
         </ul>

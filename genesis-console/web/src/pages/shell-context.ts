@@ -9,4 +9,5 @@ export type ShellContext = ShellData & {
   selection: Record<string, string>;
   clusterPending: boolean;
   clusterError: string;
+  comparisonReady: boolean;
 };

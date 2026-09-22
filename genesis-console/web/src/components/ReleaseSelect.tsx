@@ -1,7 +1,7 @@
 import { useOutletContext, useSearchParams } from "react-router";
 import type { ShellContext } from "@/pages/shell-context";
 
-export function ReleaseSelect({ label }: { label: "Comparison standard" | "Catalog version" }) {
+export function ReleaseSelect({ label }: { label: "Compare against" | "Catalog version" }) {
   const { tag, releases, cluster } = useOutletContext<ShellContext>();
   const [params, setParams] = useSearchParams();
   const following = !params.has("tag") || params.get("follow") === "deployed";
@@ -23,10 +23,10 @@ export function ReleaseSelect({ label }: { label: "Comparison standard" | "Catal
         });
       }}>
         {!releases.length ? <option value="">No releases</option> : null}
-        <option value="deployed">Follow installed{cluster.tag ? ` (${cluster.tag})` : ""}</option>
+        <option value="deployed">Installed release{cluster.tag ? ` (${cluster.tag})` : ""} · automatic</option>
         {releases.map((release) => <option key={release.tag} value={release.tag}>Genesis {release.tag}</option>)}
       </select>
     </label>
-    {following && cluster.tag && !releases.some((release) => release.tag === cluster.tag) ? <p role="status" className="text-xs text-[var(--amber)]">Installed Genesis {cluster.tag} has no local catalog. Using Genesis {tag} as a fallback.</p> : null}
+    {following && cluster.tag && !releases.some((release) => release.tag === cluster.tag) ? <p role="status" className="text-xs text-[var(--muted)]">Installed Genesis {cluster.tag} has no local catalog. {label === "Compare against" ? "Choose an available release to compare explicitly." : `Showing the Genesis ${tag} catalog.`}</p> : null}
   </div>;
 }

@@ -5,14 +5,14 @@ import { profileSummary } from "@/lib/comparison";
 import { ReleaseSelect } from "@/components/ReleaseSelect";
 
 export function ComparisonContext() {
-  const { tag, cluster, selection, useRecordedProfiles: recorded, clusterPending: pending } = useOutletContext<ShellContext>();
+  const { tag, cluster, selection, useRecordedProfiles: recorded, clusterPending: pending, comparisonReady } = useOutletContext<ShellContext>();
   const following = selection.follow === "deployed";
-  const crossVersion = Boolean(cluster.tag && tag && cluster.tag !== tag);
+  const crossVersion = Boolean(comparisonReady && cluster.tag && tag && cluster.tag !== tag);
   return <section aria-label="Comparison context" className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
     <div className="grid gap-4 md:grid-cols-2">
       <div className="min-w-0 space-y-1">
-        <ReleaseSelect label="Comparison standard" />
-        <p className="font-semibold">{tag ? `Genesis OSS ${tag}` : "No standard available"} <span className="text-xs font-normal text-[var(--muted)]">· {following ? crossVersion ? "Fallback standard" : "Follows installed version" : "Manually selected version"}</span></p>
+        <ReleaseSelect label="Compare against" />
+        <p className="font-semibold">{comparisonReady ? `Comparison release · Genesis ${tag}` : pending ? "Detecting installed release…" : "Comparison release unavailable"} <span className="text-xs font-normal text-[var(--muted)]">· {following ? "Follows installed release" : "Manually selected release"}</span></p>
         <p className="break-words text-xs text-[var(--muted)]">{profileSummary(cluster, selection.profiles ?? "", recorded)}</p>
         <Link to={withSearch("/packages", tag, selection) + "#comparison-profiles"} className="text-xs text-[var(--primary)] underline underline-offset-2">Profile options (advanced)</Link>
       </div>
@@ -22,9 +22,9 @@ export function ComparisonContext() {
         <p className="break-words text-xs text-[var(--muted)]">{cluster.namespace && cluster.releaseName ? `Helm release ${cluster.namespace}/${cluster.releaseName}` : "Helm release not confirmed"}{cluster.observedAt ? ` · Observed ${formatWhen(cluster.observedAt)}` : ""}</p>
       </div>
     </div>
-    <p className="text-xs text-[var(--muted)]">Compares cluster configuration and installed package values with this standard. Flux runtime drift is a separate check. Changing the standard or profiles never changes the cluster.</p>
+    <p className="text-xs text-[var(--muted)]">Compares cluster configuration and installed packages with the selected release’s defaults plus the profiles above. Differences can reflect release changes, profiles, or intentional configuration; they do not indicate a problem on their own. Flux runtime drift is a separate check. Changing this comparison never changes the cluster.</p>
     {cluster.baselineError ? <p role="status" className="text-sm text-[var(--amber)]">{cluster.baselineError}</p> : null}
-    {crossVersion ? <p role="status" className="text-sm text-[var(--amber)]">Cross-version comparison: installed Genesis {cluster.tag} vs standard {tag}. Differences can come from release changes, not just user customizations.</p> : null}
+    {crossVersion ? <p role="status" className="text-sm text-[var(--muted)]">Comparing releases: installed Genesis {cluster.tag} vs comparison release Genesis {tag}. Release changes can explain differences.</p> : null}
     <details className="border-t border-[var(--border)] pt-3 text-sm">
       <summary className="font-medium">Release notes and upgrade guidance</summary>
       <ul className="mt-2 space-y-2 text-[var(--primary)]">

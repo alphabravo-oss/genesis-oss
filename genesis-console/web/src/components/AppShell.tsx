@@ -12,6 +12,7 @@ import { finishedSince } from "@/lib/revalidation";
 import { CommandPalette } from "@/components/CommandPalette";
 import { UserMenu } from "@/components/UserMenu";
 import { useScanEvents } from "@/lib/use-scan-events";
+import { comparisonReady } from "@/lib/comparison";
 
 const NAV = [
   { label: "Overview", path: "/", icon: LayoutDashboard },
@@ -169,7 +170,7 @@ export function AppShell() {
         {clusterQuery.isError || jobsQuery.isError ? <p role="alert" className="border-b border-[var(--amber)] bg-[var(--amber-bg)] px-4 py-2 text-sm text-[var(--amber)]">{clusterQuery.error?.message || "Live updates are unavailable."} {cluster.observedAt ? `Showing observations from ${formatWhen(cluster.observedAt)}.` : "Deployment state has not been confirmed."} Retrying automatically.</p> : null}
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto max-w-[1600px] space-y-6">
-            {data.detail || location.pathname === "/" ? <Outlet key={data.tag} context={{ ...data, cluster, jobs, selection, useRecordedProfiles, scanEventsConnected, clusterPending: clusterQuery.isPending, clusterError: clusterQuery.error?.message ?? "" }} /> : <p className="text-[var(--muted)]">No Genesis catalogs were loaded.</p>}
+            {data.detail || location.pathname === "/" ? <Outlet key={data.tag} context={{ ...data, cluster, jobs, selection, useRecordedProfiles, scanEventsConnected, clusterPending: clusterQuery.isPending, clusterError: clusterQuery.error?.message ?? "", comparisonReady: comparisonReady(data.tag, cluster.tag, following) }} /> : <p className="text-[var(--muted)]">No Genesis catalogs were loaded.</p>}
           </div>
         </main>
       </div>
