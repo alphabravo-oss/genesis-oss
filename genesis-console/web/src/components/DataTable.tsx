@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   flexRender,
   getCoreRowModel,
@@ -39,6 +39,7 @@ type Props<T> = {
   data: T[];
   getRowId: (row: T) => string;
   rowClassName?: (row: T) => string;
+  rowHref?: (row: T) => string;
   noun?: string;
   search?: { placeholder: string; text?: (row: T) => string };
   facet?: Facet<T>;
@@ -94,6 +95,7 @@ function TableCore<T>({
   data,
   getRowId,
   rowClassName,
+  rowHref,
   noun = "rows",
   search,
   facet,
@@ -120,6 +122,7 @@ function TableCore<T>({
   setSorting: (sorting: SortingState) => void;
   clearFilters: () => void;
 }) {
+  const navigate = useNavigate();
   const [visibility, setVisibility] = useState<VisibilityState>({});
   const [compact, setCompact] = useState(() => {
     try {
@@ -341,12 +344,15 @@ function TableCore<T>({
               return (
                 <Fragment key={row.id}>
                   <tr
-                    className={`border-t border-[var(--border)] align-top ${panel ? "cursor-pointer hover:bg-[var(--off)]" : ""} ${rowClassName?.(row.original) ?? ""}`}
+                    className={`border-t border-[var(--border)] align-top ${panel || rowHref ? "cursor-pointer hover:bg-[var(--off)]" : ""} ${rowClassName?.(row.original) ?? ""}`}
                     onClick={(event) => {
-                      if (!panel) return;
                       const target = event.target as HTMLElement;
-                      if (target.closest("a, button, input, label")) return;
-                      setOpen((current) => ({ ...current, [row.id]: !current[row.id] }));
+                      if (target.closest("a, button, input, label, select, summary") || window.getSelection()?.toString()) return;
+                      if (rowHref) {
+                        const href = rowHref(row.original);
+                        if (event.metaKey || event.ctrlKey || event.shiftKey) window.open(href, "_blank", "noopener");
+                        else navigate(href);
+                      } else if (panel) setOpen((current) => ({ ...current, [row.id]: !current[row.id] }));
                     }}
                   >
                     {row.getVisibleCells().map((cell) => (

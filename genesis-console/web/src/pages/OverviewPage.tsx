@@ -1,9 +1,11 @@
 import { Link, useOutletContext } from "react-router";
 import type { ShellContext } from "@/pages/shell-context";
 import { formatWhen, withSearch } from "@/lib/cluster";
+import { profileSummary } from "@/lib/comparison";
 
 export function OverviewPage() {
-  const { cluster, tag, selection, clusterPending } = useOutletContext<ShellContext>();
+  const { cluster, tag, selection, clusterPending, useRecordedProfiles } = useOutletContext<ShellContext>();
+  const profiles = useRecordedProfiles ? cluster.profiles : (selection.profiles ? selection.profiles.split(",") : []);
   const packages = cluster.packages.filter((pkg) => pkg.key !== "global");
   const attention = packages.filter((pkg) => ["Not ready", "Reconciling", "Suspended"].includes(pkg.health) || (pkg.configuredKnown && pkg.configuredEnabled && pkg.health === "Not installed"));
   const customized = cluster.packages.filter((pkg) => pkg.comparison === "Customized");
@@ -21,7 +23,13 @@ export function OverviewPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Deployment overview</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">This cluster’s installed packages, differences from the Genesis {tag} comparison standard and selected profiles, and live health.</p>
+        <p className="mt-1 text-sm text-[var(--muted)]">Installed packages, live health, configuration differences, and image scan coverage.</p>
+        <p aria-label="Comparison summary" className="mt-2 text-sm text-[var(--muted)]" title={profileSummary(cluster, selection.profiles ?? "", useRecordedProfiles)}>
+          Compared against Genesis {tag} + {useRecordedProfiles && !cluster.observedAt ? "unconfirmed profiles" : `${profiles.length} profiles`}.
+          {cluster.tag && cluster.tag !== tag ? <span className="text-[var(--amber)]"> Installed {cluster.tag}; release changes can explain differences.</span> : null}{" "}
+          <Link to={link("/packages")} className="text-[var(--primary)] underline underline-offset-2">Review comparison</Link>
+        </p>
+        {cluster.baselineError ? <p role="status" className="mt-2 text-sm text-[var(--amber)]">{cluster.baselineError}</p> : null}
       </div>
       {clusterPending ? <p role="status" className="text-sm text-[var(--muted)]">Reading deployment metadata and configuration…</p> : null}
       <dl className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -56,7 +64,7 @@ export function OverviewPage() {
         </div>
         {attention.length ? <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--card)]">
           {attention.map((pkg) => <li key={pkg.key} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-            <Link to={link("/packages", { pkg: pkg.key })} className="font-medium text-[var(--primary)] underline underline-offset-2">{pkg.key}</Link>
+            <Link to={link(`/packages/${encodeURIComponent(pkg.key)}`)} className="font-medium text-[var(--primary)] underline underline-offset-2">{pkg.key}</Link>
             <span className="text-sm text-[var(--amber)]">{pkg.health}</span>
           </li>)}
         </ul> : <p className="text-sm text-[var(--muted)]">{packageRead ? "No readiness issues were reported by the observed HelmReleases. Review coverage below for checks that are unavailable." : "Package health has not been observed."}</p>}

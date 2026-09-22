@@ -12,6 +12,7 @@ test("local navigation stays local; release changes and explicit refreshes reloa
   check("?tag=3.33.0&img.q=grafana", false);
   check("?tag=3.33.0&img.sort=-high", false);
   check("/packages?tag=3.33.0&pkg=grafana", false);
+  check("/packages/grafana?tag=3.33.0", false);
   check("?tag=3.33.0&profiles=argocd", false);
   check("?tag=3.33.0&follow=deployed", false);
   check("?tag=3.32.0", true);

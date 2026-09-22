@@ -15,3 +15,10 @@ export function comparisonLabel(status: string) {
 export function comparisonRowClass(status: string) {
   return ["Customized", "Different version", "Not applied"].includes(status) ? "comparison-difference" : "";
 }
+
+export function packageHref(key: string, search: URLSearchParams) {
+  const params = new URLSearchParams(search);
+  params.delete("pkg");
+  for (const name of [...params.keys()]) if (name.startsWith("settings.")) params.delete(name);
+  return `/packages${key ? `/${encodeURIComponent(key)}` : ""}${params.size ? `?${params}` : ""}`;
+}

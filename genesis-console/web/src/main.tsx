@@ -29,6 +29,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, Component: OverviewPage },
       { path: "packages", lazy: async () => ({ Component: (await import("@/pages/PackagesPage")).PackagesPage }) },
+      { path: "packages/:packageKey", lazy: async () => ({ Component: (await import("@/pages/PackagesPage")).PackagePage }) },
       { path: "images", lazy: async () => ({ Component: (await import("@/pages/ImagesPage")).ImagesPage }) },
       { path: "images/:source/:imageId", lazy: async () => ({ Component: (await import("@/pages/ImagesPage")).ImagesPage }) },
       { path: "scans", lazy: async () => ({ Component: (await import("@/pages/ScansPage")).ScansPage }) },

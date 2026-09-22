@@ -8,6 +8,7 @@ import { ListScanJobsResponseSchema, type ImageRow, type ListScanJobsResponse, t
 import type { ShellContext } from "@/pages/shell-context";
 import { DataTable } from "@/components/DataTable";
 import { FindingList } from "@/components/FindingList";
+import { ReleaseSelect } from "@/components/ReleaseSelect";
 import { consoleClient } from "@/lib/connect";
 import { formatWhen, jobActive } from "@/lib/cluster";
 import { errorText } from "@/lib/errors";
@@ -191,7 +192,7 @@ export function ImagesPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Images</h1>
-          <p className="mt-1 text-sm text-[var(--muted)]">{view === "deployed" ? `${deployedImages.length} unique images across ${cluster.images.length} observed containers. Image details compare their references and digests with the Genesis ${tag} catalog.` : `Images listed in the Genesis ${tag} catalog, and their latest saved scans. This is the catalog inventory, not the list of running containers.`}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">{view === "deployed" ? `${deployedImages.length} unique images across ${cluster.images.length} observed containers. Open an image for findings and the containers using it.` : `Images listed in the Genesis ${tag} catalog, and their latest saved scans. This is the catalog inventory, not the list of running containers.`}</p>
         </div>
         <button
           type="button"
@@ -230,6 +231,7 @@ export function ImagesPage() {
           </button>
         ))}
       </div>
+      {view !== "deployed" ? <ReleaseSelect label="Catalog version" /> : null}
       {selected.length ? <button type="button" className="text-sm text-[var(--primary)] underline underline-offset-2" onClick={() => setSelected([])}>Clear selection ({selected.length})</button> : null}
       {currentScan && (jobActive(currentScan.state) || currentScan.id === lastJobId) ? <div className="space-y-1" role="status">
         <p className="text-sm text-[var(--muted)]">{currentScan.done} of {currentScan.total} images finished{currentScan.failed ? ` · ${currentScan.failed} failed` : ""}. Progress and results update in the rows below.</p>
@@ -240,14 +242,15 @@ export function ImagesPage() {
       {view === "deployed" ? <>
         <p className="text-sm text-[var(--muted)]">Select images to scan once per digest, regardless of replica count. Images without an observed digest are grouped and scanned by configured reference.</p>
         {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved scan findings could not be read. Scan coverage and finding counts are unknown.</p> : null}
-        <p className="text-xs text-[var(--muted)]">The Genesis {tag} image catalog is not changed by comparison profiles. Profile-enabled or custom workloads may use additional images. Catalog differences are not proof of runtime drift. “Unassigned” means package ownership could not be determined.</p>
+        <p className="text-xs text-[var(--muted)]">“Unassigned” means package ownership could not be determined.</p>
         {clusterPending ? <p role="status">Reading running containers…</p> : !cluster.checks.some((check) => check.name === "Pods" && check.checked) ? <p role="status" className="text-sm text-[var(--amber)]">Pod inventory could not be read. Use the catalog tabs to browse release images.</p> : null}
-        <DataTable key="runtime" columns={observedColumns} data={deployedImages} getRowId={(row) => row.id} noun="images" selectable selected={selected} onSelected={setSelected} search={runtimeSearch} facet={runtimeFacet} exportName={`genesis-${tag}-deployed-images`} urlKey="liveimg" />
+        <DataTable key="runtime" columns={observedColumns} data={deployedImages} getRowId={(row) => row.id} rowHref={(row) => imageHref("deployed", row.id, params)} noun="images" selectable selected={selected} onSelected={setSelected} search={runtimeSearch} facet={runtimeFacet} exportName={`genesis-${tag}-deployed-images`} urlKey="liveimg" />
       </> : <DataTable
         key="catalog"
         columns={catalogColumns}
         data={rows}
         getRowId={(row) => row.id}
+        rowHref={(row) => imageHref("catalog", row.id, params)}
         noun="images"
         urlKey="img"
         exportName={`genesis-${tag}-images`}
@@ -307,6 +310,6 @@ function ImageDetails({ image, tag, item, busy, scanning, findingsUnavailable, o
     <div className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
       {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved scan findings could not be read. Finding counts are unknown.</p> : <ImageFindings image={image} item={item} />}
     </div>
-    {deployed ? <section className="min-w-0 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"><h2 className="text-lg font-semibold">Where it runs</h2><ContainerList image={deployed} tag={tag} /></section> : null}
+    {deployed ? <section className="min-w-0 space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"><h2 className="text-lg font-semibold">Where it runs</h2><ReleaseSelect label="Catalog version" /><p className="text-xs text-[var(--muted)]">References and digests are compared with the Genesis {tag} catalog. Profiles do not change this catalog; differences do not prove runtime drift.</p><ContainerList image={deployed} tag={tag} /></section> : null}
   </>;
 }

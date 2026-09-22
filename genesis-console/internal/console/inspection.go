@@ -94,7 +94,11 @@ func inspectSnapshot(s *clusterSnapshot, b *comparisonBaseline, tag string, prof
 	for key := range configured {
 		keys = append(keys, key)
 	}
-	umbrellaChanges := compareValues(comparisonValues(b.values), comparisonValues(s.values), nil, "Umbrella values")
+	var installedUmbrella object
+	if s.checked("Installed values") && str(s.metadata["status"]) == "deployed" {
+		installedUmbrella = comparisonValues(s.values)
+	}
+	umbrellaChanges := compareValues(comparisonValues(b.values), comparisonValues(s.values), installedUmbrella, "Umbrella values")
 	for _, key := range unique(keys) {
 		_, hasFlag := flags[key]
 		p := &consolev1.PackageComparison{Key: key, StandardKnown: b.values != nil, StandardEnabled: b.flags[key], StandardVersion: b.versions[key], ConfiguredKnown: s.checked("Installed values") && hasFlag, ConfiguredEnabled: flags[key], Health: "Unknown", Drift: "Not checked", ValuesChecked: b.err == "" && s.checked("Installed values"), Comparison: "Unknown"}
@@ -260,7 +264,15 @@ func (s *Service) PackageComparison(ctx context.Context, tag string, profiles []
 				break
 			}
 		}
-		name, namespace := str(history["name"]), str(history["namespace"])
+		name := str(history["name"])
+		// Helm records live in Flux's storage namespace, not the workload namespace.
+		namespace := str(at(hr, "status", "storageNamespace"))
+		if namespace == "" {
+			namespace = str(at(hr, "spec", "storageNamespace"))
+		}
+		if namespace == "" {
+			namespace = str(at(hr, "metadata", "namespace"))
+		}
 		if name != "" && namespace != "" && history["version"] != nil {
 			raw, err := clusterCommand(ctx, "helm", "get", "values", name, "-n", namespace, "--all", "-o", "json", "--revision", fmt.Sprint(history["version"]))
 			if err == nil {
@@ -270,7 +282,11 @@ func (s *Service) PackageComparison(ctx context.Context, tag string, profiles []
 			}
 		}
 		if installed == nil {
-			out.Note = joinNote(out.Note, "Installed package values could not be read.")
+			note := "No deployed Helm revision was reported; installed package values were not checked."
+			if name != "" && namespace != "" && history["version"] != nil {
+				note = fmt.Sprintf("Installed Helm values could not be read for %s/%s revision %v. Check release storage and the console's read permissions.", namespace, name, history["version"])
+			}
+			out.Note = joinNote(out.Note, note)
 			out.ValuesChecked = false
 		}
 		source := str(at(hr, "metadata", "name")) + " values"

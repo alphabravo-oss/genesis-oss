@@ -51,7 +51,7 @@ export function CommandPalette({
       id: `pkg-${pkg.key}`,
       label: pkg.key,
       hint: "Package",
-      to: withSearch("/packages", tag, { ...selection, pkg: pkg.key }),
+      to: withSearch(`/packages/${encodeURIComponent(pkg.key)}`, tag, selection),
     }));
     const needle = query.trim().toLowerCase();
     return [...pages, ...releaseItems, ...packageItems].filter((item) =>

@@ -3,6 +3,7 @@ import { useOutletContext, useRevalidator, useSearchParams } from "react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ShellContext } from "@/pages/shell-context";
 import { FindingList } from "@/components/FindingList";
+import { ReleaseSelect } from "@/components/ReleaseSelect";
 import { consoleClient } from "@/lib/connect";
 import { formatWhen, jobActive } from "@/lib/cluster";
 import { errorText } from "@/lib/errors";
@@ -87,20 +88,22 @@ export function ScansPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Scans</h1>
         <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-          Scan public images from the Genesis {tag} catalog for vulnerabilities. Use Images → Deployed images to scan what is running in the cluster. Profiles do not change the scan catalog. Cleaning images keeps findings and SBOMs.
+          Review image scan progress and saved findings. Use Images → Deployed images to scan what is running in the cluster. Cleaning images keeps findings and SBOMs.
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="rounded-md bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-foreground)] disabled:opacity-50" disabled={busy || scanning} onClick={() => void start("default-on")}>
-          {busy ? "Working…" : `Scan ${defaultOn} catalog default-on images`}
-        </button>
-        <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm disabled:opacity-50" disabled={busy || scanning} onClick={() => void start("public")}>
-          Scan {publicRefs} catalog public images
-        </button>
-        <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm disabled:opacity-50" disabled={busy || scanning} onClick={() => void clean()}>
-          Clean images
-        </button>
-      </div>
+      <section aria-label="Bulk catalog scans" className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+        <ReleaseSelect label="Catalog version" />
+        <p className="text-xs text-[var(--muted)]">Bulk scans use the Genesis {tag} image catalog. Profiles do not change the catalog or filter saved scan history.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="rounded-md bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-foreground)] disabled:opacity-50" disabled={busy || scanning} onClick={() => void start("default-on")}>
+            {busy ? "Working…" : `Scan ${defaultOn} catalog default-on images`}
+          </button>
+          <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm disabled:opacity-50" disabled={busy || scanning} onClick={() => void start("public")}>
+            Scan {publicRefs} catalog public images
+          </button>
+        </div>
+      </section>
+      <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm disabled:opacity-50" disabled={busy || scanning} onClick={() => void clean()}>Clean images</button>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={autoClean} disabled={savingSettings} onChange={(event) => void toggleClean(event.target.checked)} />
         Auto cleanup after each successful image

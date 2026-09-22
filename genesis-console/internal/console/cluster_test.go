@@ -304,8 +304,9 @@ func TestInstalledPackageComparison(t *testing.T) {
 	write("genesis-oss/umbrella/values-genesis.yaml", "{}\n")
 	hr := `kind: HelmRelease
 metadata: {name: grafana, namespace: bigbang, generation: 1}
-spec: {values: {replicas: 2}}
+spec: {values: {replicas: 2}, storageNamespace: future-storage}
 status:
+  storageNamespace: helm-storage
   observedGeneration: 1
   conditions: [{type: Ready, status: 'True', observedGeneration: 1}]
   history: [{name: deployed-grafana, namespace: monitoring, version: 5, chartVersion: 10.0.0, status: deployed}]
@@ -321,7 +322,7 @@ fi
 	t.Setenv("TEST_CLUSTER_DIR", dir)
 	live := inspectionObject(t, hr)
 	obj(at(live, "spec", "values"))["replicas"] = 3
-	snapshot := &clusterSnapshot{namespace: "bigbang", release: "bigbang", observed: "now", values: inspectionObject(t, "grafana: {enabled: true, values: {replicas: 3}}"), objects: map[string][]object{"Helm releases": {live}}, refs: map[string]object{}}
+	snapshot := &clusterSnapshot{namespace: "bigbang", release: "bigbang", observed: "now", metadata: object{"status": "deployed"}, values: inspectionObject(t, "grafana: {enabled: true, values: {replicas: 3}}"), objects: map[string][]object{"Helm releases": {live}}, refs: map[string]object{}}
 	snapshot.check("Installed values", nil)
 	snapshot.check("Helm releases", nil)
 	svc := &Service{clusterCache: snapshot, clusterRead: time.Now()}
@@ -329,21 +330,48 @@ fi
 	if err != nil || !out.ValuesChecked {
 		t.Fatalf("comparison failed: %v %v", out, err)
 	}
-	found := false
+	found, umbrellaFound := false, false
 	for _, change := range out.Changes {
+		if change.Source == "Umbrella values" && change.Path == "grafana.values.replicas" {
+			umbrellaFound = change.Deployed == "3" && change.Configured == "3"
+		}
 		if change.Source == "grafana values" && change.Path == "replicas" {
 			found = change.Standard == "2" && change.Configured == "3" && change.Deployed == "1" && change.Status == "Not applied"
 		}
 	}
-	if !found {
+	if !found || !umbrellaFound {
 		t.Fatalf("three-way values comparison lost: %v", out)
 	}
 	args, _ := os.ReadFile(filepath.Join(dir, "installed-args"))
-	if string(args) != "get values deployed-grafana -n monitoring --all -o json --revision 5" {
+	if string(args) != "get values deployed-grafana -n helm-storage --all -o json --revision 5" {
 		t.Fatalf("wrong installed release queried: %s", args)
 	}
 	raw, _ := json.Marshal(out)
 	if strings.Contains(string(raw), "never-return-this") {
 		t.Fatal("installed secret escaped")
+	}
+	delete(obj(live["status"]), "storageNamespace")
+	for _, namespace := range []string{"future-storage", "bigbang"} {
+		if namespace == "bigbang" {
+			delete(obj(live["spec"]), "storageNamespace")
+		}
+		if _, err := svc.PackageComparison(context.Background(), "3.33.0", nil, "grafana"); err != nil {
+			t.Fatal(err)
+		}
+		args, _ := os.ReadFile(filepath.Join(dir, "installed-args"))
+		if !strings.Contains(string(args), "-n "+namespace+" --all") {
+			t.Fatalf("wrong fallback storage namespace: %s", args)
+		}
+	}
+	snapshot.metadata["status"] = "failed"
+	write("bin/helm", "#!/bin/sh\nexit 1\n")
+	out, err = svc.PackageComparison(context.Background(), "3.33.0", nil, "grafana")
+	if err != nil || out.ValuesChecked || !strings.Contains(out.Note, "bigbang/deployed-grafana revision 5") {
+		t.Fatalf("failed read must retain an actionable unknown: %v %v", out, err)
+	}
+	for _, change := range out.Changes {
+		if change.Source == "Umbrella values" && change.Deployed != "Not checked" {
+			t.Fatal("failed umbrella revision presented as installed")
+		}
 	}
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLoaderData, useLocation, useNavigation, useRevalidator, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { create } from "@bufbuild/protobuf";
@@ -11,7 +11,6 @@ import { formatWhen, jobActive, withSearch } from "@/lib/cluster";
 import { finishedSince } from "@/lib/revalidation";
 import { CommandPalette } from "@/components/CommandPalette";
 import { UserMenu } from "@/components/UserMenu";
-import { ComparisonContext } from "@/components/ComparisonContext";
 import { useScanEvents } from "@/lib/use-scan-events";
 
 const NAV = [
@@ -85,8 +84,10 @@ export function AppShell() {
   }, [data.jobs, jobs, queryClient, revalidator]);
 
   useEffect(() => {
-    document.title = `${page} · ${data.tag || "Genesis"} · Genesis Console`;
-  }, [data.tag, page]);
+    document.title = `${page} · Genesis Console`;
+  }, [page]);
+
+  useLayoutEffect(() => { document.getElementById("main")?.scrollTo(0, 0); }, [location.pathname]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -153,59 +154,21 @@ export function AppShell() {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="relative z-30 flex min-h-[var(--header-height)] shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--card)] px-3 py-2 lg:gap-3 lg:px-6 lg:h-[var(--header-height)] lg:flex-nowrap">
-          <div className="min-w-0 basis-full pr-12 lg:flex-1 lg:basis-auto lg:pr-0">
-            <div className="truncate text-sm">
-              <span className="font-semibold" translate="no">Genesis</span>
-              <span className="text-[var(--muted)]"> / {page}</span>
-            </div>
-            <p className="truncate text-xs text-[var(--muted)]">
-              {cluster.context || "Cluster context unknown"} · {cluster.namespace || "Namespace unknown"}
-              {cluster.observedAt ? ` · Observed ${formatWhen(cluster.observedAt)}` : ""}
+        <header className="relative z-30 flex min-h-[var(--header-height)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--card)] px-3 py-2 lg:gap-3 lg:px-6">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm"><span className="font-semibold" translate="no">Genesis</span><span className="text-[var(--muted)]"> / {page}</span></div>
+            <p className="flex flex-wrap gap-x-2 text-xs text-[var(--muted)]">
+              <span className="max-w-full truncate" title={`${cluster.context} / ${cluster.namespace}`}>{cluster.context || "Cluster context unknown"} / {cluster.namespace || "Namespace unknown"}</span>
+              <span className="whitespace-nowrap">Installed Genesis {cluster.tag || "not confirmed"}</span>
             </p>
           </div>
-          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-[var(--muted)] lg:flex-none">
-            <span>Standard</span>
-            <select
-              value={following ? "deployed" : data.tag}
-              aria-label="Comparison standard"
-              disabled={!data.releases.length}
-              className="h-9 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--card)] px-2 text-sm text-[var(--foreground)] lg:min-w-28 lg:flex-none"
-              onChange={(event) => {
-                const tag = event.target.value;
-                setParams((current) => {
-                  const next = new URLSearchParams(current);
-                  if (tag === "deployed") {
-                    next.set("follow", "deployed");
-                    if (data.releases.some((release) => release.tag === cluster.tag)) next.set("tag", cluster.tag);
-                  } else {
-                    next.set("tag", tag);
-                    next.delete("follow");
-                  }
-                  return next;
-                });
-              }}
-            >
-              {!data.releases.length ? <option value="">No releases</option> : null}
-              <option value="deployed">Follow installed{cluster.tag ? ` (${cluster.tag})` : ""}</option>
-              {data.releases.map((release) => <option key={release.tag} value={release.tag}>Genesis {release.tag}</option>)}
-            </select>
-          </label>
-          <span className={`hidden shrink-0 rounded-full border px-2 py-1 text-xs xl:inline ${cluster.connected ? "border-[var(--primary)] bg-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>
-            {clusterQuery.isError ? "Observation unavailable" : clusterQuery.isPending ? "Connecting…" : cluster.connected ? `Installed: ${cluster.tag || "Unknown"}` : "Cluster not connected"}
-          </span>
-          <button type="button" className="inline-flex size-8 items-center justify-center rounded-md hover:bg-[var(--off)]" aria-label="Search" onClick={() => setSearchOpen(true)}>
-            <Search className="size-4" aria-hidden />
-          </button>
-          <div className="absolute top-2 right-3 shrink-0 lg:static"><UserMenu authRequired={data.authRequired} /></div>
+          <button type="button" className="inline-flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-[var(--off)]" aria-label="Search" onClick={() => setSearchOpen(true)}><Search className="size-4" aria-hidden /></button>
+          <div className="shrink-0"><UserMenu authRequired={data.authRequired} /></div>
         </header>
         {navigation.state === "loading" || revalidator.state === "loading" ? <p role="status" className="border-b border-[var(--border)] bg-[var(--accent)] px-4 py-1 text-xs">Updating view…</p> : null}
         {clusterQuery.isError || jobsQuery.isError ? <p role="alert" className="border-b border-[var(--amber)] bg-[var(--amber-bg)] px-4 py-2 text-sm text-[var(--amber)]">{clusterQuery.error?.message || "Live updates are unavailable."} {cluster.observedAt ? `Showing observations from ${formatWhen(cluster.observedAt)}.` : "Deployment state has not been confirmed."} Retrying automatically.</p> : null}
-        {cluster.baselineError ? <p role="status" className="border-b border-[var(--amber)] bg-[var(--amber-bg)] px-4 py-2 text-sm text-[var(--amber)]">{cluster.baselineError}</p> : null}
-        {following && cluster.tag && !data.releases.some((release) => release.tag === cluster.tag) ? <p role="status" className="border-b border-[var(--amber)] bg-[var(--amber-bg)] px-4 py-2 text-sm text-[var(--amber)]">Installed release {cluster.tag} has no local catalog. Showing baseline {data.tag}; it is not the deployed baseline.</p> : null}
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto max-w-[1600px] space-y-6">
-            <ComparisonContext tag={data.tag} cluster={cluster} selection={selection} recorded={useRecordedProfiles} following={following} pending={clusterQuery.isPending} page={page} />
             {data.detail || location.pathname === "/" ? <Outlet key={data.tag} context={{ ...data, cluster, jobs, selection, useRecordedProfiles, scanEventsConnected, clusterPending: clusterQuery.isPending, clusterError: clusterQuery.error?.message ?? "" }} /> : <p className="text-[var(--muted)]">No Genesis catalogs were loaded.</p>}
           </div>
         </main>
