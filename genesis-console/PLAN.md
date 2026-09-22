@@ -22,7 +22,7 @@ Services discovers Ingress and Istio routes, including customized hosts, ports, 
 
 ## Scans
 
-A scan runs when someone starts it from Images or Scans. The worker runs Trivy on public references, one image at a time, and writes the finding to Postgres by digest: when, Trivy database version, critical count, high count, and CVE ids. Another release that uses the same digest shows that finding. A failed image keeps any previous finding and keeps the pulled blobs so it can be retried.
+A scan runs when someone starts it from Images or Scans. The worker runs Trivy on public references, one image at a time, and writes the finding to Postgres by digest: when, Trivy database version, critical count, high count, and detailed findings across Critical, High, Medium, Low, and Unknown severities. Stored reports record full severity coverage; older reports remain readable and are labeled limited until rescanned. Another release that uses the same digest shows that finding. A failed image keeps any previous finding and keeps the pulled blobs so it can be retried.
 
 Auto cleanup is off until it is turned on. After a finding is stored, cleanup deletes the pulled image blobs with `trivy clean --scan-cache` in the console cache directory. The catalog row and the finding stay. Clean images does the same thing for every pulled blob while no scan is running. The next scan of that digest downloads the image again.
 

@@ -52,6 +52,8 @@ message ImageRow {
   string scanned_at = 14;
   string db_version = 15;
   repeated Vulnerability vulnerabilities = 16;
+  // False for older scans that only collected High and Critical findings.
+  bool all_severities = 17;
 }
 
 message Vulnerability {
@@ -232,6 +234,7 @@ message ScanItem {
   int32 critical = 8;
   int32 high = 9;
   string scanned_at = 10;
+  bool all_severities = 11;
 }
 
 message ScanJob {

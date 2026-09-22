@@ -32,6 +32,11 @@ type scanReport struct {
 	Findings []finding
 }
 
+type savedFindings struct {
+	AllSeverities bool      `json:"allSeverities"`
+	Findings      []finding `json:"findings"`
+}
+
 func trivyPath() (string, error) {
 	path, err := exec.LookPath("trivy")
 	if err != nil {
@@ -52,7 +57,7 @@ func scanRef(ctx context.Context, cacheDir, ref string) (scanReport, error) {
 		"image",
 		"--image-src", "remote",
 		"--scanners", "vuln",
-		"--severity", "HIGH,CRITICAL",
+		"--severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
 		"--format", "json",
 	}
 	// Large image layers need disk-backed scratch space, not the container's small /tmp.
@@ -119,8 +124,9 @@ func parseReport(buf []byte) (scanReport, error) {
 	if hexDigest(digest) == "" {
 		return scanReport{}, errors.New("trivy did not report an image digest")
 	}
-	seenID := map[string]bool{}
-	seenRow := map[string]bool{}
+	rank := map[string]int{"UNKNOWN": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
+	seenID := map[string]string{}
+	seenRow := map[string]int{}
 	var cves []string
 	var findings []finding
 	var critical, high int32
@@ -129,39 +135,50 @@ func parseReport(buf []byte) (scanReport, error) {
 			if vuln.VulnerabilityID == "" {
 				continue
 			}
-			if vuln.Severity != "CRITICAL" && vuln.Severity != "HIGH" {
-				continue
+			vuln.Severity = strings.ToUpper(strings.TrimSpace(vuln.Severity))
+			if _, known := rank[vuln.Severity]; !known {
+				vuln.Severity = "UNKNOWN"
 			}
-			key := vuln.VulnerabilityID + "\x00" + vuln.PkgName + "\x00" + vuln.InstalledVersion
-			if seenRow[key] {
-				continue
+			if previous, exists := seenID[vuln.VulnerabilityID]; !exists || rank[vuln.Severity] > rank[previous] {
+				seenID[vuln.VulnerabilityID] = vuln.Severity
 			}
-			seenRow[key] = true
-			if !seenID[vuln.VulnerabilityID] {
-				seenID[vuln.VulnerabilityID] = true
-				if vuln.Severity == "CRITICAL" {
-					critical++
-				} else {
-					high++
-				}
-				cves = append(cves, vuln.VulnerabilityID)
-			}
-			findings = append(findings, finding{
+			item := finding{
 				ID: vuln.VulnerabilityID, Severity: vuln.Severity, Pkg: vuln.PkgName,
 				Installed: vuln.InstalledVersion, Fixed: vuln.FixedVersion, Title: vuln.Title,
 				URL: advisoryURL(vuln.VulnerabilityID, vuln.PrimaryURL),
-			})
+			}
+			key := vuln.VulnerabilityID + "\x00" + vuln.PkgName + "\x00" + vuln.InstalledVersion
+			if index, exists := seenRow[key]; exists {
+				if rank[item.Severity] > rank[findings[index].Severity] {
+					findings[index] = item
+				}
+				continue
+			}
+			seenRow[key] = len(findings)
+			findings = append(findings, item)
+		}
+	}
+	for id, severity := range seenID {
+		cves = append(cves, id)
+		switch severity {
+		case "CRITICAL":
+			critical++
+		case "HIGH":
+			high++
 		}
 	}
 	sort.Strings(cves)
 	sort.Slice(findings, func(i, j int) bool {
 		if findings[i].Severity != findings[j].Severity {
-			return findings[i].Severity == "CRITICAL"
+			return rank[findings[i].Severity] > rank[findings[j].Severity]
 		}
 		if findings[i].ID != findings[j].ID {
 			return findings[i].ID < findings[j].ID
 		}
-		return findings[i].Pkg < findings[j].Pkg
+		if findings[i].Pkg != findings[j].Pkg {
+			return findings[i].Pkg < findings[j].Pkg
+		}
+		return findings[i].Installed < findings[j].Installed
 	})
 	return scanReport{Digest: digest, Critical: critical, High: high, CVEs: cves, Findings: findings}, nil
 }
@@ -179,20 +196,24 @@ func advisoryURL(id, primary string) string {
 	}
 }
 
-func decodeFindings(raw string) []finding {
+func decodeFindings(raw string) ([]finding, bool) {
+	var saved savedFindings
+	if json.Unmarshal([]byte(raw), &saved) == nil && saved.Findings != nil {
+		return saved.Findings, saved.AllSeverities
+	}
 	var rich []finding
 	if json.Unmarshal([]byte(raw), &rich) == nil && (len(rich) == 0 || rich[0].ID != "") {
-		return rich
+		return rich, false
 	}
 	var ids []string
 	if json.Unmarshal([]byte(raw), &ids) != nil {
-		return nil
+		return nil, false
 	}
 	out := make([]finding, 0, len(ids))
 	for _, id := range ids {
 		out = append(out, finding{ID: id, URL: advisoryURL(id, "")})
 	}
-	return out
+	return out, false
 }
 
 func trivyDBVersion(ctx context.Context, cacheDir string) string {

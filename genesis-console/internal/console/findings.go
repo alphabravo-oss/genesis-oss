@@ -86,7 +86,9 @@ func applyFinding(row *consolev1.ImageRow, found db.LatestFindingsRow) {
 	if found.CreatedAt.Valid {
 		row.ScannedAt = found.CreatedAt.Time.UTC().Format(time.RFC3339)
 	}
-	for _, item := range decodeFindings(found.Cves) {
+	findings, allSeverities := decodeFindings(found.Cves)
+	row.AllSeverities = allSeverities
+	for _, item := range findings {
 		row.Cves = append(row.Cves, item.ID)
 		row.Vulnerabilities = append(row.Vulnerabilities, &consolev1.Vulnerability{
 			Id: item.ID, Severity: item.Severity, PackageName: item.Pkg,

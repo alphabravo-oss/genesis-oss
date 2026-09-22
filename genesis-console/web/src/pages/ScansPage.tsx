@@ -178,7 +178,7 @@ function ScanDrilldown({ jobId }: { jobId: string }) {
         return (
           <section key={item.imageId} className="space-y-2">
             <h3 className="text-sm font-medium">{item.ref || item.imageId}</h3>
-            {item.findingsAvailable ? <FindingList rows={item.vulnerabilities} /> : <p className="text-sm text-[var(--muted)]">Saved findings are unavailable for this image.</p>}
+            {item.findingsAvailable ? <FindingList rows={item.vulnerabilities} allSeverities={item.allSeverities} urlKey={`findings.${jobId}.${item.imageId}`} /> : <p className="text-sm text-[var(--muted)]">Saved findings are unavailable for this image.</p>}
           </section>
         );
       })}

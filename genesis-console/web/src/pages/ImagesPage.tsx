@@ -18,6 +18,12 @@ function severity(row: ImageRow) {
   return row.critical * 100000 + row.high;
 }
 
+function findingSummary(image: Pick<ImageRow, "scanned" | "allSeverities" | "vulnerabilities">) {
+  if (!image.scanned) return "Not scanned";
+  const count = image.vulnerabilities.length;
+  return `${count} ${count === 1 ? "finding" : "findings"}${image.allSeverities ? "" : " (limited)"}`;
+}
+
 const columns = createColumnHelper<ImageRow>();
 const defaultSort = [{ id: "critical", desc: true }];
 const search = {
@@ -34,6 +40,7 @@ const runtimeColumns: ColumnDef<DeployedImage, any>[] = [
   { id: "ready", accessorFn: (row) => row.containers.filter((container) => container.ready).length, header: "Ready", cell: ({ row, getValue }) => `${getValue()}/${row.original.containers.length}` },
   { accessorKey: "critical", header: "Critical", cell: ({ row }) => row.original.scanned ? row.original.critical : "Not scanned" },
   { accessorKey: "high", header: "High", cell: ({ row }) => row.original.scanned ? row.original.high : "Not scanned" },
+  { id: "findings", accessorFn: findingSummary, header: "All findings" },
 ];
 const runtimeSearch = { placeholder: "Search images or pods", text: (row: DeployedImage) => [row.references.join(" "), row.digest, row.packages.join(" "), row.namespaces.join(" "), ...row.containers.map((container) => `${container.pod} ${container.container}`)].join(" ") };
 const runtimeFacet = { label: "Package", value: (row: DeployedImage) => row.packages };
@@ -70,7 +77,7 @@ function ImageFindings({ image, item }: { image: ImageRow | DeployedImage; item?
     {item?.state === "skipped" ? <p className="text-sm text-[var(--muted)]">Skipped: no public image reference is available.</p> : null}
     {image.scanned ? <>
       {image.scannedAt ? <p className="text-xs text-[var(--muted)]">Scanned {formatWhen(image.scannedAt)}</p> : null}
-      <FindingList rows={image.vulnerabilities} />
+      <FindingList rows={image.vulnerabilities} allSeverities={image.allSeverities} />
     </> : <p className="text-sm text-[var(--muted)]">No saved scan results.</p>}
   </section>;
 }
@@ -94,16 +101,10 @@ const imageColumns: ColumnDef<ImageRow, any>[] = [
     cell: (info) => (info.row.original.scanned ? <span className={info.getValue() > 0 ? "font-semibold text-[var(--danger)]" : "text-[var(--muted)]"}>{info.getValue()}</span> : "—"),
   }),
   columns.accessor("high", { header: "High", cell: (info) => (info.row.original.scanned ? info.getValue() : "—") }),
-  columns.accessor("cves", {
-    header: "CVEs",
+  columns.accessor(findingSummary, {
+    id: "findings",
+    header: "All findings",
     enableSorting: false,
-    cell: (info) => {
-      const row = info.row.original;
-      if (!row.scanned) return "—";
-      const count = row.vulnerabilities.length || row.cves.length;
-      if (count === 0) return "none";
-      return count === 1 ? "1 finding" : `${count} findings`;
-    },
   }),
   columns.accessor("scannedAt", { header: "Scanned", cell: (info) => (info.getValue() ? formatWhen(info.getValue()) : "—") }),
 ];
@@ -133,7 +134,7 @@ export function ImagesPage() {
   const observedColumns = useMemo(() => [{ ...runtimeColumns[0], cell: ({ row }: { row: { original: DeployedImage } }) => <Link to={imageHref("deployed", row.original.id, params)} className="block min-w-48 max-w-sm space-y-1 break-all font-mono text-xs text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.references.map((ref) => <div key={ref}>{ref}</div>)}</Link> }, {
     id: "scan", header: "Scan status", accessorFn: (row: DeployedImage) => scanLabel(imageScan(row, currentScan), row.scanned, busy && selected.includes(row.id)),
     cell: ({ row }: { row: { original: DeployedImage } }) => <ScanStatus item={imageScan(row.original, currentScan)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
-  }, ...runtimeColumns.slice(1).map((column) => findingsUnavailable && "accessorKey" in column && ["critical", "high"].includes(String(column.accessorKey)) ? { ...column, cell: () => "Not checked" } : column)], [findingsUnavailable, currentScan, busy, selected, params]);
+  }, ...runtimeColumns.slice(1).map((column) => findingsUnavailable && (column.id === "findings" || ("accessorKey" in column && ["critical", "high"].includes(String(column.accessorKey)))) ? { ...column, cell: () => "Not checked" } : column)], [findingsUnavailable, currentScan, busy, selected, params]);
   const catalogColumns = useMemo(() => [imageColumns[0], { ...imageColumns[1], cell: ({ row }: { row: { original: ImageRow } }) => <Link to={imageHref("catalog", row.original.id, params)} className="block text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.name}</Link> }, {
     id: "scan", header: "Scan status", accessorFn: (row: ImageRow) => scanLabel(imageScan(row, currentScan, tag), row.scanned, busy && selected.includes(row.id)),
     cell: ({ row }: { row: { original: ImageRow } }) => <ScanStatus item={imageScan(row.original, currentScan, tag)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
@@ -268,8 +269,8 @@ function ImageDetails({ image, item, busy, scanning, findingsUnavailable, onScan
   const title = deployed ? (deployed.references[0]?.split("/").at(-1) || "Image") : catalog?.name;
   const facts = [
     { label: "Scan status", value: <ScanStatus item={item} scanned={image.scanned} starting={busy} /> },
-    { label: "Critical", value: findingsUnavailable ? "Not checked" : image.scanned ? image.critical : "Not scanned" },
-    { label: "High", value: findingsUnavailable ? "Not checked" : image.scanned ? image.high : "Not scanned" },
+    { label: image.allSeverities ? "Vulnerabilities" : "Known vulnerabilities", value: findingsUnavailable ? "Not checked" : image.scanned ? new Set(image.vulnerabilities.map((finding) => finding.id)).size : "Not scanned" },
+    { label: "Severity coverage", value: findingsUnavailable ? "Not checked" : image.scanned ? image.allSeverities ? "All severities" : "High/Critical only" : "Not scanned" },
     { label: deployed ? "Containers" : "Signature", value: deployed ? deployed.containers.length : catalog?.signature || "Not checked" },
   ];
   return <>

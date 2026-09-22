@@ -146,7 +146,7 @@ func (s *Scanner) runJob(ctx context.Context, id string) {
 		if report.Findings == nil {
 			report.Findings = []finding{}
 		}
-		payload, _ := json.Marshal(report.Findings)
+		payload, _ := json.Marshal(savedFindings{AllSeverities: true, Findings: report.Findings})
 		if err := s.store.q.InsertFinding(ctx, db.InsertFindingParams{
 			Digest: report.Digest, Ref: item.Ref, DbVersion: version,
 			CriticalCount: report.Critical, HighCount: report.High, Cves: string(payload),
@@ -353,6 +353,7 @@ func (s *Service) GetScanJob(ctx context.Context, id string) (*consolev1.ScanJob
 				item.Critical = image.Critical
 				item.High = image.High
 				item.ScannedAt = image.ScannedAt
+				item.AllSeverities = image.AllSeverities
 			}
 		}
 	}

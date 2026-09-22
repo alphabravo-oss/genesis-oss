@@ -12,6 +12,7 @@ export type DeployedImage = RuntimeImage & {
   containers: RuntimeImage[];
   vulnerabilities: Vulnerability[];
   scannedAt: string;
+  allSeverities: boolean;
 };
 
 export function groupDeployedImages(images: RuntimeImage[], findings: ImageRow[] = []): DeployedImage[] {
@@ -22,7 +23,7 @@ export function groupDeployedImages(images: RuntimeImage[], findings: ImageRow[]
     const id = image.digest || image.ref;
     let group = groups.get(id);
     if (!group) {
-      group = { ...image, id, references: [], packages: [], namespaces: [], containers: [], vulnerabilities: saved.get(id)?.vulnerabilities ?? [], scannedAt: saved.get(id)?.scannedAt ?? "" };
+      group = { ...image, id, references: [], packages: [], namespaces: [], containers: [], vulnerabilities: saved.get(id)?.vulnerabilities ?? [], scannedAt: saved.get(id)?.scannedAt ?? "", allSeverities: saved.get(id)?.allSeverities ?? false };
       groups.set(id, group);
     }
     group.containers.push(image);
@@ -50,5 +51,5 @@ export function imageScan(image: ImageRow | DeployedImage, job?: ScanJob, catalo
 
 export function applyScanResult<T extends ImageRow | DeployedImage>(image: T, item?: ScanItem): T {
   if (!item?.findingsAvailable) return image;
-  return { ...image, scanned: true, critical: item.critical, high: item.high, scannedAt: item.scannedAt, vulnerabilities: item.vulnerabilities, cves: [...new Set(item.vulnerabilities.map((v) => v.id))] };
+  return { ...image, scanned: true, critical: item.critical, high: item.high, scannedAt: item.scannedAt, allSeverities: item.allSeverities, vulnerabilities: item.vulnerabilities, cves: [...new Set(item.vulnerabilities.map((v) => v.id))] };
 }

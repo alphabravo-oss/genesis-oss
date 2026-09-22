@@ -239,8 +239,10 @@ type ImageRow struct {
 	ScannedAt       string                 `protobuf:"bytes,14,opt,name=scanned_at,json=scannedAt,proto3" json:"scanned_at,omitempty"`
 	DbVersion       string                 `protobuf:"bytes,15,opt,name=db_version,json=dbVersion,proto3" json:"db_version,omitempty"`
 	Vulnerabilities []*Vulnerability       `protobuf:"bytes,16,rep,name=vulnerabilities,proto3" json:"vulnerabilities,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// False for older scans that only collected High and Critical findings.
+	AllSeverities bool `protobuf:"varint,17,opt,name=all_severities,json=allSeverities,proto3" json:"all_severities,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ImageRow) Reset() {
@@ -383,6 +385,13 @@ func (x *ImageRow) GetVulnerabilities() []*Vulnerability {
 		return x.Vulnerabilities
 	}
 	return nil
+}
+
+func (x *ImageRow) GetAllSeverities() bool {
+	if x != nil {
+		return x.AllSeverities
+	}
+	return false
 }
 
 type Vulnerability struct {
@@ -1897,6 +1906,7 @@ type ScanItem struct {
 	Critical          int32                  `protobuf:"varint,8,opt,name=critical,proto3" json:"critical,omitempty"`
 	High              int32                  `protobuf:"varint,9,opt,name=high,proto3" json:"high,omitempty"`
 	ScannedAt         string                 `protobuf:"bytes,10,opt,name=scanned_at,json=scannedAt,proto3" json:"scanned_at,omitempty"`
+	AllSeverities     bool                   `protobuf:"varint,11,opt,name=all_severities,json=allSeverities,proto3" json:"all_severities,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -1999,6 +2009,13 @@ func (x *ScanItem) GetScannedAt() string {
 		return x.ScannedAt
 	}
 	return ""
+}
+
+func (x *ScanItem) GetAllSeverities() bool {
+	if x != nil {
+		return x.AllSeverities
+	}
+	return false
 }
 
 type ScanJob struct {
@@ -2477,7 +2494,7 @@ const file_console_v1_console_proto_rawDesc = "" +
 	"\breleases\x18\x01 \x03(\v2\x1a.console.v1.ReleaseSummaryR\breleases\x12\x1b\n" +
 	"\tloaded_at\x18\x02 \x01(\tR\bloadedAt\"%\n" +
 	"\x11GetReleaseRequest\x12\x10\n" +
-	"\x03tag\x18\x01 \x01(\tR\x03tag\"\xc4\x03\n" +
+	"\x03tag\x18\x01 \x01(\tR\x03tag\"\xeb\x03\n" +
 	"\bImageRow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vpackage_key\x18\x02 \x01(\tR\n" +
@@ -2498,7 +2515,8 @@ const file_console_v1_console_proto_rawDesc = "" +
 	"scanned_at\x18\x0e \x01(\tR\tscannedAt\x12\x1d\n" +
 	"\n" +
 	"db_version\x18\x0f \x01(\tR\tdbVersion\x12C\n" +
-	"\x0fvulnerabilities\x18\x10 \x03(\v2\x19.console.v1.VulnerabilityR\x0fvulnerabilities\"\xba\x01\n" +
+	"\x0fvulnerabilities\x18\x10 \x03(\v2\x19.console.v1.VulnerabilityR\x0fvulnerabilities\x12%\n" +
+	"\x0eall_severities\x18\x11 \x01(\bR\rallSeverities\"\xba\x01\n" +
 	"\rVulnerability\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bseverity\x18\x02 \x01(\tR\bseverity\x12!\n" +
@@ -2651,7 +2669,7 @@ const file_console_v1_console_proto_rawDesc = "" +
 	"\x10StartScanRequest\x12\x10\n" +
 	"\x03tag\x18\x01 \x01(\tR\x03tag\x12\x14\n" +
 	"\x05scope\x18\x02 \x01(\tR\x05scope\x12\x1b\n" +
-	"\timage_ids\x18\x03 \x03(\tR\bimageIds\"\xbe\x02\n" +
+	"\timage_ids\x18\x03 \x03(\tR\bimageIds\"\xe5\x02\n" +
 	"\bScanItem\x12\x19\n" +
 	"\bimage_id\x18\x01 \x01(\tR\aimageId\x12\x10\n" +
 	"\x03ref\x18\x02 \x01(\tR\x03ref\x12\x16\n" +
@@ -2664,7 +2682,8 @@ const file_console_v1_console_proto_rawDesc = "" +
 	"\x04high\x18\t \x01(\x05R\x04high\x12\x1d\n" +
 	"\n" +
 	"scanned_at\x18\n" +
-	" \x01(\tR\tscannedAt\"\xb5\x02\n" +
+	" \x01(\tR\tscannedAt\x12%\n" +
+	"\x0eall_severities\x18\v \x01(\bR\rallSeverities\"\xb5\x02\n" +
 	"\aScanJob\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03tag\x18\x02 \x01(\tR\x03tag\x12\x14\n" +
