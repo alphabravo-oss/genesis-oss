@@ -1,0 +1,6 @@
+apiVersion: v2
+name: genesis-console
+description: Read-only Genesis inspection console with the built web UI
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

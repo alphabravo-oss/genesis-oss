@@ -1,0 +1,36 @@
+{{- $fluxSettingskyverno := merge .Values.kyverno.flux .Values.flux -}}
+{{- if or .Values.kyverno.enabled .Values.kyvernoPolicies.enabled .Values.kyvernoReporter.enabled }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kyverno
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: kyverno
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/kyverno/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: kyverno
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "kyverno" "package" .Values.kyverno "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingskyverno | nindent 2 }}
+
+  {{- if .Values.kyverno.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.kyverno.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "kyverno" "root" .) | nindent 2 }}
+  {{- if or .Values.gatekeeper.enabled .Values.prometheusOperatorCRDs.enabled }}
+  dependsOn:
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.prometheusOperatorCRDs.enabled }}
+    - name: prometheus-operator-crds
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

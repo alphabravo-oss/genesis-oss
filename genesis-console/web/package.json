@@ -1,0 +1,35 @@
+{
+  "name": "genesis-console",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --pretty false",
+    "test": "node --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.11.0",
+    "@connectrpc/connect": "^2.1.1",
+    "@connectrpc/connect-web": "^2.1.1",
+    "@tanstack/react-query": "^5.99.2",
+    "@tanstack/react-table": "^8.21.3",
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router": "^7.14.2"
+  },
+  "devDependencies": {
+    "@bufbuild/protoc-gen-es": "^2.11.0",
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^5.1.0",
+    "tailwindcss": "^4.2.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.2"
+  }
+}

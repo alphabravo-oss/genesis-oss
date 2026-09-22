@@ -1,0 +1,297 @@
+{{- if eq (include "authserviceEnabled" .) "true" }}
+
+{{- /* Create a cleaned copy of package config and merge deprecated paths into current paths */ -}}
+{{- $authservicePackage := deepCopy .Values.addons.authservice -}}
+{{- if .Values.addons.authservice.values -}}
+  {{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.authservice.values) | fromYaml -}}
+  {{- $authservicePackage = set $authservicePackage "values" $cleanedValues -}}
+{{- end -}}
+
+{{- include "values-secret" (dict
+  "root" $
+  "package" $authservicePackage
+  "name" "authservice"
+  "defaults" (include "bigbang.defaults.authservice" .)
+)}}
+
+{{- end }}
+
+{{- define "bigbang.defaults.authservice" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $ambientEnabled := eq (include "ambientEnabled" .) "true" }}
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+{{- $istioHardenedEnabled := or
+    (dig "istio" "hardened" "enabled" false .Values.monitoring.values)
+    (dig "istio" "hardened" "enabled" false .Values.addons.authservice.values)
+    (dig "hardened" "enabled" false .Values.istiod.values)
+    (dig "istio" "hardened" "enabled" false .Values.grafana.values)
+    (dig "istio" "hardened" "enabled" false .Values.loki.values)
+    (dig "istio" "hardened" "enabled" false .Values.eckOperator.values)
+    (dig "istio" "hardened" "enabled" false .Values.elasticsearchKibana.values)
+}}
+
+istio:
+  enabled: {{ $istioEnabled }}
+
+  hardened:
+    enabled: {{ $istioHardenedEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.authservice.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.authservice.values .) }}
+
+  clusterWideHardenedEnabled: {{ dig "hardened" "enabled" false .Values.istiod.values }}
+
+routes:
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.authservice.values }}
+      hosts:
+      - repo1.dso.mil
+
+image: 
+  pullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+  
+{{- include "secretsImagePullSecretsWithName" . }}
+
+podAnnotations:
+  {{ include "istioAnnotation" . }}
+
+{{- if .Values.kiali.enabled }}
+podLabels:
+  service.istio.io/canonical-name: authservice
+{{- end }}
+
+openshift: {{ .Values.openshift | default false }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled | default false }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress: 
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+    to:
+      # gRPC connections for pods with protect=keycloak label
+      authservice:10003:
+        from:
+          k8s:
+            '*/keycloak-protected':
+              podSelector:
+                matchLabels:
+                  {{- $key := (dig "selector" "key" "protect" .Values.addons.authservice.values) }}
+                  {{- $value := (dig "selector" "value" "keycloak" .Values.addons.authservice.values) }}
+                  {{ $key }}: {{ $value }}
+            {{- if eq (include "monitoring.authservice.waypointEnabled" .) "true" }}
+            # ext_authz calls originate from the monitoring package's own waypoint pod,
+            # which fronts prometheus/alertmanager for authservice in ambient mode.
+            monitoring/waypoint:
+              podSelector:
+                matchLabels:
+                  gateway.networking.k8s.io/gateway-name: monitoring-monitoring-waypoint
+            {{- end }}
+      # Grafana redis client connection
+      redis-bb:6379:
+        from:
+          k8s:
+            monitoring/grafana: {{ .Values.monitoring.enabled }}
+      haproxy:8080:
+        from:
+          k8s:
+            "istio-gateway/*": {{ ((.Values.packages).haproxy).enabled }}
+      # Redis exporter metrics
+      redis-bb:9121:
+        from:
+          k8s:
+            monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      # HBONE ingress from istio-gateway to the authservice waypoint (ambient)
+      authservice-waypoint:15008:
+        podSelector:
+          matchLabels:
+            gateway.networking.k8s.io/gateway-name: authservice-waypoint
+        from:
+          k8s:
+            "istio-gateway/*": {{ and $ambientEnabled .Values.istioGateway.enabled }}
+            kiali-service-account@kiali/kiali: {{ and $ambientEnabled .Values.kiali.enabled }}
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+    from:
+      authservice:
+        to:
+          definition:
+            sso: true
+          k8s:
+            # Tempo trace data
+            tempo/tempo:9411: {{ .Values.tempo.enabled }}
+      # Waypoint egress to thanos when the shared authservice waypoint fronts it for SSO (ambient).
+      # Monitoring no longer uses this waypoint: prometheus/alertmanager are fronted by the
+      # monitoring package's own waypoint, which makes the ext_authz call back to authservice:10003.
+      authservice-waypoint:
+        to:
+          k8s:
+            thanos/thanos:9090: {{ and $ambientEnabled .Values.addons.thanos.enabled .Values.addons.thanos.sso.enabled }}
+      haproxy:
+        to:
+          k8s:
+            monitoring/alertmanager:9093: {{ ((.Values.packages).haproxy).enabled }}
+            monitoring/prometheus:9090: {{ ((.Values.packages).haproxy).enabled }}
+
+{{- if or (dig "redis" "enabled" false .Values.addons.authservice.values) (dig "global" "redis_server_uri" "" .Values.addons.authservice.values) }}
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 3
+{{- end }}
+
+{{- if and (dig "redis" "enabled" false .Values.addons.authservice.values) (or .Values.monitoring.enabled .Values.kiali.enabled) }}
+redis-bb:
+  upstream:
+    global:
+      {{- include "secretsImagePullSecrets" . | nindent 6 }}
+
+    {{- if eq (include "metricScrapingEnabled" .) "true" }}
+    metrics:
+      enabled: true
+      image:
+        {{- include "secretsPullSecrets" . | nindent 8 }}
+      serviceMonitor:
+        enabled: true
+        namespace: authservice
+        selector: 
+          app.kubernetes.io/name: redis-bb
+          app.kubernetes.io/instance: authservice-authservice
+        {{- if eq (include "metricsSidecarMtls" (list .Values.addons.authservice .)) "true" }}
+        scheme: https
+        tlsConfig:
+          caFile: /etc/prom-certs/root-cert.pem
+          certFile: /etc/prom-certs/cert-chain.pem
+          keyFile: /etc/prom-certs/key.pem
+          insecureSkipVerify: true
+        {{- end }}
+      prometheusRule:
+        enabled: true 
+        namespace: monitoring
+    {{- end }}
+{{- end }}
+
+{{- $legacy := and .Values.sso.oidc.realm .Values.sso.oidc.host -}}
+{{- if not $legacy }}
+issuer_uri: {{ include "sso.url" . }}
+{{- end }}
+
+global:
+  oidc:
+    host: {{ default (include "sso.host" .) .Values.sso.oidc.host }}
+    realm: {{ default (include "sso.realm" .) .Values.sso.oidc.realm }}
+
+  {{- if or .Values.sso.jwks_uri (dig "oidc" "jwksUri" false .Values.sso) }}
+  jwks_uri: {{ include "sso.oidc.jwksuri" . | quote }}
+  {{- else if or .Values.sso.jwks (dig "oidc" "jwks" false .Values.sso) }}
+  jwks: {{ default (dig "oidc" "jwks" "" .Values.sso) .Values.sso.jwks | quote }}
+  {{- end }}
+
+  {{- if or .Values.sso.client_id (dig "sso" "client_id" false .Values.addons.authservice) }}
+  client_id: {{ default (dig "sso" "client_id" "" .Values.addons.authservice) .Values.sso.client_id }}
+  {{- end }}
+
+  {{- if or .Values.sso.client_secret (dig "sso" "client_secret" false .Values.addons.authservice) }}
+  client_secret: {{ default (dig "sso" "client_secret" "" .Values.addons.authservice) .Values.sso.client_secret }}
+  {{- end }}
+
+  {{- if (or .Values.sso.certificate_authority (dig "certificateAuthority" "cert" false .Values.sso)) }}
+  certificate_authority: {{ (default (dig "certificateAuthority" "cert" "" .Values.sso) .Values.sso.certificate_authority) | quote }}
+  {{- end }}
+
+  {{- if not $legacy }}
+  authorization_uri: {{ include "sso.oidc.auth" . }}
+  token_uri: {{ include "sso.oidc.token" . }}
+  logout_redirect_uri: {{ include "sso.oidc.endsession" . }}
+  {{- end }}
+
+  {{- $authserviceValues := .Values.addons.authservice.values | default dict }}
+  {{- $redisValues := $authserviceValues.redis | default dict }}
+  {{- if hasKey $redisValues "enabled" }}
+  {{- if $redisValues.enabled }}
+  redis_server_uri: "tcp://authservice-authservice-redis-bb-master:6379"
+  {{- end }}
+  {{- end }}
+
+chains:
+  {{- if .Values.addons.authservice.chains }}
+  {{ .Values.addons.authservice.chains | toYaml | nindent 2 }}
+  {{- end }}
+
+  {{- if and .Values.addons.thanos.enabled .Values.addons.thanos.sso.enabled (not (hasKey (.Values.addons.authservice.chains | default dict) "thanos")) }}
+  thanos:
+    match:
+      header: ":authority"
+    {{- $thanosHosts := (dig "istio" "thanos" "hosts" dict .Values.addons.thanos.values) }}
+    {{- if $thanosHosts }}
+      prefix: {{ tpl ($thanosHosts | first) $ }}
+    callback_uri: https://{{ tpl ($thanosHosts | first) $ }}/login/generic_oauth
+    {{- else }}
+      prefix: {{ printf "thanos.%s" $domainName }}
+    callback_uri: https://thanos.{{ $domainName }}/login/generic_oauth
+    {{- end }}
+    client_id: "{{ .Values.addons.thanos.sso.client_id }}"
+    client_secret: "{{ .Values.addons.thanos.sso.client_secret }}"
+    {{- if not $legacy }}
+    authorization_uri: {{ include "sso.oidc.auth" . }}
+    token_uri: {{ include "sso.oidc.token" . }}
+    logout_redirect_uri: {{ include "sso.oidc.endsession" . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if and .Values.monitoring.enabled .Values.monitoring.sso.enabled }}
+  {{- if not (hasKey (.Values.addons.authservice.chains | default dict) "prometheus") }}
+  prometheus:
+    match:
+      header: ":authority"
+    {{- $prometheusHosts := (dig "istio" "prometheus" "hosts" dict .Values.monitoring.values) }}
+    {{- if $prometheusHosts }}
+      prefix: {{ tpl ($prometheusHosts | first) $ }}
+    callback_uri: https://{{ tpl ($prometheusHosts | first) $ }}/login/generic_oauth
+    {{- else }}
+      prefix: {{ printf "prometheus.%s" $domainName }}
+    callback_uri: https://prometheus.{{ $domainName }}/login/generic_oauth
+    {{- end }}
+    client_id: {{ .Values.monitoring.sso.prometheus.client_id }}
+    client_secret: "{{ .Values.monitoring.sso.prometheus.client_secret }}"
+    {{- if not $legacy }}
+    authorization_uri: {{ include "sso.oidc.auth" . }}
+    token_uri: {{ include "sso.oidc.token" . }}
+    logout_redirect_uri: {{ include "sso.oidc.endsession" . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if not (hasKey (.Values.addons.authservice.chains | default dict) "alertmanager") }}
+  alertmanager:
+    match:
+      header: ":authority"
+    {{- $alertmanagerHosts := (dig "istio" "alertmanager" "hosts" dict .Values.monitoring.values) }}
+    {{- if $alertmanagerHosts }}
+      prefix: {{ tpl ($alertmanagerHosts | first) $ }}
+    callback_uri: https://{{ tpl ($alertmanagerHosts | first) $ }}/login/generic_oauth
+    {{- else }}
+      prefix: {{ printf "alertmanager.%s" $domainName }}
+    callback_uri: https://alertmanager.{{ $domainName }}/login/generic_oauth
+    {{- end }}
+    client_id: {{ .Values.monitoring.sso.alertmanager.client_id }}
+    client_secret: "{{ .Values.monitoring.sso.alertmanager.client_secret }}"
+    {{- if not $legacy }}
+    authorization_uri: {{ include "sso.oidc.auth" . }}
+    token_uri: {{ include "sso.oidc.token" . }}
+    logout_redirect_uri: {{ include "sso.oidc.endsession" . }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end -}}

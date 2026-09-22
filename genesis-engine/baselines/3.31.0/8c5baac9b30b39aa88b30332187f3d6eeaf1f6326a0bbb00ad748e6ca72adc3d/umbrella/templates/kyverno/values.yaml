@@ -1,0 +1,124 @@
+{{- if or .Values.kyverno.enabled .Values.kyvernoPolicies.enabled .Values.kyvernoReporter.enabled }}
+{{- include "values-secret" (dict 
+"root" $ 
+"package" .Values.kyverno 
+"name" "kyverno" 
+"defaults" ((mergeOverwrite (include "bigbang.defaults.kyverno" . | fromYaml) (include "bigbang.kyverno.bb-common-migrations" . | fromYaml)) | toYaml) 
+)}}
+{{- end }}
+
+{{- define "bigbang.defaults.kyverno" -}}
+istio:
+  # Kyverno installs before Istio and is intentionally not part of the mesh.
+  enabled: false
+  ambient:
+    enabled: false
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  # Setting to false as Kyverno is not in the mesh
+  hbonePortInjection:
+    enabled: false
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+    to:
+      kyverno:8000:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/instance: kyverno-kyverno
+        from:
+          k8s:
+            monitoring/prometheus: {{ .Values.monitoring.enabled }}
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+      private-registry:
+        to:
+          - ipBlock:
+              cidr: "15.205.173.153/32"
+        ports:
+          - port: 443
+            protocol: TCP
+    from:
+      kyverno-admission-controller:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: admission-controller
+        to:
+          definition:
+            private-registry: {{ dig "policies" "require-image-signature" "enabled" false .Values.kyvernoPolicies.values }}
+            kubeAPI: true
+      ## Kyverno background and cleanup controllers may be needed depending on the flavor of kubernetes in use
+      kyverno-background-controller:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: background-controller
+        to:
+          definition:
+            kubeAPI: true
+      kyverno-cleanup-controller:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: cleanup-controller
+        to:
+          definition:
+            kubeAPI: true
+      kyverno-reports-controller:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: reports-controller
+        to:
+          definition:
+            kubeAPI: true
+
+openshift: {{ .Values.openshift }}
+
+global:
+  {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
+
+upstream:
+
+  fullnameOverride: kyverno-kyverno
+
+  replicaCount: 3
+  
+  # clear out the explicit set in the package, so it falls back to our global value
+  existingImagePullSecrets: []
+
+  grafana:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    namespace: monitoring
+
+  admissionController:
+    serviceMonitor:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    # clear out the explicit set in the package, so it falls back to our global value
+    imagePullSecrets: []
+
+  backgroundController:
+    serviceMonitor:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    # clear out the explicit set in the package, so it falls back to our global value
+    imagePullSecrets: []
+
+  cleanupController:
+    serviceMonitor:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    # clear out the explicit set in the package, so it falls back to our global value
+    imagePullSecrets: []
+
+  reportsController:
+    serviceMonitor:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    # clear out the explicit set in the package, so it falls back to our global value
+    imagePullSecrets: []
+
+  crds:
+    groups:
+      # clear out the explicit set in the package, so it falls back to our global value
+      imagePullSecrets: []
+    migration:
+      # clear out the explicit set in the package, so it falls back to our global value
+      imagePullSecrets: []
+
+
+{{- end -}}

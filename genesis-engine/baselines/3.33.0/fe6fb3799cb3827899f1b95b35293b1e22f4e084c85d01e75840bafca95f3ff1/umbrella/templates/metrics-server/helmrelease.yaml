@@ -1,0 +1,38 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsMetrics := mergeOverwrite (deepCopy .Values.flux) .Values.addons.metricsServer.flux -}}
+{{- $enableFlag := .Values.addons.metricsServer.enabled | toString }}
+{{- $existingMetricsApi := (.Capabilities.APIVersions.Has "metrics.k8s.io/v1beta1") }}
+{{- $existingMetricsHelmRelease := (lookup "helm.toolkit.fluxcd.io/v2" "HelmRelease" "bigbang" "metrics-server") }}
+{{- $metricsServerNamespace := dig "namespace" "name" "kube-system" .Values.addons.metricsServer }}
+{{- if or ( eq $enableFlag "true") (and (eq $enableFlag "auto") (or (not $existingMetricsApi) $existingMetricsHelmRelease)) }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: metrics-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: metrics-server
+    app.kubernetes.io/component: "cluster-utilities"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/metrics-server/values.yaml") . | sha256sum }}
+spec:
+  releaseName: metrics-server
+  targetNamespace: {{ $metricsServerNamespace }}
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "metrics-server" "package" .Values.addons.metricsServer "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsMetrics | nindent 2 }}
+
+  {{- if or .Values.addons.metricsServer.postRenderers .Values.addons.metricsServer.automountServiceAccountToken }}
+  postRenderers:
+  {{- if .Values.addons.metricsServer.automountServiceAccountToken }}
+  {{ include "metricsServer.automountServiceAccountTokenPostRenderers" . | nindent 2 }}
+  {{- end }}
+  {{ with .Values.addons.metricsServer.postRenderers }}
+  {{ toYaml . | nindent 2 }}
+  {{- end }}
+  {{- end }}
+
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "metrics" "root" .) | nindent 2 }}
+
+{{- end }}

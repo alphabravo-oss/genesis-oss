@@ -5,13 +5,13 @@ Genesis tags match Big Bang tags. Move a cluster by checking out the new tag and
 ```bash
 git fetch --tags
 git checkout 3.33.0
-helm upgrade bigbang umbrella \
-  --namespace bigbang \
-  -f umbrella/values-genesis.yaml
+python3 scripts/install.py --profile keycloak -f /private/path/site-values.yaml
 kubectl get helmrelease -n bigbang
 ```
 
-Keep any profile files you added (`-f profiles/keycloak.yaml` and the others) on the upgrade command. An upgrade that drops a profile turns that package off.
+Use your actual profiles and custom files; the example enables Keycloak. Repeat `--profile` in application order and include every custom `-f` file on each upgrade. The installer uses `--reset-values` to prevent stale values and provenance carrying into a new release. An upgrade that drops a profile turns that package off. `--dry-run` renders without applying. Back up application data before upgrading.
+
+`helm rollback bigbang REVISION --namespace bigbang` restores the umbrella revision and its recorded provenance together. It does not roll back application data or guarantee compatibility with older schemas. The console compares the recorded checksum with its archived baseline and reports missing/mismatched content explicitly.
 
 Wait until every HelmRelease is Ready again. Then run the Registry1 check from [Install](install.md).
 

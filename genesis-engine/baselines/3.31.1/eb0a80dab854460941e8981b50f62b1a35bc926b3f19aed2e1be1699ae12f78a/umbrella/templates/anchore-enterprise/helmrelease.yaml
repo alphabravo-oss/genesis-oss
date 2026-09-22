@@ -1,0 +1,38 @@
+{{- $fluxSettingsAnchore := merge .Values.addons.anchoreEnterprise.flux .Values.flux -}}
+{{- if .Values.addons.anchoreEnterprise.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: anchore-enterprise
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: anchore-enterprise
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/anchore-enterprise/values.yaml") . | sha256sum }}
+spec:
+  releaseName: anchore-enterprise
+  targetNamespace: anchore
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "anchore-enterprise" "package" .Values.addons.anchoreEnterprise "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsAnchore | nindent 2 }}
+
+  {{- if .Values.addons.anchoreEnterprise.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.anchoreEnterprise.postRenderers | nindent 4 }}
+  {{- end }}
+
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "anchore-enterprise" "root" .) | nindent 2 }}
+
+  {{- if or $istioEnabled .Values.monitoring.enabled }}
+  dependsOn:
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,8 @@
+{{- if and (eq .Values.addons.metricsServer.sourceType "git") (not .Values.offline) }}
+{{- $enableFlag := .Values.addons.metricsServer.enabled | toString }}
+{{- $existingMetricsApi := (.Capabilities.APIVersions.Has "metrics.k8s.io/v1beta1") }}
+{{- $existingMetricsHelmRelease := (lookup "helm.toolkit.fluxcd.io/v2" "HelmRelease" "bigbang" "metrics-server") }}
+{{- if or ( eq $enableFlag "true") (and (eq $enableFlag "auto") (or (not $existingMetricsApi) $existingMetricsHelmRelease)) }}
+{{- include "bigbang.gitRepository" (dict "name" "metrics-server" "gitCredsName" "metricsServer" "git" .Values.addons.metricsServer.git "component" "cluster-utilities" "root" .) }}
+{{- end }}
+{{- end }}

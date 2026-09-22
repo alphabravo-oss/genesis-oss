@@ -1,0 +1,111 @@
+{{- $pkg := "istiod" }}
+
+{{- /* Create secret */ -}}
+{{- if (get .Values $pkg).enabled }}
+{{- include "values-secret" (dict 
+  "root" $ 
+  "package" (get .Values $pkg) 
+  "name" ($pkg | kebabcase) 
+  "defaults" ((mergeOverwrite (include "bigbang.defaults.istiod" . | fromYaml) (include "bigbang.istiod.bb-common-migrations" . | fromYaml)) | toYaml)
+)}}
+{{- end }}
+
+{{- define "bigbang.defaults.istiod" -}}
+{{- $istioHardenedEnabled := dig "hardened" "enabled" false .Values.istiod.values }}
+{{- $authserviceEnabled := eq (include "authserviceEnabled" .) "true" }}
+
+istio:
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.istiod.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.istiod.values .) }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  egress:
+    {{- if eq (include "ambientEnabled" .) "true" }}
+    defaults:
+      allowInNamespace:
+        enabled: true
+    {{- end }}
+    definitions: {{.Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+    from:
+      istiod:
+        to:
+          definition:
+            sso: {{ $authserviceEnabled }}
+  ingress:
+    {{- if eq (include "ambientEnabled" .) "true" }}
+    defaults:
+      allowInNamespace:
+        enabled: true
+    {{- end }}
+    definitions: {{.Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+    to:
+      istiod:15014:
+        from:
+          k8s:
+            kiali/kiali: {{ .Values.kiali.enabled }}
+            monitoring/prometheus: {{ .Values.monitoring.enabled }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+
+authservice:
+  enabled: {{ $authserviceEnabled }}
+
+upstream:
+  cni:
+    enabled: {{ or .Values.istioCNI.enabled (eq (include "ambientEnabled" .) "true") }}
+  global:
+    imagePullPolicy: {{ .Values.imagePullPolicy }}
+    {{- include "secretsImagePullSecrets" . | nindent 4 }}
+  {{- if eq (include "ambientEnabled" .) "true" }}
+  pilot:
+    env:
+      PILOT_ENABLE_AMBIENT: "true"
+  {{- end }}
+
+  meshConfig:
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_ENABLE_HBONE: "true"
+      {{- if .Values.tempo.enabled }}
+      tracing:
+        sampling: 10
+      {{- end }}
+    {{- if .Values.tempo.enabled }}
+    accessLogFormat: |
+      [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% "%UPSTREAM_TRANSPORT_FAILURE_REASON%" %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" %UPSTREAM_CLUSTER% %UPSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_REMOTE_ADDRESS% %REQUESTED_SERVER_NAME% %ROUTE_NAME% traceID=%REQ(x-b3-traceid)%
+    enableTracing: true
+    defaultProviders:
+      tracing:
+        - otel-tracing
+      metrics:
+        - prometheus
+    {{- end }}
+    {{- if or $authserviceEnabled .Values.tempo.enabled }}
+    extensionProviders:
+    {{- if $authserviceEnabled }}
+      - name: "authservice"
+        envoyExtAuthzGrpc:
+          service: "authservice.authservice.svc.cluster.local"
+          port: "10003"
+    {{- end }}
+    {{- if .Values.tempo.enabled }}
+      - name: "otel-tracing"
+        opentelemetry:
+          service: "alloy-alloy-receiver.alloy.svc.cluster.local"
+          port: 4317
+    {{- end }}
+    {{- end }}
+{{ if and $authserviceEnabled .Values.sso.certificateAuthority.cert }}
+  jwksResolverExtraRootCA: {{ .Values.sso.certificateAuthority.cert  | quote }}
+{{- end }}
+{{- end }}

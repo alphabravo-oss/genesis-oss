@@ -1,6 +1,6 @@
 # Install
 
-You need a Kubernetes cluster at 1.34 or newer, `kubectl`, `helm`, and `git`. The cluster must be able to pull from `ghcr.io`, `docker.io`, `quay.io`, and `registry.k8s.io`.
+You need a Kubernetes cluster at 1.34 or newer, `kubectl`, Helm 4, Python 3.9 or newer, and `git`. The cluster must be able to pull from `ghcr.io`, `docker.io`, `quay.io`, and `registry.k8s.io`.
 
 ## Flux
 
@@ -21,12 +21,12 @@ kubectl -n flux-system rollout status deploy/notification-controller
 ## Umbrella
 
 ```bash
-helm upgrade --install bigbang umbrella \
-  --namespace bigbang --create-namespace \
-  -f umbrella/values-genesis.yaml
+python3 scripts/install.py
 ```
 
-The release name and namespace stay `bigbang`. Package charts are pulled from this Git repository at the tag recorded in `umbrella/values.yaml`.
+The default release name and namespace are `bigbang`. Package charts are pulled from this Git repository at the tag recorded in `umbrella/values.yaml`. The installer verifies `baseline.json` and records the release version, baseline SHA-256, ordered profiles, profile checksums, and presence of custom value files in Helm values and a ConfigMap. Keep custom values in separate `-f` files; editing baseline inputs fails verification. Use `--dry-run` to render before applying.
+
+Direct Helm commands remain supported but do not record profile intent automatically. The read-only [console](console.md) shows those installations as **Not recorded** rather than guessing.
 
 ## Ready
 
@@ -46,4 +46,4 @@ The second command prints `no Registry1 images` when the install matches this ed
 
 The engine repo has `hack/k3d-up.sh` for a local smoke cluster. It uses `rancher/k3s:v1.36.4-k3s1`, turns Traefik off, and publishes the gateway on host ports 8080 and 8443 because 80 and 443 are often already taken. On that cluster, k3s already runs metrics-server, so the script turns the Big Bang metrics-server addon off.
 
-That script replaces a cluster named `genesis`. It is the smoke path. The commands above are the install.
+That script uses or creates a cluster named `genesis`, reapplies the stack, and replaces its local Git mirror. It is the smoke path. The commands above are the install.

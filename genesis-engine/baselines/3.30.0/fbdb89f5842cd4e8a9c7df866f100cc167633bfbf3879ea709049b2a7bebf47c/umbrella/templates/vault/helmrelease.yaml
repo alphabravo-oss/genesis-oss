@@ -1,0 +1,39 @@
+{{- $fluxSettingsVault := merge .Values.addons.vault.flux .Values.flux -}}
+
+{{- if .Values.addons.vault.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: vault
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: vault
+    app.kubernetes.io/component: "security-tools"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/vault/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: vault
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "vault" "package" .Values.addons.vault "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsVault | nindent 2 }}
+  
+  {{- if .Values.addons.vault.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.vault.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "vault" "root" .) | nindent 2 }}
+
+  {{- if or $istioEnabled (dig "values" "minio" "enabled" false .Values.addons.vault ) }}
+  dependsOn:
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+
+    {{- if (dig "values" "minio" "enabled" false .Values.addons.vault) }}
+    - name: minio-operator
+      namespace: {{ $.Release.Namespace }}      
+    {{- end }}
+  {{- end }}
+{{- end }}

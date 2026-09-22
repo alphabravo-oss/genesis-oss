@@ -1,0 +1,3 @@
+{{- if .Values.prometheusOperatorCRDs.enabled }}
+{{- include "bigbang.namespace" (dict "root" . "name" "monitoring" "appName" "monitoring" "component" "core" "package" .Values.prometheusOperatorCRDs) }}
+{{- end }}

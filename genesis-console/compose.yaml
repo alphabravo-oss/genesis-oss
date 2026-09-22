@@ -1,0 +1,49 @@
+name: genesis-console
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: genesis_console
+      POSTGRES_USER: genesis
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes: [postgres:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U genesis -d genesis_console']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  console:
+    image: genesis-console:local
+    build:
+      context: ..
+      dockerfile: genesis-console/Dockerfile
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      GENESIS_AUTH_USERNAME: admin
+      GENESIS_AUTH_PASSWORD_FILE: /run/secrets/console_password
+      GENESIS_NAMESPACE: ${GENESIS_NAMESPACE:-bigbang}
+      GENESIS_RELEASE: ${GENESIS_RELEASE:-bigbang}
+    ports: ['127.0.0.1:${GENESIS_PORT:-8090}:8080']
+    secrets: [database_url, console_password]
+    volumes: [scan-cache:/var/cache/genesis]
+    tmpfs: ['/tmp:size=256m,mode=1777']
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 20s
+secrets:
+  postgres_password:
+    file: .local/postgres-password
+  database_url:
+    file: .local/database-url
+  console_password:
+    file: .local/console-password
+volumes:
+  postgres:
+  scan-cache:

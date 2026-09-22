@@ -1,0 +1,3 @@
+{{- if .Values.fluentbit.enabled }}
+{{- include "bigbang.namespace" (dict "root" . "name" "fluentbit" "appName" "fluentbit" "component" "core" "package" .Values.fluentbit) }}
+{{- end }}

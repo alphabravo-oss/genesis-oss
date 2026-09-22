@@ -1,0 +1,369 @@
+{{- if .Values.addons.anchoreEnterprise.enabled }}
+{{- /* Create a cleaned copy of anchore config and merge deprecated paths into current paths */ -}}
+{{- $anchorePackage := deepCopy .Values.addons.anchoreEnterprise -}}
+{{- if .Values.addons.anchoreEnterprise.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.anchoreEnterprise.values) | fromYaml -}}
+{{- $anchorePackage = set $anchorePackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict "root" $ "package" $anchorePackage "name" "anchore-enterprise" "defaults" (include "bigbang.defaults.anchoreEnterprise" .)) }}
+{{- end }}
+
+{{- define "bigbang.defaults.anchoreEnterprise" -}}
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.anchoreEnterprise.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $externalRedisEnabled := and .Values.addons.anchoreEnterprise.redis.host .Values.addons.anchoreEnterprise.redis.port .Values.addons.anchoreEnterprise.redis.password "true" }}
+{{- $externalPostgresEnabled := and .Values.addons.anchoreEnterprise.database.host .Values.addons.anchoreEnterprise.database.port .Values.addons.anchoreEnterprise.database.username .Values.addons.anchoreEnterprise.database.password .Values.addons.anchoreEnterprise.database.database "true" }}
+domain: {{ $domainName }}
+
+openshift: {{ .Values.openshift }}
+
+monitoring:
+  enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+  {{- if eq (include "metricsSidecarMtls" (list .Values.addons.anchoreEnterprise .)) "true" }}
+  serviceMonitor:
+    scheme: "https"
+    tlsConfig:
+      caFile: /etc/prom-certs/root-cert.pem
+      certFile: /etc/prom-certs/cert-chain.pem
+      keyFile: /etc/prom-certs/key.pem
+      insecureSkipVerify: true
+  {{- end }}
+
+routes:
+  inbound:
+    anchore-api:
+      enabled: true
+      selector:
+        app.kubernetes.io/component: api
+      gateways:
+        - {{ include "getGatewayName" (dict "gateway" .Values.addons.anchoreEnterprise.ingress.gateway "root" .)}}
+      hosts:
+        - anchore-api.{{ $domainName }}
+      http:
+        # Disable ability to hit metrics on virtual service
+        - match:
+            - uri:
+                prefix: /metrics
+          route:
+            - destination:
+                host: anchore-enterprise-anchore-enterprise-api.anchore.svc.cluster.local
+                port:
+                  number: 8228
+          fault:
+            abort:
+              percentage:
+                value: 100
+              httpStatus: 403
+        # Default route for everything else
+        - match:
+            - uri:
+                prefix: /
+          route:
+            - destination:
+                host: anchore-enterprise-anchore-enterprise-api.anchore.svc.cluster.local
+                port:
+                  number: 8228
+    anchore-ui:
+      enabled: true
+      selector:
+        app.kubernetes.io/component: ui
+      gateways:
+        - {{ include "getGatewayName" (dict "gateway" .Values.addons.anchoreEnterprise.ingress.gateway "root" .)}}
+      hosts:
+        - anchore.{{ $domainName }}
+      service: anchore-enterprise-anchore-enterprise-ui.anchore.svc.cluster.local
+      port: 3000
+  outbound:
+    anchore-data-service:
+      enabled: true
+      hosts:
+      - data.anchore-enterprise.com
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.anchoreEnterprise.values }}
+      hosts:
+      - 'repo1.dso.mil'
+      - 'auth.docker.io'
+      - 'registry-1.docker.io'
+      - 'index.docker.io'
+      - 'production.cloudflare.docker.com'
+      - 'production.cloudfront.docker.com'
+      - 'docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com' # https://docs.docker.com/desktop/setup/allow-list/
+
+istio:
+  enabled: {{ $istioEnabled }}
+  hardened:
+    enabled: {{ $istioHardenedEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.anchoreEnterprise.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.anchoreEnterprise.values .) }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress:
+    definitions: 
+      {{ toYaml .Values.networkPolicies.ingress.definitions | nindent 6 }}
+    to:
+      catalog:8082:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: catalog
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      simplequeue:8083:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: simplequeue
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      analyzer:8084:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: analyzer
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      policy:8087:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: policyengine
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      api:8228:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: api
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      reports:8558:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: reports
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      notifications:8668:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: notifications
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+      ui-redis:9121:
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ and (dig "alloyMetrics" "enabled" false .Values.alloy) (not $externalRedisEnabled) }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ and .Values.monitoring.enabled (not $externalRedisEnabled) }}
+  egress:
+    definitions:
+      {{ toYaml .Values.networkPolicies.egress.definitions | nindent 6 }}
+    from:
+      "*":
+        to:
+          k8s:
+            tempo/tempo:9411: {{ and .Values.tempo.enabled (ne (include "ambientEnabled" .) "true") }}
+          definition:
+            database-subnets: {{ $externalPostgresEnabled }}
+      api:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: api
+        to:
+          definition:
+            redis-subnets: {{ $externalRedisEnabled }}
+      configure-sso:
+        podSelector:
+          matchLabels:
+            batch.kubernetes.io/job-name: configure-sso
+        to:
+          definition:
+            sso: 
+              enabled: {{ .Values.addons.anchoreEnterprise.sso.enabled }}
+              metadata:
+                annotations:
+                  helm.sh/hook: post-install,post-upgrade
+                  helm.sh/hook-weight: "-10"
+                  helm.sh/hook-delete-policy: hook-succeeded,hook-failed,before-hook-creation
+      ui:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/component: ui
+        to:
+          definition:
+            redis-subnets: {{ $externalRedisEnabled }}
+  additionalPolicies: []
+
+bbtests:
+  enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
+  scripts:
+    envs:
+      ANCHORE_CLI_URL: {{ printf "https://anchore-api.%s/v1" $domainName | quote }}
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://anchore.%s" $domainName | quote }}
+
+sso:
+  enabled: {{ .Values.addons.anchoreEnterprise.sso.enabled }}
+  spEntityId: {{ .Values.addons.anchoreEnterprise.sso.client_id }}
+  {{- $anchoreUrl := first (dig "istio" "ui" "hosts" list .Values.addons.anchoreEnterprise.values) }}
+  acsUrl: https://{{ tpl ($anchoreUrl | default (printf "%s.%s" "anchore" $domainName)) . }}/service/sso/auth/keycloak
+  idpMetadataUrl: "{{ include "sso.saml.descriptor" . }}"
+  {{- if .Values.sso.saml.metadata }}
+  idpMetadataXml: |
+    {{ .Values.sso.saml.metadata | nindent 4 }}
+  {{- end }}
+  roleAttribute: {{ .Values.addons.anchoreEnterprise.sso.role_attribute }}
+
+global:
+  {{- include "secretsImagePullSecrets" . | nindent 2 }}
+
+imagePullPolicy: {{ .Values.imagePullPolicy }}
+
+postgresql:
+  {{- if $externalPostgresEnabled }}
+  enabled: false
+  {{- else }}
+  enabled: true
+  auth:
+    enablePostgresUser: true
+  {{- if $istioEnabled }}
+  primary:
+    annotations:
+      {{- include "istioAnnotation" . | nindent 6 }}
+  readReplicas:
+    annotations:
+      {{- include "istioAnnotation" . | nindent 6 }}
+  {{- end }}
+  {{- end }}
+
+upstream:
+  setServiceAppProtocol: {{ $istioEnabled }}
+  imagePullPolicy: {{ .Values.imagePullPolicy }}
+  # imagePullSecretName used for main enterprise charts and some bignbang templates
+  {{- if ( include "imagePullSecret" . ) }}
+  imagePullSecretName: private-registry
+  {{- else }}
+  imagePullSecretName: ""
+  {{- end }}
+  {{- if .Values.addons.anchoreEnterprise.enterprise.licenseYaml }}
+  license: 
+    {{- .Values.addons.anchoreEnterprise.enterprise.licenseYaml | trim | nindent 4 }}
+  {{- end }}
+  {{- if .Values.addons.anchoreEnterprise.adminPassword }}
+  anchoreConfig:
+    default_admin_password: {{ .Values.addons.anchoreEnterprise.adminPassword }}
+  {{- end }}
+  feeds:
+    istio:
+      enabled: {{ $istioEnabled }}
+      injection: {{ ternary "enabled" "disabled" (and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.addons.anchoreEnterprise) "enabled")) }}
+
+  {{- if $externalPostgresEnabled }}
+  postgresql:
+    auth:
+      username: {{ .Values.addons.anchoreEnterprise.database.username }}
+      password: {{ .Values.addons.anchoreEnterprise.database.password }}
+      database: {{ .Values.addons.anchoreEnterprise.database.database }}
+    externalEndpoint: "{{ .Values.addons.anchoreEnterprise.database.host }}"
+    primary:
+      service:
+        ports:
+          postgresql: {{ .Values.addons.anchoreEnterprise.database.port }}
+    {{- end }}
+
+  # This entire section can be removed once istio sidecar is no longer supported
+  # Temporary workaround for https://repo1.dso.mil/big-bang/product/packages/anchore-enterprise/-/work_items/283
+  reports:
+    annotations:
+    {{- with dig "upstream" "reports" "annotations" dict .Values.addons.anchoreEnterprise.values }}
+      {{ toYaml . | nindent 6}}
+    {{- end }}
+    {{- if eq (include "ambientEnabled" .) "false" }}
+      traffic.sidecar.istio.io/excludeInboundPorts: "8558"
+    {{- end }}
+
+  # This entire section can be removed once istio sidecar is no longer supported
+  # Temporary workaround for https://repo1.dso.mil/big-bang/product/packages/anchore-enterprise/-/work_items/283
+  api:
+    annotations:
+    {{- with dig "upstream" "api" "annotations" dict .Values.addons.anchoreEnterprise.values }}
+      {{ toYaml . | nindent 6}}
+    {{- end }}
+    {{- if eq (include "ambientEnabled" .) "false" }}
+      traffic.sidecar.istio.io/excludeOutboundPorts: "8558"
+    {{- end }}
+
+  ui:
+    imagePullPolicy: {{ .Values.imagePullPolicy }}
+    {{- if ( include "imagePullSecret" . ) }}
+    imagePullSecretName: private-registry
+    {{- else }}
+    imagePullSecretName: ""
+    {{- end }}
+
+ui-redis:
+  {{- if $externalRedisEnabled }}
+  # We are using an external redis url
+  externalEndpoint: "redis://{{ .Values.addons.anchoreEnterprise.redis.username | default "nouser" }}:{{ .Values.addons.anchoreEnterprise.redis.password }}@{{ .Values.addons.anchoreEnterprise.redis.host }}:{{ .Values.addons.anchoreEnterprise.redis.port }}"
+  upstream:
+    enabled: false
+  {{- else }}
+  # We are using an internal,dev redis url
+  upstream:
+    {{- if $istioEnabled }}
+    master:
+      podAnnotations:
+        {{ include "istioAnnotation" . }}
+    replica:
+      podAnnotations:
+        {{ include "istioAnnotation" . }}
+    {{- end }}
+    image:
+      {{- include "secretsPullSecrets" . | nindent 6 }}
+    {{- if eq (include "metricScrapingEnabled" .) "true" }}
+    metrics:
+      enabled: true
+      image:
+        {{- include "secretsPullSecrets" . | nindent 8 }}
+      serviceMonitor:
+        enabled: true
+        namespace: anchore
+        selector:
+          app.kubernetes.io/name: ui-redis
+          app.kubernetes.io/instance: anchore-enterprise
+        {{- if eq (include "metricsSidecarMtls" (list .Values.addons.anchoreEnterprise .)) "true" }}
+        scheme: "https"
+        tlsConfig:
+          caFile: /etc/prom-certs/root-cert.pem
+          certFile: /etc/prom-certs/cert-chain.pem
+          keyFile: /etc/prom-certs/key.pem
+          insecureSkipVerify: true
+        {{- end }}
+      prometheusRule:
+        enabled: true
+        namespace: monitoring
+    {{- end }}
+  {{- end }}
+
+{{- end }}

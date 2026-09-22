@@ -1,0 +1,28 @@
+{{- $pkg := "kyvernoPolicies" }}
+{{- $fluxSettings := merge .Values.kyvernoPolicies.flux .Values.flux -}}
+{{- if (get .Values $pkg).enabled }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $pkg | kebabcase }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $pkg | kebabcase }}
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/kyverno-policies/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: kyverno
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "kyverno-policies" "package" (get .Values $pkg) "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettings | nindent 2 }}
+
+  {{- if (get .Values $pkg).postRenderers }}
+  postRenderers:
+  {{ toYaml (get .Values $pkg).postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "kyverno-policies" "root" .) | nindent 2 }}
+  dependsOn:
+    - name: kyverno
+      namespace: {{ .Release.Namespace }}
+{{- end }}

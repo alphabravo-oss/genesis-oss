@@ -1,0 +1,235 @@
+{{- define "bigbang.gitlab.externalObjectStorageConfigured" -}}
+{{- $configured := or (not (empty .Values.addons.gitlab.objectStorage.region)) (not (empty .Values.addons.gitlab.objectStorage.endpoint)) -}}
+{{- $gitlabValues := .Values.addons.gitlab.values | default dict -}}
+{{- $gitlabGlobalValues := dict -}}
+{{- if kindIs "map" $gitlabValues -}}
+  {{- $gitlabGlobalValues = (get $gitlabValues "global") | default dict -}}
+{{- end -}}
+{{- if kindIs "map" $gitlabGlobalValues -}}
+  {{- $gitlabAppConfigValues := (get $gitlabGlobalValues "appConfig") | default dict -}}
+  {{- if kindIs "map" $gitlabAppConfigValues -}}
+    {{- $gitlabObjectStoreValues := (get $gitlabAppConfigValues "object_store") | default dict -}}
+    {{- if kindIs "map" $gitlabObjectStoreValues -}}
+      {{- $configured = or $configured (dig "enabled" false $gitlabObjectStoreValues) -}}
+    {{- end -}}
+    {{- range $storeName := list "lfs" "artifacts" "uploads" "packages" "externalDiffs" "terraformState" "ciSecureFiles" "agentPlanContent" "dependencyProxy" -}}
+      {{- $storeValues := (get $gitlabAppConfigValues $storeName) | default dict -}}
+      {{- if kindIs "map" $storeValues -}}
+        {{- $connectionValues := (get $storeValues "connection") | default dict -}}
+        {{- if kindIs "map" $connectionValues -}}
+          {{- $configured = or $configured (not (empty $connectionValues)) -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $configured -}}
+{{- end }}
+
+{{- define "bigbang.gitlab.externalRedisConfigured" -}}
+{{- $configured := false -}}
+{{- $gitlabValues := .Values.addons.gitlab.values | default dict -}}
+{{- $gitlabGlobalValues := dict -}}
+{{- if kindIs "map" $gitlabValues -}}
+  {{- $gitlabGlobalValues = (get $gitlabValues "global") | default dict -}}
+{{- end -}}
+{{- if kindIs "map" $gitlabGlobalValues -}}
+  {{- $gitlabRedisValues := (get $gitlabGlobalValues "redis") | default dict -}}
+  {{- if kindIs "map" $gitlabRedisValues -}}
+    {{- $configured = or
+      (not (empty (get $gitlabRedisValues "host")))
+      (not (empty (get $gitlabRedisValues "redisYmlOverride"))) -}}
+  {{- end -}}
+{{- end -}}
+{{- $configured -}}
+{{- end }}
+
+{{- define "bigbang.gitlab.externalPostgresConfigured" -}}
+{{- $configured := not (empty .Values.addons.gitlab.database.host) -}}
+{{- $gitlabValues := .Values.addons.gitlab.values | default dict -}}
+{{- $gitlabGlobalValues := dict -}}
+{{- if kindIs "map" $gitlabValues -}}
+  {{- $gitlabGlobalValues = (get $gitlabValues "global") | default dict -}}
+{{- end -}}
+{{- if kindIs "map" $gitlabGlobalValues -}}
+  {{- $gitlabPsqlValues := (get $gitlabGlobalValues "psql") | default dict -}}
+  {{- if kindIs "map" $gitlabPsqlValues -}}
+    {{- $configured = or $configured (not (empty (get $gitlabPsqlValues "host"))) -}}
+    {{- $gitlabMainPsqlValues := (get $gitlabPsqlValues "main") | default dict -}}
+    {{- if kindIs "map" $gitlabMainPsqlValues -}}
+      {{- $configured = or $configured (not (empty (get $gitlabMainPsqlValues "host"))) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $configured -}}
+{{- end }}
+
+{{- define "bigbang.gitlab.bb-common-migrations" }}
+{{/* TODO: Remove this migration template for bb 4.0 */}}
+routes:
+  inbound:
+    gitlab:
+      enabled: {{ dig "istio" "gitlab" "enabled" true .Values.addons.gitlab.values }}
+      gateways:
+      - {{ include "getGatewayName" (dict "gateway" (.Values.addons.gitlab.ingress.gateway | default "public") "root" .)}}
+      {{- $gitlabHosts := dig "istio" "gitlab" "hosts" list .Values.addons.gitlab.values }}
+      {{- if $gitlabHosts }}
+      hosts:
+      {{- range $gitlabHosts }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- else }}
+      hosts:
+      - "{{ .Values.addons.gitlab.hostnames.gitlab }}.{{ .Values.domain }}"
+      {{- end }}
+    registry:
+      enabled: {{ dig "istio" "registry" "enabled" true .Values.addons.gitlab.values }}
+      gateways:
+      - {{ include "getGatewayName" (dict "gateway" (.Values.addons.gitlab.ingress.gateway | default "public") "root" .)}}
+      {{- $registryHosts := dig "istio" "registry" "hosts" list .Values.addons.gitlab.values }}
+      {{- if $registryHosts }}
+      hosts:
+      {{- range $registryHosts }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- else }}
+      hosts:
+      - "{{ .Values.addons.gitlab.hostnames.registry }}.{{ .Values.domain }}"
+      {{- end }}
+    {{- if (dig "global" "kas" "enabled" false .Values.addons.gitlab.values) }}
+    kas:
+      enabled: {{ dig "global" "kas" "enabled" true .Values.addons.gitlab.values }}
+      gateways:
+      - {{ include "getGatewayName" (dict "gateway" (.Values.addons.gitlab.ingress.gateway | default "public") "root" .)}}
+      {{- $kasHosts := dig "istio" "kas" "hosts" list .Values.addons.gitlab.values }}
+      {{- if $kasHosts }}
+      hosts:
+      {{- range $kasHosts }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- else }}
+      hosts:
+      - kas.{{ .Values.domain }}
+      {{- end }}
+    {{- end }}
+    pages:
+      enabled: {{ dig "istio" "pages" "enabled" false .Values.addons.gitlab.values }}
+      {{- $pagesGateways := dig "istio" "pages" "gateways" list .Values.addons.gitlab.values }}
+      {{- if $pagesGateways }}
+      gateways:
+      {{- range $pagesGateways }}
+      - {{ . }}
+      {{- end }}
+      {{- end }}
+      {{- $pagesHosts := dig "istio" "pages" "hosts" list .Values.addons.gitlab.values }}
+      {{- if $pagesHosts }}
+      hosts:
+      {{- range $pagesHosts }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- end }}
+  outbound:
+    sso:
+      enabled: {{ or .Values.addons.gitlab.sso.enabled (dig "sso" "enabled" false .Values.addons.gitlab.values) }}
+      hosts:
+      - {{ coalesce (dig "sso" "host" nil .Values.addons.gitlab.values) (include "sso.host" .) }}
+
+{{- $gitlabGlobalValues := (get .Values.addons.gitlab.values "global") | default dict }}
+{{- $gitlabUpstreamValues := (get .Values.addons.gitlab.values "upstream") | default dict }}
+{{- $externalObjectStorageConfigured := eq (include "bigbang.gitlab.externalObjectStorageConfigured" .) "true" }}
+{{- $externalPostgresConfigured := eq (include "bigbang.gitlab.externalPostgresConfigured" .) "true" }}
+{{- $minioEnabled := true }}
+{{- if hasKey $gitlabGlobalValues "minio" }}
+  {{- $gitlabMinioValues := get $gitlabGlobalValues "minio" }}
+  {{- if kindIs "map" $gitlabMinioValues }}
+    {{- $minioEnabled = dig "enabled" true $gitlabMinioValues }}
+  {{- else }}
+    {{- $minioEnabled = false }}
+  {{- end }}
+{{- end }}
+{{- $postgresEnabled := true }}
+{{- if hasKey $gitlabUpstreamValues "postgresql" }}
+  {{- $gitlabPostgresqlValues := get $gitlabUpstreamValues "postgresql" }}
+  {{- if kindIs "map" $gitlabPostgresqlValues }}
+    {{- $postgresEnabled = dig "install" true $gitlabPostgresqlValues }}
+  {{- else }}
+    {{- $postgresEnabled = false }}
+  {{- end }}
+{{- end }}
+{{- if $externalObjectStorageConfigured }}
+  {{- $minioEnabled = false }}
+{{- end }}
+{{- if $externalPostgresConfigured }}
+  {{- $postgresEnabled = false }}
+{{- end }}
+{{- $iamProfileUsed := dig "use_iam_profile" false .Values.addons.gitlab.values }}
+{{- $iamProfileUsed = not (empty .Values.addons.gitlab.objectStorage.iamProfile) | or $iamProfileUsed }}
+networkPolicies:
+  egress:
+    {{- if empty .Values.networkPolicies.egress.definitions.kubeAPI }}
+    definitions:
+      kubeAPI:
+        to:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicies.controlPlaneCidr }}
+            {{- if eq .Values.networkPolicies.controlPlaneCidr "0.0.0.0/0" }}
+            except:
+            - 169.254.169.254/32
+            {{- end }}
+        {{- if not (eq .Values.networkPolicies.controlPlaneCidr .Values.networkPolicies.vpcCidr) }}
+        {{- if not (eq .Values.networkPolicies.vpcCidr "0.0.0.0/0") }}
+        - ipBlock:
+            cidr: {{ .Values.networkPolicies.vpcCidr }}
+        {{- end }}
+        {{- end }}
+    {{- end }}
+    from:
+      gitaly:
+        to:
+          cidr:
+            0.0.0.0/0:443: {{ dig "networkPolicies" "gitalyEgress" "enabled" false .Values.addons.gitlab.values }}
+      migrations:
+        to:
+          cidr:
+            169.254.169.254/32: {{ $iamProfileUsed }}
+          definition:
+            storage-subnets: {{ not $minioEnabled }}
+            database-subnets: {{ not $postgresEnabled }}
+      registry:
+        to:
+          cidr:
+            169.254.169.254/32: {{ $iamProfileUsed }}
+          definition:
+            storage-subnets: {{ not $minioEnabled }}
+            database-subnets: {{ not $postgresEnabled }}
+      webservice:
+        to:
+          cidr:
+            169.254.169.254/32: {{ $iamProfileUsed }}
+          definition:
+            storage-subnets: {{ not $minioEnabled }}
+            database-subnets: {{ not $postgresEnabled }}
+      toolbox:
+        to:
+          cidr:
+            169.254.169.254/32: {{ $iamProfileUsed }}
+          definition:
+            storage-subnets: {{ not $minioEnabled }}
+            database-subnets: {{ not $postgresEnabled }}
+      sidekiq:
+        to:
+          cidr:
+            169.254.169.254/32: {{ $iamProfileUsed }}
+          definition:
+            storage-subnets: {{ not $minioEnabled }}
+            database-subnets: {{ not $postgresEnabled }}
+      {{- if eq (include "metricScrapingEnabled" .) "true" }}
+      gitlab-exporter:
+        podSelector:
+          matchLabels:
+            app: gitlab-exporter
+        to:
+          definition:
+            database-subnets: {{ not $postgresEnabled }}
+      {{- end }}
+{{- end }}

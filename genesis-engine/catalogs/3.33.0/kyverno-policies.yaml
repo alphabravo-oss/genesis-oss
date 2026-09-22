@@ -1,0 +1,74 @@
+# Kyverno policies in kyverno-policies 3.3.4-bb.87 that constrain
+# user, filesystem, capabilities, or privilege.
+# Source: chart/values.yaml policies.*.enabled. celPoliciesBeta are all disabled.
+source:
+  package: kyverno-policies
+  tag: 3.3.4-bb.87
+  chartValues: policies
+  defaultAction: the policy's own validationFailureAction
+
+user:
+  - name: require-non-root-user
+    action: Enforce
+    constraint: runAsNonRoot true, or runAsUser greater than 0, on the pod or the container
+  - name: require-non-root-group
+    action: Enforce
+    constraint: runAsGroup greater than 0
+  - name: add-default-securitycontext
+    action: Enforce
+    kind: mutate
+    constraint: if unset, set runAsNonRoot true, runAsUser 65534, runAsGroup 65534, fsGroup 65534
+
+filesystem:
+  - name: restrict-host-path-mount
+    action: Enforce
+    constraint: hostPath volumes only on the allowed path list
+  - name: restrict-host-path-mount-pv
+    action: Enforce
+    constraint: hostPath persistent volumes only on the allowed path list
+  - name: restrict-host-path-write
+    action: Enforce
+    constraint: writable hostPath mounts only on the allowed path list. The allow list is empty.
+
+capabilities:
+  - name: require-drop-all-capabilities
+    action: Enforce
+    constraint: every container sets capabilities.drop to ALL
+  - name: add-default-capability-drop
+    action: Enforce
+    kind: mutate
+    constraint: if unset, set capabilities.drop to ALL
+  - name: restrict-capabilities
+    action: Enforce
+    constraint: added capabilities may only be NET_BIND_SERVICE. The umbrella also allows NET_ADMIN and NET_RAW while Istio is enabled.
+
+privilege:
+  - name: disallow-privileged-containers
+    action: Enforce
+    constraint: privileged must not be true
+  - name: disallow-privilege-escalation
+    action: Enforce
+    constraint: allowPrivilegeEscalation must not be true
+  - name: disallow-host-namespaces
+    action: Enforce
+    constraint: hostNetwork, hostPID, and hostIPC must not be set
+
+notEnabled:
+  - name: require-ro-rootfs
+    category: filesystem
+    enabled: false
+    action: Audit
+  - name: restrict-user-id
+    category: user
+    enabled: false
+  - name: restrict-group-id
+    category: user
+    enabled: false
+
+alsoBlocksPublicRegistries:
+  - name: restrict-image-registries
+    action: Enforce
+    allow:
+      - registry1.dso.mil
+      - registry.dso.mil
+    note: Not a user, filesystem, capability, or privilege rule. It rejects every public registry the oss catalog uses.

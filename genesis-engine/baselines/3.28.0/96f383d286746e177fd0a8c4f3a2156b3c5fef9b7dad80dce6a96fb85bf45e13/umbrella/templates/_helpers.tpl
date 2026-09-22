@@ -1,0 +1,975 @@
+{{- define "values-bigbang" -}}
+{{- /*
+ * bigbang.values-bigbang: Produce a stripped version of the bigbang variables
+ * in the root namespace suitable for inclusion in wrapper or package variables definitions
+ */ -}}
+{{ toYaml (pick $ "domain" "openshift") }}
+{{- /* For every top level map, if it has the enable key, pass it through. */ -}}
+{{- range $bbpkg, $bbvals := $ -}}
+  {{- if kindIs "map" $bbvals -}}
+    {{- if hasKey $bbvals "enabled" }}
+{{ $bbpkg }}:
+      {{- /* For network policies, we need all of its values. */ -}}
+      {{- if eq $bbpkg "networkPolicies" -}}
+        {{- toYaml $bbvals | nindent 2}}
+      {{- else }}
+  enabled: {{ $bbvals.enabled }}
+      {{- end -}}
+    {{- /* For addons, pass through the enable key. */ -}}
+    {{- else if eq $bbpkg "addons" }}
+{{ $bbpkg }}:
+      {{- range $addpkg, $addvals := $bbvals -}}
+        {{- if hasKey $addvals "enabled" }}
+  {{ $addpkg }}:
+    enabled: {{ $addvals.enabled }}
+          {{- /* For authservice, the selector values are needed. */ -}}
+          {{- if and (eq $addpkg "authservice") (or (dig "values" "selector" "key" false $addvals) (dig "values" "selector" "value" false $addvals)) }}
+    values:
+      selector:
+              {{- if (dig "values" "selector" "key" false $addvals) }}
+        key: {{ $addvals.values.selector.key }}
+              {{- end -}}
+              {{- if (dig "values" "selector" "value" false $addvals) }}
+        value: {{ $addvals.values.selector.key }}
+              {{- end -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- end }}
+
+{{- define "imagePullSecret" }}
+  {{- if .Values.registryCredentials -}}
+    {{- $credType := typeOf .Values.registryCredentials -}}
+          {{- /* If we have a list, embed that here directly. This allows for complex configuration from configmap, downward API, etc. */ -}}
+    {{- if eq $credType "[]interface {}" -}}
+    {{- include "multipleCreds" . | b64enc }}
+    {{- else if eq $credType "map[string]interface {}" }}
+      {{- /* If we have a map, treat those as key-value pairs. */ -}}
+      {{- if and .Values.registryCredentials.username .Values.registryCredentials.password }}
+      {{- with .Values.registryCredentials }}
+      {{- printf "{\"auths\":{\"%s\":{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\",\"auth\":\"%s\"}}}" (default "registry1.dso.mil" .registry) .username .password (default "" .email) (printf "%s:%s" .username .password | b64enc) | b64enc }}
+      {{- end }}
+      {{- end }}
+    {{- end -}}
+  {{- end }}
+{{- end }}
+
+{{- define "multipleCreds" -}}
+{
+  "auths": {
+    {{- range $i, $m := .Values.registryCredentials }}
+    {{- /* Only create entry if resulting entry is valid */}}
+    {{- if and $m.registry $m.username $m.password }}
+    {{- if $i }},{{ end }}
+    "{{ $m.registry }}": {
+      "username": "{{ $m.username }}",
+      "password": "{{ $m.password }}",
+      "email": "{{ $m.email | default "" }}",
+      "auth": "{{ printf "%s:%s" $m.username $m.password | b64enc }}"
+    }
+    {{- end }}
+    {{- end }}
+  }
+}
+{{- end }}
+
+{{- define "secretsImagePullSecretsSingle" -}}
+{{- if ( include "imagePullSecret" . ) }}
+imagePullSecrets: private-registry
+{{- else }}
+imagePullSecrets: []
+{{- end }}
+{{- end }}
+
+{{- define "secretsImagePullSecretWithName" -}}
+{{- if ( include "imagePullSecret" . ) }}
+imagePullSecret: 
+  name: private-registry
+{{- else }}
+imagePullSecret:
+  name: ""
+{{- end }}
+{{- end }}
+
+{{- define "secretsImagePullSecretsWithName" -}}
+{{- if ( include "imagePullSecret" . ) }}
+imagePullSecrets: 
+  - name: private-registry
+{{- else }}
+imagePullSecrets: []
+{{- end }}
+{{- end }}
+
+{{- define "secretsImagePullSecrets" -}}
+{{- if ( include "imagePullSecret" . ) }}
+imagePullSecrets: 
+  - private-registry
+{{- else }}
+imagePullSecrets: []
+{{- end }}
+{{- end }}
+
+{{- define "secretsPullSecretsWithName" -}}
+{{- if ( include "imagePullSecret" . ) }}
+pullSecrets: 
+  - name: private-registry
+{{- else }}
+pullSecrets: []
+{{- end }}
+{{- end }}
+
+{{- define "secretsPullSecrets" -}}
+{{- if ( include "imagePullSecret" . ) }}
+pullSecrets: 
+  - private-registry
+{{- else }}
+pullSecrets: []
+{{- end }}
+{{- end }}
+
+{{- define "secretsPullSecret" -}}
+{{- if ( include "imagePullSecret" . ) }}
+pullSecret: private-registry
+{{- else }}
+pullSecret: ""
+{{- end }}
+{{- end }}
+
+{{- define "secretsPullSecretsSingle" -}}
+{{- if ( include "imagePullSecret" . ) }}
+pullSecrets: private-registry
+{{- else }}
+pullSecrets: ""
+{{- end }}
+{{- end }}
+
+{{/*
+Build the appropriate spec.ref.{} given git branch, commit values
+*/}}
+{{- define "validRef" -}}
+{{- if .commit -}}
+{{- if not .branch -}}
+{{- fail "A valid branch is required when a commit is specified!" -}}
+{{- end -}}
+branch: {{ .branch | quote }}
+commit: {{ .commit }}
+{{- else if .semver -}}
+semver: {{ .semver | quote }}
+{{- else if .tag -}}
+tag: {{ .tag }}
+{{- else -}}
+branch: {{ .branch | quote }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Build the appropriate git credentials secret for BB wide git repositories
+*/}}
+{{- define "gitCredsGlobal" -}}
+{{- if .Values.git.existingSecret -}}
+secretRef:
+  name: {{ .Values.git.existingSecret }}
+{{- else if coalesce .Values.git.credentials.username .Values.git.credentials.password .Values.git.credentials.caFile .Values.git.credentials.privateKey .Values.git.credentials.publicKey .Values.git.credentials.knownHosts "" -}}
+{{- /* Input validation happens in git-credentials.yaml template */ -}}
+secretRef:
+  name: {{ $.Release.Name }}-git-credentials
+{{- end -}}
+{{- end -}}
+
+{{/*
+Build the appropriate git credentials secret for individual package and BB wide private git repositories
+*/}}
+{{- define "gitCredsExtended" -}}
+{{- if .packageGitScope.existingSecret -}}
+secretRef:
+  name: {{ .packageGitScope.existingSecret }}
+{{- else if and (.packageGitScope.credentials) (coalesce .packageGitScope.credentials.username .packageGitScope.credentials.password .packageGitScope.credentials.caFile .packageGitScope.credentials.privateKey .packageGitScope.credentials.publicKey .packageGitScope.credentials.knownHosts "") -}}
+{{- /* Input validation happens in git-credentials.yaml template */ -}}
+secretRef:
+  name: {{ .releaseName }}-{{ .name }}-git-credentials
+{{- else -}}
+{{/* If no credentials are specified, use the global credentials in the rootScope */}}
+{{- include "gitCredsGlobal" .rootScope }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Pointer to the appropriate git credentials template
+*/}}
+{{- define "gitCreds" -}}
+{{- include "gitCredsGlobal" . }}
+{{- end -}}
+
+{{/*
+Merge legacy istio.hardened keys into new structure
+Args:
+  - values: The package values to clean (e.g. .Values.kiali.values)
+
+This helper merges:
+  - istio.hardened.customServiceEntries -> istio.serviceEntries.custom
+  - istio.hardened.customAuthorizationPolicies -> istio.authorizationPolicies.custom
+
+Returns cleaned values with hardened key removed.
+*/}}
+{{- define "mergeLegacyIstioHardenedKeys" -}}
+{{- $values := .values -}}
+{{- if $values.istio -}}
+{{- $cleanedIstio := deepCopy $values.istio -}}
+
+{{- /* Merge hardened.customServiceEntries into serviceEntries.custom */ -}}
+{{- $hardenedServiceEntries := dig "hardened" "customServiceEntries" list $values.istio }}
+{{- $currentServiceEntries := dig "serviceEntries" "custom" list $values.istio }}
+{{- $mergedServiceEntries := concat $hardenedServiceEntries $currentServiceEntries }}
+{{- if $mergedServiceEntries }}
+{{- $_ := set $cleanedIstio "serviceEntries" (dict "custom" $mergedServiceEntries) }}
+{{- end }}
+
+{{- /* Merge hardened.customAuthorizationPolicies into authorizationPolicies.custom */ -}}
+{{- $hardenedAuthzPolicies := dig "hardened" "customAuthorizationPolicies" list $values.istio }}
+{{- $currentAuthzPolicies := dig "authorizationPolicies" "custom" list $values.istio }}
+{{- $mergedAuthzPolicies := concat $hardenedAuthzPolicies $currentAuthzPolicies }}
+{{- if $mergedAuthzPolicies }}
+{{- $_ := set $cleanedIstio "authorizationPolicies" (dict "custom" $mergedAuthzPolicies) }}
+{{- end }}
+
+{{- /* Remove deprecated hardened key */ -}}
+{{- $cleanedIstio = unset $cleanedIstio "hardened" -}}
+
+{{- $values = set $values "istio" $cleanedIstio -}}
+{{- end -}}
+{{- toYaml $values -}}
+{{- end -}}
+
+{{/*
+Shared GitRepository resource template.
+Args (dict):
+  - name: resource name (kebab-case, e.g. "kyverno-policies")
+  - gitCredsName: name for gitCredsExtended (e.g. "kyvernoPolicies")
+  - git: the .git values object (repo, branch, tag, semver, commit, credentials)
+  - component: app.kubernetes.io/component label value (optional)
+  - root: root context ($ or .)
+  - extraIgnore: additional gitignore lines appended after standard gitIgnore (optional)
+*/}}
+{{- define "bigbang.gitRepository" -}}
+{{- $gitCredsDict := dict
+  "name" .gitCredsName
+  "packageGitScope" .git
+  "rootScope" .root
+  "releaseName" .root.Release.Name
+}}
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: {{ .name }}
+  namespace: {{ .root.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    {{- if .component }}
+    app.kubernetes.io/component: {{ .component | quote }}
+    {{- end }}
+    {{- include "commonLabels" .root | nindent 4 }}
+spec:
+  interval: {{ .root.Values.flux.interval }}
+  url: {{ .git.repo }}
+  ref:
+    {{- include "validRef" .git | nindent 4 }}
+  {{ include "gitIgnore" .root }}
+  {{- if .extraIgnore }}
+    {{ .extraIgnore }}
+  {{- end }}
+  {{- include "gitCredsExtended" $gitCredsDict | nindent 2 }}
+{{- end -}}
+
+{{/*
+Build common set of file extensions to include/exclude
+*/}}
+{{- define "gitIgnore" -}}
+  ignore: |
+    # exclude file extensions
+    /**/*.md
+    /**/*.txt
+    /**/*.sh
+    !/chart/tests/scripts/*.sh
+    !/chart/wait/*.sh
+{{- end -}}
+
+{{/*
+Common labels for all objects
+*/}}
+{{- define "commonLabels" -}}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ default .Chart.Version .Chart.AppVersion | replace "+" "_" }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: "bigbang"
+helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+{{- end -}}
+
+{{- define "values-secret" -}}
+{{/* This is a workaround for passthrough charts */}}
+{{/* This is temporary and will be removed in a future release */}}
+{{ $origDefaults := default (dict) (fromYaml .defaults) }}
+{{- $defaults := deepCopy $origDefaults }}
+{{- if and (not .root.Values.disableAutomaticPassthroughValues) (not .package.disableAutomaticPassthroughValues) }}
+{{- $origUpstream := dig "upstream" (dict) $defaults -}}
+{{- $upstream := deepCopy $origDefaults }}
+{{- if $origUpstream }}
+{{- $upstream = mustMergeOverwrite (deepCopy $origDefaults) (deepCopy $origUpstream) }}
+{{- end -}}
+{{- $newDefaults := dict "upstream" $upstream }}
+{{- $defaults = mustMergeOverwrite (deepCopy $origDefaults) $newDefaults | toYaml }}
+{{- else }}
+{{ $defaults = $origDefaults | toYaml }}
+{{- end -}}
+{{/* This is the end of the workaround */}}
+{{- $packageValues := default dict .package.values -}}
+{{- $commonValues := mustMergeOverwrite (deepCopy $packageValues) (deepCopy ($defaults | fromYaml)) -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .root.Release.Name }}-{{ .name }}-values
+  namespace: {{ .root.Release.Namespace }}
+type: generic
+stringData:
+  common: |
+    {{- toYaml (pick $commonValues "bbtests" "istio" "networkPolicies" "sso" "waitJob") | nindent 4 }}
+  defaults: {{- toYaml $defaults | nindent 4 }}
+  overlays: |
+    {{- toYaml .package.values | nindent 4 }}
+{{- end -}}
+
+{{- define "enabledGateways" -}}
+  {{- $userGateways := deepCopy ($.Values.istioGateway.values.gateways | default dict) -}}
+  {{- $defaults := include "bigbang.defaults.istio-gateway" $ | fromYaml -}}
+
+  {{- $defaultImagePullConfig := dict
+    "imagePullPolicy" .Values.imagePullPolicy
+    "imagePullSecrets" (ternary (list (dict "name" "private-registry")) (list) (not (empty (include "imagePullSecret" $))))
+  -}}
+
+  {{- $enabledGateways := dict -}}
+  
+  {{- range $name, $mergedGW := merge $userGateways $defaults.gateways }}
+    {{- if and $name $mergedGW }}
+      {{- $gwType := dig "upstream" "labels" "istio" "" $mergedGW -}}
+      
+      {{- if not (has $gwType (list "ingressgateway" "egressgateway")) }}
+        {{- fail (printf "istio-gateway: Gateway '%s' does not have a valid type; upstream.labels.istio must be one of 'ingressgateway' or 'egressgateway'" $name) -}}
+      {{ end -}}
+      
+      {{- $gwRecord := dict -}}
+      {{- $gwRecord = set $gwRecord "serviceName" (printf "%s-%s" $name $gwType) -}}
+      {{- $gwRecord = set $gwRecord "type" $gwType -}}
+      
+      {{- $gwDefaults := get $defaults.gateways $name | default dict -}}
+      {{- /*
+        Give every gateway the same upstream.serviceAccount default that
+        `public` and `passthrough` get out of the box. bb-common assumes a
+        principal of '<gatewayName>-ingressgateway-service-account'
+        so making this the umbrella default for ALL gateways means
+        user-defined gateways behave the same as the built-in ones.
+        User overlays still win because they are applied
+        after `defaults` in the HelmRelease valuesFrom chain.
+      */ -}}
+      {{- $defaultSA := printf "%s-ingressgateway-service-account" $gwRecord.serviceName -}}
+      {{- $gwDefaults = merge $gwDefaults (dict "upstream" (dict "serviceAccount" (dict "create" true "name" $defaultSA))) -}}
+      {{- if $gwDefaults }}
+        {{- $gwRecord = set $gwRecord "defaults" $gwDefaults -}}
+      {{ end -}}
+      
+      {{- $gwOverlays := dig "gateways" $name dict $.Values.istioGateway.values -}}
+      {{- if $gwOverlays }}
+        {{- $gwRecord = set $gwRecord "overlays" (merge $gwOverlays (dict "upstream" $defaultImagePullConfig)) -}}
+      {{ end -}}
+      
+      {{- $enabledGateways = set $enabledGateways $name $gwRecord -}}
+    {{ end -}}
+  {{ end -}}
+  
+  {{- range $name, $gw := $.Values.istioGateway.values.gateways }}
+    {{- if kindIs "map" $gw }}
+      {{- if eq (len $gw) 0 }}
+        {{- $enabledGateways = unset $enabledGateways $name -}}
+      {{ end -}}
+    {{- else -}}
+      {{- $enabledGateways = unset $enabledGateways $name -}}
+    {{ end -}}
+  {{ end -}}
+  
+  {{ toYaml $enabledGateways }}
+{{- end -}}
+
+{{/*
+bigbang.addValueIfSet can be used to nil check parameters before adding them to the values.
+  Expects a list with the following params:
+    * [0] - (string) <yaml_key_to_add>
+    * [1] - (interface{}) <value_to_check>
+
+  No output is generated if <value> is undefined, however, explicitly set empty values
+  (i.e. `username=""`) will be passed along. All string fields will be quoted.
+
+  Example command:
+  - `{{ (list "name" .username) | include "bigbang.addValueIfSet" }}`
+    * When `username: Aniken`
+      -> `name: "Aniken"`
+    * When `username: ""`
+      -> `name: ""`
+    * When username is not defined
+      -> no output
+*/}}
+{{- define "bigbang.addValueIfSet" -}}
+  {{- $key := (index . 0) }}
+  {{- $value := (index . 1) }}
+  {{- /*If the value is explicitly set (even if it's empty)*/}}
+  {{- if not (kindIs "invalid" $value) }}
+    {{- /*Handle strings*/}}
+    {{- if kindIs "string" $value }}
+      {{- printf "\n%s" $key }}: {{ $value | quote }}
+    {{- /*Hanldle slices*/}}
+    {{- else if kindIs "slice" $value }}
+      {{- printf "\n%s" $key }}:
+        {{- range $value }}
+          {{- if kindIs "string" . }}
+            {{- printf "\n  - %s" (. | quote) }}
+          {{- else }}
+            {{- printf "\n  - %v" . }}
+          {{- end }}
+        {{- end }}
+    {{- /*Handle other types (no quotes)*/}}
+    {{- else }}
+      {{- printf "\n%s" $key }}: {{ $value }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{/*
+Annotation for Istio version
+*/}}
+{{- define "istioAnnotation" -}}
+{{- if (eq .Values.istiod.sourceType "git") -}}
+{{- if .Values.istiod.git.semver -}}
+bigbang.dev/istioVersion: {{ .Values.istiod.git.semver | trimSuffix (regexFind "-bb.*" .Values.istiod.git.semver) }}
+{{- else if .Values.istiod.git.tag -}}
+bigbang.dev/istioVersion: {{ .Values.istiod.git.tag | trimSuffix (regexFind "-bb.*" .Values.istiod.git.tag) }}
+{{- else if .Values.istiod.git.branch -}}
+bigbang.dev/istioVersion: {{ .Values.istiod.git.branch }}
+{{- end -}}
+{{- else -}}
+bigbang.dev/istioVersion: {{ .Values.istiod.helmRepo.tag }}
+{{- end -}}
+{{- end -}}
+
+{{- /* Helpers below this line are in support of the Big Bang extensibility feature */ -}}
+
+{{- /* Converts the string in . to a legal Kubernetes resource name */ -}}
+{{- define "resourceName" -}}
+  {{- regexReplaceAll "\\W+" . "-" | trimPrefix "-" | trunc 63 | trimSuffix "-" | kebabcase -}}
+{{- end -}}
+
+{{- /* Returns a space separated string of unique namespaces where `<package>.enabled` and key held in `.constraint` are true */ -}}
+{{- /* [Optional] Set `.constraint` to the key under <package> holding a boolean that must be true to be enabled */ -}}
+{{- /* [Optional] Set `.default` to `true` to enable a `true` result when the `constraint` key is not found */ -}}
+{{- /* To use: $ns := compact (splitList " " (include "uniqueNamespaces" (merge (dict "constraint" "some.boolean" "default" true) .))) */ -}}
+{{- define "uniqueNamespaces" -}}
+  {{- $namespaces := list -}}
+  {{- range $pkg, $vals := .Values.packages -}}
+    {{- if (dig "enabled" true $vals) -}}
+      {{- $constraint := $vals -}}
+      {{- range $key := split "." (default "" $.constraint) -}}
+        {{- $constraint = (dig $key dict $constraint) -}}
+      {{- end -}}
+      {{- if (ternary $constraint (default false $.default) (kindIs "bool" $constraint)) -}}
+        {{- $namespaces = append $namespaces (dig "namespace" "name" (include "resourceName" $pkg) $vals) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- join " " (uniq $namespaces) | trim -}}
+{{- end -}}
+
+{{- /* Prints istio version */ -}}
+{{- define "istioVersion" -}}
+  {{- regexReplaceAll "-bb.+$" (coalesce .Values.istiod.git.semver .Values.istiod.git.tag .Values.istiod.git.branch) "" -}}
+{{- end -}}
+
+{{- /* Returns an SSO host */ -}}
+{{- define "sso.host" -}}
+  {{- coalesce .Values.sso.oidc.host (regexReplaceAll ".*//([^/]*)/?.*" .Values.sso.url "${1}") -}}
+{{- end -}}
+
+{{- /* Returns an SSO realm */ -}}
+{{- define "sso.realm" -}}
+  {{- coalesce .Values.sso.oidc.realm (regexReplaceAll ".*/realms/([^/]*)" .Values.sso.url "${1}") (regexReplaceAll "\\W+" .Values.sso.name "") -}}
+{{- end -}}
+
+{{- /* Returns the SSO base URL */ -}}
+{{- define "sso.url" -}}
+  {{- if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "https://%s/auth/realms/%s" .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+  {{- else -}}
+    {{- tpl (default "" .Values.sso.url) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the SSO auth url (OIDC) */ -}}
+{{- define "sso.oidc.auth" -}}
+  {{- if .Values.sso.auth_url -}}
+    {{- tpl (default "" .Values.sso.auth_url) . -}}
+  {{- else if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "%s/protocol/openid-connect/auth" (include "sso.url" .) -}}
+  {{- else -}}
+    {{- tpl (dig "oidc" "authorization" (printf "%s/protocol/openid-connect/auth" (include "sso.url" .)) .Values.sso) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the SSO token url (OIDC) */ -}}
+{{- define "sso.oidc.token" -}}
+  {{- if .Values.sso.token_url -}}
+    {{- tpl (default "" .Values.sso.token_url) . -}}
+  {{- else if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "%s/protocol/openid-connect/token" (include "sso.url" .) -}}
+  {{- else -}}
+    {{- tpl (dig "oidc" "token" (printf "%s/protocol/openid-connect/token" (include "sso.url" .)) .Values.sso) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the SSO userinfo url (OIDC) */ -}}
+{{- define "sso.oidc.userinfo" -}}
+  {{- if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "%s/protocol/openid-connect/userinfo" (include "sso.url" .) -}}
+  {{- else -}}
+    {{- tpl (dig "oidc" "userinfo" (printf "%s/protocol/openid-connect/userinfo" (include "sso.url" .)) .Values.sso) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the SSO jwks url (OIDC) */ -}}
+{{- define "sso.oidc.jwksuri" -}}
+  {{- if .Values.sso.jwks_uri -}}
+    {{- tpl (default "" .Values.sso.jwks_uri) . -}}
+  {{- else if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "%s/protocol/openid-connect/certs" (include "sso.url" .) -}}
+  {{- else -}}
+    {{- tpl (dig "oidc" "jwksUri" (printf "%s/protocol/openid-connect/certs" (include "sso.url" .)) .Values.sso) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the SSO end session url (OIDC) */ -}}
+{{- define "sso.oidc.endsession" -}}
+  {{- if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "%s/protocol/openid-connect/logout" (include "sso.url" .) -}}
+  {{- else -}}
+    {{- tpl (dig "oidc" "endSession" (printf "%s/protocol/openid-connect/logout" (include "sso.url" .)) .Values.sso) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the single sign on service (SAML) */ -}}
+{{- define "sso.saml.service" -}}
+  {{- if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "%s/protocol/saml" (include "sso.url" .) -}}
+  {{- else -}}
+    {{- tpl (dig "saml" "service" (printf "%s/protocol/saml" (include "sso.url" .)) .Values.sso) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the single sign on entity descriptor (SAML) */ -}}
+{{- define "sso.saml.descriptor" -}}
+  {{- if and .Values.sso.oidc.host .Values.sso.oidc.realm -}}
+    {{- printf "%s/descriptor" (include "sso.saml.service" .) -}}
+  {{- else -}}
+    {{- tpl (dig "saml" "entityDescriptor" (printf "%s/descriptor" (include "sso.saml.service" .)) .Values.sso) . -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the signing cert (no headers) from the SAML metadata */ -}}
+{{- define "sso.saml.cert" -}}
+  {{- $cert := dig "saml" "metadata" "" .Values.sso -}}
+  {{- if $cert -}}
+    {{- $cert := regexFind "<md:IDPSSODescriptor[\\s>][\\s\\S]*?</md:IDPSSODescriptor[\\s>]" $cert -}}
+    {{- $cert = regexFind "<md:KeyDescriptor[\\s>][^>]*?use=\"signing\"[\\s\\S]*?</md:KeyDescriptor[\\s>]" $cert -}}
+    {{- $cert = regexFind "<ds:KeyInfo[\\s>][\\s\\S]*?</ds:KeyInfo[\\s>]" $cert -}}
+    {{- $cert = regexFind "<ds:X509Data[\\s>][\\s\\S]*?</ds:X509Data[\\s>]" $cert -}}
+    {{- $cert = regexFind "<ds:X509Certificate[\\s>][\\s\\S]*?</ds:X509Certificate[\\s>]" $cert -}}
+    {{- $cert = regexReplaceAll "<ds:X509Certificate[^>]*?>\\s*([\\s\\S]*?)</ds:X509Certificate[\\s>]" $cert "${1}" -}}
+    {{- $cert = regexReplaceAll "\\s*" $cert "" -}}
+    {{- required "X.509 signing certificate could not be found in sso.saml.metadata!" $cert -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns the signing cert with headers from the SAML metadata */ -}}
+{{- define "sso.saml.cert.withheaders" -}}
+  {{- $cert := include "sso.saml.cert" . -}}
+  {{- if $cert -}}
+    {{- printf "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----" $cert -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
+Returns the git credentails secret for the given scope and name
+*/ -}}
+{{- define "gitCredsSecret" -}}
+{{- $name := .name }}
+{{- $releaseName := .releaseName }}
+{{- $releaseNamespace := .releaseNamespace }}
+{{- with .targetScope -}}
+{{- if and (eq .sourceType "git") .enabled }}
+{{- if .git }}
+{{- with .git -}}
+{{- if not .existingSecret }}
+{{- if .credentials }}
+{{- if coalesce  .credentials.username .credentials.password .credentials.caFile .credentials.privateKey .credentials.publicKey .credentials.knownHosts -}}
+{{- $http := coalesce .credentials.username .credentials.password .credentials.caFile "" }}
+{{- $ssh := coalesce .credentials.privateKey .credentials.publicKey .credentials.knownHosts "" }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $releaseName }}-{{ $name }}-git-credentials
+  namespace: {{ $releaseNamespace }}
+type: Opaque
+data:
+  {{- if $http }}
+  {{- if .credentials.caFile }}
+  caFile: {{ .credentials.caFile | b64enc }}
+  {{- end }}
+  {{- if and .credentials.username  (not .credentials.password ) }}
+  {{- printf "%s - When using http git username, password must be specified" $name | fail }}
+  {{- end }}
+  {{- if and .credentials.password  (not .credentials.username ) }}
+  {{- printf "%s - When using http git password, username must be specified" $name | fail }}
+  {{- end }}
+  {{- if and .credentials.username .credentials.password }}
+  username: {{ .credentials.username | b64enc }}
+  password: {{ .credentials.password | b64enc }}
+  {{- end }}
+  {{- else }}
+  {{- if not (and (and .credentials.privateKey .credentials.publicKey) .credentials.knownHosts) }}
+  {{- printf "%s - When using ssh git credentials, privateKey, publicKey, and knownHosts must all be specified" $name | fail }}
+  {{- end }}
+  identity: {{ .credentials.privateKey | b64enc }}
+  identity.pub: {{ .credentials.publicKey | b64enc }}
+  known_hosts: {{ .credentials.knownHosts | b64enc }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Shared HelmRelease chart spec block.
+Generates the spec.chart.spec section handling git vs helmRepo sources with cosign verification.
+Args (dict):
+  - name: GitRepository/sourceRef name (kebab-case, e.g. "kyverno-policies")
+  - package: the package values object (contains sourceType, git, helmRepo)
+  - root: root context ($ or .)
+*/}}
+{{- define "bigbang.helmRelease.chartSpec" -}}
+{{- if and .emitReleaseName (dig "releaseName" "" .package) }}
+releaseName: {{ .package.releaseName }}
+{{- end }}
+chart:
+  spec:
+    {{- if eq .package.sourceType "git" }}
+    chart: {{ .package.git.path }}
+    sourceRef:
+      kind: GitRepository
+      name: {{ .name }}
+      namespace: {{ .root.Release.Namespace }}
+    {{- else }}
+    chart: {{ .package.helmRepo.chartName }}
+    version: {{ .package.helmRepo.tag }}
+    sourceRef:
+      kind: HelmRepository
+      name: {{ .package.helmRepo.repoName }}
+      namespace: {{ .root.Release.Namespace }}
+    {{- $repoType := include "getRepoType" (dict "repoName" .package.helmRepo.repoName "allRepos" .root.Values.helmRepositories) -}}
+    {{- if (and .package.helmRepo.cosignVerify (eq $repoType "oci")) }} # Needs to be an OCI repo
+    verify:
+      provider: cosign
+      secretRef:
+        name: {{ printf "%s-cosign-pub" .package.helmRepo.repoName }}
+    {{- end }}
+    {{- end }}
+    interval: 5m
+{{- end -}}
+
+{{/*
+Returns "true" when at least one metric scraper is active:
+  - Prometheus scraping (monitoring.enabled + prometheusMetrics.enabled)
+  - Alloy metrics scraping (alloy.enabled + alloyMetrics.enabled)
+Used to gate ServiceMonitor/PodMonitor CRD creation across all packages.
+*/}}
+{{- define "metricScrapingEnabled" -}}
+{{- or (and .Values.monitoring.enabled (dig "prometheusMetrics" "enabled" true .Values.monitoring)) (and .Values.alloy.enabled (dig "alloyMetrics" "enabled" false .Values.alloy)) -}}
+{{- end -}}
+
+{{/*
+Shared HelmRelease valuesFrom block.
+Generates the standard 3-secret valuesFrom (common, defaults, overlays).
+Args (dict):
+  - name: secret name suffix (e.g. "loki", "ek", "metrics")
+  - root: root context ($ or .)
+*/}}
+{{- define "bigbang.helmRelease.valuesFrom" -}}
+valuesFrom:
+  - name: {{ .root.Release.Name }}-{{ .name }}-values
+    kind: Secret
+    valuesKey: "common"
+  - name: {{ .root.Release.Name }}-{{ .name }}-values
+    kind: Secret
+    valuesKey: "defaults"
+  - name: {{ .root.Release.Name }}-{{ .name }}-values
+    kind: Secret
+    valuesKey: "overlays"
+{{- end -}}
+
+{{- /* Returns type of Helm Repository */ -}}
+{{- define "getRepoType" -}}
+  {{- $repoName := .repoName -}}
+  {{- range .allRepos -}}
+    {{- if eq .name $repoName -}}
+      {{- print .type -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Returns true if istiod is enabled */ -}}
+{{- define "istioEnabled" -}}
+{{ .Values.istiod.enabled }}
+{{- end -}}
+
+{{- /* Returns true when authservice should be deployed or referenced by integrations. */ -}}
+{{- define "authserviceEnabled" -}}
+{{- and
+  (eq (include "istioEnabled" .) "true")
+  (or
+    .Values.addons.authservice.enabled
+    (and .Values.monitoring.enabled .Values.monitoring.sso.enabled)
+    (and .Values.tempo.enabled .Values.tempo.sso.enabled)
+    (and .Values.addons.thanos.enabled .Values.addons.thanos.sso.enabled)
+  )
+-}}
+{{- end -}}
+
+{{- /* Returns true if ambient mode is enabled (via ztunnel or global ambient flag) */ -}}
+{{- define "ambientEnabled" -}}
+{{ or .Values.ztunnel.enabled .Values.istio.ambient.enabled }}
+{{- end -}}
+
+{{- /* Returns "true" if networkPolicies should be enabled for a package.
+       True when .Values.networkPolicies.enabled is true OR ambient mode is enabled.
+       Ambient mode requires bb-common's network-policies render to run because the
+       AuthorizationPolicies that grant cross-namespace traffic on ambient workloads
+       are generated alongside the NetworkPolicies (via generateFromNetpol).
+    */ -}}
+{{- define "networkPoliciesEnabled" -}}
+{{ or .Values.networkPolicies.enabled (eq (include "ambientEnabled" .) "true") }}
+{{- end -}}
+
+{{- /* Returns "true" if authorization policies should be generated.
+       True when istio.hardened is enabled at the package or global istiod level,
+       OR when ambient mode is globally enabled.
+       Args (positional list):
+         0 - pkg:  the package's values dict (e.g. .Values.loki.values, .Values.addons.argocd.values)
+         1 - root: the root context (.)
+    */ -}}
+{{- define "authorizationPoliciesEnabled" -}}
+{{- $pkg  := index . 0 -}}
+{{- $root := index . 1 -}}
+{{- $hardened := or (dig "istio" "hardened" "enabled" false $pkg) (dig "hardened" "enabled" false $root.Values.istiod.values) -}}
+{{- $ambient  := eq (include "ambientEnabled" $root) "true" -}}
+{{ or $hardened $ambient }}
+{{- end -}}
+
+{{- /*
+Returns "true" if ServiceMonitor should use mTLS for scraping Istio-injected pods.
+Checks: global istio enabled, package istio enabled, injection enabled, not ambient mode, and mTLS STRICT mode.
+This typically gates the creation of a ServiceMonitor tlsConfig with istio-provided certs for scraping metrics from Istio-injected pods.
+insecureSkipVerify will be set to true in the tlsConfig because Prometheus does not support Istio security naming, thus skipping verifying the target pod certificate
+If any of the conditions are not met, the ServiceMonitor will be created without the tlsConfig
+Args (list):
+  - [0] pkg: the package config (e.g. .Values.loki)
+  - [1] root: root context ($)
+Usage: {{- if eq (include "metricsSidecarMtls" (list .Values.loki .)) "true" }}
+*/ -}}
+{{- define "metricsSidecarMtls" -}}
+{{- $pkg := index . 0 -}}
+{{- $root := index . 1 -}}
+{{- $globalIstioEnabled := eq (include "istioEnabled" $root) "true" -}}
+{{- $pkgIstioEnabled := dig "values" "istio" "enabled" true $pkg -}}
+{{- $injectionEnabled := ne (dig "istio" "injection" "enabled" $pkg) "disabled" -}}
+{{- $ambientEnabled := eq (include "ambientEnabled" $root) "true" -}}
+{{- $mtlsStrict := eq (dig "values" "istio" "mtls" "mode" "STRICT" $pkg) "STRICT" -}}
+{{- and $globalIstioEnabled $pkgIstioEnabled $injectionEnabled (not $ambientEnabled) $mtlsStrict -}}
+{{- end -}}
+
+{{- /* Returns dependsOn entries for Istio HelmReleases. */ -}}
+{{- define "istioHelmReleases" -}}
+- name: istiod
+  namespace: {{ .Release.Namespace }}
+{{- if or .Values.istioCNI.enabled (eq (include "ambientEnabled" .) "true") }}
+- name: istio-cni
+  namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- if eq (include "ambientEnabled" .) "true" }}
+- name: ztunnel
+  namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- end -}}
+
+{{- /* Returns name of istio Namespace Selector*/ -}}
+{{- define "istioNamespaceSelector" -}}
+ingress: istio-gateway
+egress: istio-system
+{{- end -}}
+
+{{- /*
+Gets the gateway selector configuration for a package
+Args:
+    - default: The default gateway name to use if none specified (default: "public")
+    - pkg: The package values (e.g. .Values.addons.argocd)
+    - root: The root context
+*/}}
+{{- define "getGatewaySelector" -}}
+{{- $default := default "public" .default }}
+{{- $gateway := default $default .pkg.ingress.gateway }}
+{{- $gateways := (include "enabledGateways" .root) | fromYaml }}
+{{- $gw := get $gateways $gateway }}
+{{- if $gw }}
+  {{- toYaml (dict "app" $gw.serviceName "istio" "ingressgateway") }}
+{{- end }}
+{{- end -}}
+
+{{- /*
+Gets the gateway name for a package
+Args:
+    - default: The default gateway name to use if none specified (default: "public")
+    - gateway: The gateway name
+    - root: The root context
+*/}}
+{{- define "getGatewayName" -}}
+{{- $default := default "public" .default }}
+{{- $gateway := default $default .gateway }}
+{{- $gateways := (include "enabledGateways" .root) | fromYaml }}
+{{- $gwlookup := get $gateways $gateway }}
+{{- $gw := default (dict "serviceName" $default) $gwlookup }}
+{{- printf "istio-gateway/%s" $gw.serviceName }}
+{{- end -}}
+
+{{- define "bigbang.istio-gateway.ingress-netpol-spec" }}
+  {{- $ctx := index . 0 }}
+  {{- $name := index . 1 }}
+  {{- $ports := index . 2 }}
+networkPolicies:
+  enabled: {{ $ctx.Values.networkPolicies.enabled }}
+  ingress:
+    {{- if dig "ingress" "definitions" dict $ctx.Values.networkPolicies }}
+    definitions:
+      {{- $ctx.Values.networkPolicies.ingress.definitions | toYaml | nindent 8 }}
+    {{- end }}
+    to:
+      "{{ $name }}-ingressgateway:{{ $ports | toJson }}":
+        from:
+          definition:
+            load-balancer-subnets: true
+  egress:
+    {{- if dig "egress" "definitions" dict $ctx.Values.networkPolicies }}
+    definitions:
+      {{- $ctx.Values.networkPolicies.egress.definitions | toYaml | nindent 8 }}
+    {{- end }}
+    from:
+      "{{ $name }}-ingressgateway":
+        to:
+          k8s:
+            '*': true
+{{- end }}
+
+{{- /*
+  This helper generates a bb-common compatible netpol spec from the configured
+  gateway servers of the individual gateways, then ensures that spec is applied 
+  to the default values for each of the gateway releases.
+*/}}
+{{- define "bigbang.istio-gateway.generate-ingress-netpols" }}
+  {{- $ctx := index . 0 }}
+  {{- $gateways := index . 1 }}
+
+  {{- $newGateways := dict }}
+
+  {{- range $name, $gateway := $gateways }}
+    {{- $newGateway := deepCopy $gateway }}
+    {{- $mergedGateway := merge ($newGateway.overlays | default dict) ($newGateway.defaults | default dict) }}
+    {{- $ports := list }}
+    {{- range $server := $mergedGateway.gateway.servers }}
+      {{- $ports = append $ports $server.port.number }}
+    {{- end }}
+
+    {{- $newGateway = merge (dict "defaults" (include "bigbang.istio-gateway.ingress-netpol-spec" (list $ctx $name $ports) | fromYaml)) $newGateway }}
+
+    {{- $_ := set $newGateways $name $newGateway }}
+  {{- end }}
+
+  {{- $newGateways | toYaml }}
+{{- end }}
+
+{{- /* 
+  This helper is used for packages that perform testing against keycloak when enabled
+*/}}
+{{- define "bigbang.cypressKeycloakValues" }}
+{{- $pkg := .package -}}
+{{- $values := .values -}}
+cypress_keycloak_test_enable: {{ and $values.addons.keycloak.enabled $pkg.sso.enabled | quote }}
+cypress_keycloak_url: {{ printf "https://keycloak.%s/" $values.domain | quote }}
+cypress_tnr_username: {{ dig "bbtests" "cypress" "envs" "cypress_tnr_username" "cypress" $values.addons.keycloak.values | quote }}
+cypress_tnr_password: {{ dig "bbtests" "cypress" "envs" "cypress_tnr_password" "tnr_w!G33ZyAt@C8" $values.addons.keycloak.values | quote }}
+{{- end }}
+
+#######################################################################################################################################
+# convert the bool to string if found
+#######################################################################################################################################
+
+{{- define "bb._isTrue" -}}
+  {{- $v := . -}}
+  {{- if kindIs "bool" $v -}}
+    {{- if $v }}true{{- end -}}
+  {{- else if kindIs "string" $v -}}
+    {{- if eq (lower $v) "true" }}true{{- end -}}
+  {{- end -}}
+{{- end -}}
+
+#######################################################################################################################################
+# Verify if there is a value enabled for redis or redis-bb set to true or false and if there is it will return true
+#######################################################################################################################################
+
+{{- define "bb.anyRedisEnabled" -}}
+  {{- $n := . -}}
+  {{- if kindIs "map" $n -}}
+    {{- $m := default dict $n -}}              {{/* ensure non-nil map */}}
+    {{- $r := default dict (get $m "redis") -}}
+    {{- $rb := default dict (get $m "redis-bb") -}}
+    {{- if or
+          (eq (include "bb._isTrue" (get $r  "enabled")) "true")
+          (eq (include "bb._isTrue" (get $rb "enabled")) "true")
+        -}}
+      true
+    {{- else -}}
+      {{- $found := "" -}}
+      {{- range $k, $v := $m -}}
+        {{- if eq (include "bb.anyRedisEnabled" $v) "true" -}}
+          {{- $found = "true" -}}
+        {{- end -}}
+      {{- end -}}
+      {{- if eq $found "true" -}}true{{- end -}}
+    {{- end -}}
+  {{- else if kindIs "slice" $n -}}
+    {{- $found := "" -}}
+    {{- range $i, $v := $n -}}
+      {{- if eq (include "bb.anyRedisEnabled" $v) "true" -}}
+        {{- $found = "true" -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if eq $found "true" -}}true{{- end -}}
+  {{- end -}}
+{{- end -}}

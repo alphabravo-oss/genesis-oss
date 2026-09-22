@@ -1,0 +1,165 @@
+{{- if .Values.tempo.enabled }}
+{{- /* Create a cleaned copy of tempo config and merge deprecated paths into current paths */ -}}
+{{- $tempoPackage := deepCopy .Values.tempo -}}
+{{- if .Values.tempo.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.tempo.values) | fromYaml -}}
+{{- $tempoPackage = set $tempoPackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict "root" $ "package" $tempoPackage "name" "tempo" "defaults" (include "bigbang.defaults.tempo" .)) }}
+{{- end }}
+
+{{- define "bigbang.defaults.tempo" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.tempo.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $storageMode := dig "upstream" "tempo" "storage" "trace" "backend" "local" .Values.tempo.values }}
+
+upstream:
+  # --- Add writable runtime volume ---
+  extraVolumes:
+    - name: tempo-runtime
+      emptyDir: {}  # ephemeral, backed by node disk or memor
+  {{- if $istioEnabled }}
+  podAnnotations:
+    {{ include "istioAnnotation" . }}
+  {{- end }}
+
+  {{- if .Values.kiali.enabled }}
+  podLabels:
+    service.istio.io/canonical-name: tempo-tempo
+  {{- end }}
+
+  tempo:
+    extraVolumeMounts:
+      - name: tempo-runtime
+        mountPath: /var/tempo
+    pullPolicy: {{ .Values.imagePullPolicy }}
+    global_overrides:
+      ingestion_rate_limit_bytes: 30000000
+  {{- with .Values.tempo.objectStorage }}
+  {{- if and .endpoint .region .bucket }}
+    storage: 
+      trace:
+        backend: s3
+        s3:
+          endpoint: {{ .endpoint }}
+          bucket: {{ .bucket }}
+          region: {{ .region }}
+          insecure: {{ .insecure }}
+          forcepathstyle: true
+  {{- end }}
+  {{- end }}
+  {{- if and .Values.tempo.metricsGenerator.enabled .Values.monitoring.enabled }}
+    metricsGenerator:
+      enabled: true
+      remoteWriteUrl: "http://monitoring-monitoring-kube-prometheus.monitoring.svc:9090/api/v1/write"
+    per_tenant_overrides:
+      'single-tenant':
+        ingestion_rate_strategy: local
+        ingestion_rate_limit_bytes: 10485760         # 10MB/sec
+        ingestion_burst_size_bytes: 20971520         # 20MB burst
+        metrics_generator_processors:
+          - local-blocks
+          - service-graphs
+          - span-metrics
+        metrics_generator_processor_span_metrics_histogram_buckets: [0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048, 4.096, 8.192, 16.384]
+        # Example spnametrics filter, filters out non-server traces
+        # metrics_generator_processor_span_metrics_filter_policies:
+        #   - include:
+        #       match_type: strict
+        #       attributes:
+        #         - key: kind
+        #           value: SPAN_KIND_SERVER
+  {{- end }}
+  serviceMonitor:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+
+  tempoQuery:
+    pullPolicy: {{ .Values.imagePullPolicy }}
+
+  serviceAccount:
+    {{- include "secretsImagePullSecretsWithName" . | nindent 4 }}
+
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+hostname: {{ $domainName }}
+domain: {{ $domainName }}
+
+routes:
+  inbound:
+    tempo-query:
+      gateways:
+        - {{ include "getGatewayName" (dict "gateway" "public" "root" .)}}
+      hosts:
+        - tempo.{{ .Values.domain }}
+      service: tempo-tempo.tempo.svc.cluster.local
+      port: 3200
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.tempo.values }}
+      hosts:
+      - repo1.dso.mil
+      - grafana.{{ $domainName }}
+      - grafana.com
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+    to:
+      tempo:3200:
+        from:
+          k8s:
+            monitoring-grafana@monitoring/grafana: {{ .Values.grafana.enabled }}
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+            kiali-service-account@kiali/kiali: {{ .Values.kiali.enabled }}
+      tempo:4317:
+        from:
+          k8s:
+            alloy-alloy-operator@alloy/alloy: {{ .Values.alloy.enabled }}
+            alloy-alloy-logs@alloy/alloy-logs: {{ .Values.alloy.enabled }}
+            alloy-alloy-receiver@alloy/alloy-receiver: {{ .Values.alloy.enabled }}
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+    from:
+      tempo:
+        to:
+          k8s:
+            monitoring/prometheus:9090: {{ .Values.monitoring.enabled }}
+          definition:
+            # TODO: Revisit this logic for bb 4.0
+            storage-subnets: {{ or (ne $storageMode "local") (not (empty .Values.tempo.objectStorage.endpoint )) }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+  hardened:
+    enabled: {{ or (dig "istio" "hardened" "enabled" false .Values.tempo.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.tempo.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.tempo.values .) }}
+
+bbtests:
+  enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://tempo.%s" $domainName | quote }}
+      cypress_tempo_datasource: 'http://tempo-tempo.tempo.svc:3200'
+      cypress_check_datasource: {{ .Values.grafana.enabled | quote }}
+      cypress_grafana_url: {{ printf "https://grafana.%s" $domainName | quote }}
+      {{- include "bigbang.cypressKeycloakValues" (dict "package" .Values.tempo "values" .Values) | nindent 6 }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+
+sso:
+  enabled: {{ .Values.tempo.sso.enabled }}
+
+{{- end -}}

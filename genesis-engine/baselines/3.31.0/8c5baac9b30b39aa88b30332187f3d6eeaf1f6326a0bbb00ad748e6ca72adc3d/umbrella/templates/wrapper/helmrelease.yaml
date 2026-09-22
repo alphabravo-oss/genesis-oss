@@ -1,0 +1,89 @@
+{{- /* Used for Helm chart deployment of Big Bang wrapper.  One per package. */ -}}
+{{- range $pkgKey, $vals := .Values.packages -}}
+{{- if and (dig "enabled" true $vals) (dig "wrapper" "enabled" false $vals) -}}
+{{- $pkg := include "resourceName" $pkgKey -}}
+{{- $fluxSettings := mergeOverwrite (deepCopy $.Values.flux) (dig "flux" dict $vals) -}}
+{{- $istioEnabled := eq (include "istioEnabled" $) "true" -}}
+
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $pkg }}-wrapper
+  namespace: {{ if dig "helmRelease" "namespace" nil (index $.Values.packages $pkgKey) }}
+                {{ dig "helmRelease" "namespace" "" (index $.Values.packages $pkgKey) }}
+             {{ else }}
+                {{ default (dig "namespace" "name" $pkg $vals) "" }}
+             {{ end }}
+  labels:
+    app.kubernetes.io/name: {{ $pkg }}-wrapper
+    {{- include "commonLabels" $ | nindent 4 }}
+  annotations:
+    {{- $merged := dict "bigbang" $.Values "package" $vals }}
+    {{- if (omit $merged.package "git" "helmRepo" "flux" "postRenderers" "dependsOn") }}
+    checksum/bigbang-values: {{ (toJson (omit $merged.package "git" "helmRepo" "flux" "postRenderers" "dependsOn")) | sha256sum }}
+    {{- end }}
+spec:
+  releaseName: {{ $pkg }}-wrapper
+  targetNamespace: {{ dig "namespace" "name" $pkg $vals }}
+  chart:
+    spec:
+      {{- if (eq $.Values.wrapper.sourceType "git") }}
+      chart: {{ default "chart" $.Values.wrapper.git.path }}
+      sourceRef:
+        kind: GitRepository
+        name: {{ $.Release.Name }}-wrapper
+        namespace: {{ $.Release.Namespace }}
+      {{- else }}
+      chart: {{ $.Values.wrapper.helmRepo.chartName }}
+      version: {{ $.Values.wrapper.helmRepo.tag }}
+      sourceRef:
+        kind: HelmRepository
+        name: {{ $.Values.wrapper.helmRepo.repoName }}
+        namespace: {{ $.Release.Namespace }}
+      {{- $repoType := include "getRepoType" (dict "repoName" $.Values.wrapper.helmRepo.repoName "allRepos" $.Values.helmRepositories) -}}
+      {{- if (and $.Values.wrapper.helmRepo.cosignVerify (eq $repoType "oci")) }} # Needs to be an OCI repo
+      verify:
+        provider: cosign
+        secretRef:
+          name: {{ printf "%s-cosign-pub" $.Values.wrapper.helmRepo.repoName }}
+      {{- end }}
+      {{- end }}
+      interval: {{ default "5m" $fluxSettings.interval }}
+      reconcileStrategy: Revision
+  {{- toYaml $fluxSettings | nindent 2 }}
+  {{- if $vals.wrapper.postRenderers }}
+  postRenderers:
+  {{- toYaml $vals.wrapper.postRenderers | nindent 4 }}
+  {{- end }}
+  valuesFrom:
+    - name: {{ $pkg }}-wrapper-values
+      kind: Secret
+
+  {{- /* Always wait on policy enforcement */ -}}
+  {{- $gatekeeperDep := $.Values.gatekeeper.enabled -}}
+  {{- $kyvernoDep := $.Values.kyvernoPolicies.enabled -}}
+  {{- /* Wait on istio operator if creating a Virtual Service */ -}}
+  {{- $istioOpDep := and $istioEnabled (dig "istio" "hosts" false $vals) -}}
+  {{- /* Wait on monitoring if dashboard or metrics are enabled */ -}}
+  {{- $monitoringDep := $.Values.monitoring.enabled -}}
+  {{- if or $gatekeeperDep $istioOpDep $kyvernoDep $monitoringDep }}
+  dependsOn:
+    {{- if $gatekeeperDep }}
+    - name: gatekeeper
+      namespace: {{ $.Release.Namespace }}
+    {{- end }}
+    {{- if $kyvernoDep }}
+    - name: kyverno-policies
+      namespace: {{ $.Release.Namespace }}
+    {{- end }}
+    {{- if $istioOpDep }}
+    {{- include "istioHelmReleases" $ | nindent 4 }}
+    {{- end }}
+    {{- if $monitoringDep }}
+    - name: monitoring
+      namespace: {{ $.Release.Namespace }}
+    {{- end -}}
+  {{- end }}
+---
+{{ end -}}
+{{- end -}}

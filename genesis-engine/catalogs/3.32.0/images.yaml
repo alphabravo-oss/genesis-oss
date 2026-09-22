@@ -1,0 +1,1180 @@
+generated: '2026-09-21'
+upstream:
+  tag: 3.32.0
+render:
+  method: package chart values.yaml, public refs carried from catalogs/3.33.0 when
+    the Iron Bank repo matches, then an anonymous manifest GET
+gaps:
+- kyvernoPolicies registry1.dso.mil/ironbank/big-bang/devops-tester:1.1 (no public
+  repo in the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/grafana/grafana-enterprise-logs:v3.6.11 (no public
+  repo in the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/ironbank/opensource/grafana/enterprise-logs-provisioner:3.6.11
+  (no public repo in the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/bigbang/grafana/loki-helm-test:0.0.1 (no public
+  repo in the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/bigbang/grafana/loki-canary:3.7.4 (no public repo
+  in the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/opensource/nginx/nginx:1.30.4 (no public repo in
+  the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/opensource/memcached/memcached:1.6.45 (no public
+  repo in the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/opensource/prometheus/memcached-exporter:v0.16.0
+  (no public repo in the 3.33.0 map)
+- loki registry1.dso.mil/ironbank/opensource/grafana/rollout-operator:v0.38.1 (no
+  public repo in the 3.33.0 map)
+- neuvector registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter:v0.2.9
+  (no public repo in the 3.33.0 map)
+- tempo registry1.dso.mil/ironbank/opensource/grafana/tempo-query:2.10.5 (no public
+  repo in the 3.33.0 map)
+- monitoring registry1.dso.mil/ironbank/opensource/bats/bats:1.14.0 (no public repo
+  in the 3.33.0 map)
+- monitoring registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.8 (no public repo
+  in the 3.33.0 map)
+- monitoring registry1.dso.mil/ironbank/opensource/prometheus/blackbox_exporter:v0.28.0
+  (no public repo in the 3.33.0 map)
+- monitoring registry1.dso.mil/ironbank/opensource/prometheus/snmp_exporter:v0.30.1
+  (no public repo in the 3.33.0 map)
+- grafana registry1.dso.mil/ironbank/opensource/bats/bats:1.13.0 (no public repo in
+  the 3.33.0 map)
+- grafana registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.8 (no public repo in
+  the 3.33.0 map)
+- grafana registry1.dso.mil/ironbank/opensource/grafana/grafana-image-renderer:v5.9.1
+  (no public repo in the 3.33.0 map)
+images:
+- id: istiod/upstream.global.hub
+  package: istiod
+  upstreamPackageTag: 1.30.3-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/istio:1.30.3
+  public:
+    ref: docker.io/istio/pilot:1.30.3
+    verifiedPull: true
+    digest: sha256:6b37817f7f8f8e0f6f6fffc832c44ae4d7e50feec7ef7f1f3719638d1bbdc45a
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: istiod.values.upstream.global.hub
+  notes: image hub mapped with this chart's tag
+- id: kiali/waitJob.image
+  package: kiali
+  upstreamPackageTag: 2.30.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.7
+  public:
+    ref: registry.k8s.io/kubectl:v1.35.7
+    verifiedPull: true
+    digest: sha256:d86e235fc321c52fbaea98772cb6e8525b7f157972d6a52bc29bcdd47fe74fc8
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kiali.values.waitJob.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kiali/upstream.image
+  package: kiali
+  upstreamPackageTag: 2.30.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kiali/kiali-operator:v2.30.0
+  public:
+    ref: quay.io/kiali/kiali-operator:v2.30.0
+    verifiedPull: true
+    digest: sha256:bf17e92dd13629fda5cb85fbf179a53d4d31d319c76df39178f9a3aeacc252c6
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kiali.values.upstream.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kiali/upstream.cr.spec.deployment.image_name
+  package: kiali
+  upstreamPackageTag: 2.30.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kiali/kiali:v2.30.0
+  public:
+    ref: quay.io/kiali/kiali:v2.30.0
+    verifiedPull: true
+    digest: sha256:0aceb3515f2fc9f1e930443422a4b25ade78e4cc1f4a9ad4f7d6734158ff92a5
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kiali.values.upstream.cr.spec.deployment.image_name
+  notes: public repo with this chart's tag
+- id: kyverno/bbtests.scripts.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35
+  public:
+    ref: registry.k8s.io/kubectl:v1.35.0
+    verifiedPull: true
+    digest: sha256:0bb95b2a450875fc8ceaea2f9987a99fe27c228846e2e00b93b65ebb0d59034e
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.bbtests.scripts.image
+  notes: same Iron Bank ref as 3.33.0
+- id: kyverno/upstream.crds.migration.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli:v1.19.0
+  public:
+    ref: ghcr.io/kyverno/kyverno-cli:v1.19.0
+    verifiedPull: true
+    digest: sha256:f40718123e3eea8dc36960023e2af7a980bcc76dec24842ad8705c82f4c9172e
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.crds.migration.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kyverno/upstream.admissionController.initContainer.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre:v1.19.0
+  public:
+    ref: ghcr.io/kyverno/kyvernopre:v1.19.0
+    verifiedPull: true
+    digest: sha256:3fd1640d9c77181be107d3e3c5fb9efcab9d98494bede51b64f93bf591a20276
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.admissionController.initContainer.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kyverno/upstream.admissionController.container.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno:v1.19.0
+  public:
+    ref: ghcr.io/kyverno/kyverno:v1.19.0
+    verifiedPull: true
+    digest: sha256:e5bf3b96de9ad9475f5282804859e5c8f09d351d4fb988d1c1ee77f825591742
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.admissionController.container.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kyverno/upstream.backgroundController.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller:v1.19.0
+  public:
+    ref: ghcr.io/kyverno/background-controller:v1.19.0
+    verifiedPull: true
+    digest: sha256:5d9a49b0a36bb25c981bd55e57f360850ea37bfe1b4914e00ec898cc5d27cc4f
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.backgroundController.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kyverno/upstream.cleanupController.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller:v1.19.0
+  public:
+    ref: ghcr.io/kyverno/cleanup-controller:v1.19.0
+    verifiedPull: true
+    digest: sha256:6f76c84d5305898d4db455515cdb80a8af81fbfe3ac4cecad43e39266ba13944
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.cleanupController.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kyverno/upstream.reportsController.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller:v1.19.0
+  public:
+    ref: ghcr.io/kyverno/reports-controller:v1.19.0
+    verifiedPull: true
+    digest: sha256:02013e2288600f514b71f814699441007fcce7aff188f1eb9e8c5da877c6e911
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.reportsController.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kyverno/upstream.test.image
+  package: kyverno
+  upstreamPackageTag: 3.9.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker:v1.19.0
+  public:
+    ref: ghcr.io/kyverno/readiness-checker:v1.19.0
+    verifiedPull: true
+    digest: sha256:a167e4cd18c0958a2e6bac08146feb317d4dc492a86d68f709af15a51788d268
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.test.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: kyvernoPolicies/bbtests.scripts.image
+  package: kyvernoPolicies
+  upstreamPackageTag: 3.3.4-bb.87
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/devops-tester:1.1
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoPolicies.values.bbtests.scripts.image
+  notes: no public repo in the 3.33.0 map
+- id: kyvernoReporter/upstream.image
+  package: kyvernoReporter
+  upstreamPackageTag: 3.10.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter:3.10.0
+  public:
+    ref: ghcr.io/kyverno/policy-reporter:3.10.0
+    verifiedPull: true
+    digest: sha256:a77e93fe511772e105aae30274d205ed1377f231c6d1ec272604221dc04a3c2c
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoReporter.values.upstream.image
+  notes: same Iron Bank ref as 3.33.0
+- id: kyvernoReporter/upstream.ui.image
+  package: kyvernoReporter
+  upstreamPackageTag: 3.10.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/nirmata/policy-reporter/policy-reporter-ui:2.8.1
+  public:
+    ref: ghcr.io/kyverno/policy-reporter-ui:2.8.1
+    verifiedPull: true
+    digest: sha256:748d8c18851ba76ca8129a14b28f43bf9bee04ac9fc80926abd28f6fcba99a06
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoReporter.values.upstream.ui.image
+  notes: same Iron Bank ref as 3.33.0
+- id: kyvernoReporter/upstream.plugin.kyverno.image
+  package: kyvernoReporter
+  upstreamPackageTag: 3.10.0-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter/kyverno-plugin:0.6.2
+  public:
+    ref: ghcr.io/kyverno/policy-reporter/kyverno-plugin:0.6.2
+    verifiedPull: true
+    digest: sha256:f84d330794b002618d02f7e175d3f0dea49c5a2c6d577e5eb8de39cc8c585af3
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoReporter.values.upstream.plugin.kyverno.image
+  notes: same Iron Bank ref as 3.33.0
+- id: alloy/autoRollingUpgrade.image
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+  public:
+    ref: docker.io/curlimages/curl:8.15.0
+    verifiedPull: true
+    digest: sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.autoRollingUpgrade.image
+  notes: same Iron Bank ref as 3.33.0
+- id: alloy/upstream.alloy-operator.waitForAlloyRemoval.image
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/helm-chart-toolbox-kubectl:1.0
+  public:
+    ref: ghcr.io/grafana/helm-chart-toolbox-kubectl:0.1.6
+    verifiedPull: true
+    digest: sha256:93766638612873629f97f26805391b46a4fe346dcfeb49b5ee881efe0b38d638
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.alloy-operator.waitForAlloyRemoval.image
+  notes: same Iron Bank ref as 3.33.0
+- id: alloy/upstream.alloy-operator.image
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/alloy-operator:1.11.0
+  public:
+    ref: ghcr.io/grafana/alloy-operator:1.11.0
+    verifiedPull: true
+    digest: sha256:913ea3c5c0a5581e6888802c9c25cad5304bc4b3daf45915a39d969de0921df7
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.alloy-operator.image
+  notes: same Iron Bank ref as 3.33.0
+- id: alloy/upstream.collectorCommon.alloy.image
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/alloy:v1.18.0
+  public:
+    ref: docker.io/grafana/alloy:v1.18.0
+    verifiedPull: true
+    digest: sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.collectorCommon.alloy.image
+  notes: same Iron Bank ref as 3.33.0
+- id: alloy/upstream.collectorCommon.alloy.configReloader.image
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader:v0.93.0
+  public:
+    ref: quay.io/prometheus-operator/prometheus-config-reloader:v0.93.0
+    verifiedPull: true
+    digest: sha256:0ccb22ca9f3f6fd9f76ce95585d18bd2e363d421c534dde710be4bd13caa551d
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.collectorCommon.alloy.configReloader.image
+  notes: same Iron Bank ref as 3.33.0
+- id: loki/loki.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/loki:3.7.4
+  public:
+    ref: docker.io/grafana/loki:3.7.4
+    verifiedPull: true
+    digest: sha256:87f0a067673756a3cede1bcbf0c74875f7df9b09fddb53e399d0c576f756cfcc
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.loki.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: loki/enterprise.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/grafana/grafana-enterprise-logs:v3.6.11
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.enterprise.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/enterprise.provisioner.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/ironbank/opensource/grafana/enterprise-logs-provisioner:3.6.11
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.enterprise.provisioner.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/kubectlImage
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.7
+  public:
+    ref: registry.k8s.io/kubectl:v1.35.7
+    verifiedPull: true
+    digest: sha256:d86e235fc321c52fbaea98772cb6e8525b7f157972d6a52bc29bcdd47fe74fc8
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.kubectlImage
+  notes: 3.33.0 public repo with this chart's tag
+- id: loki/test.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/bigbang/grafana/loki-helm-test:0.0.1
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.test.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/lokiCanary.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/bigbang/grafana/loki-canary:3.7.4
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.lokiCanary.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/gateway.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/nginx/nginx:1.30.4
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.gateway.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/memcached.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/memcached/memcached:1.6.45
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.memcached.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/memcachedExporter.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/memcached-exporter:v0.16.0
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.memcachedExporter.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/rollout_operator.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/rollout-operator:v0.38.1
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.rollout_operator.image
+  notes: no public repo in the 3.33.0 map
+- id: loki/sidecar.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar:2.10.0
+  public:
+    ref: quay.io/kiwigrid/k8s-sidecar:2.10.0
+    verifiedPull: true
+    digest: sha256:21b9fe7bb29d65caf2445ccbf96ff6eda5e589a92bd8f5188f957fe75b551d72
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.sidecar.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: loki/bbtests.scripts.image
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.5
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+  public:
+    ref: docker.io/curlimages/curl:8.15.0
+    verifiedPull: true
+    digest: sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.bbtests.scripts.image
+  notes: same Iron Bank ref as 3.33.0
+- id: neuvector/upstream.controller.image
+  package: neuvector
+  upstreamPackageTag: 2.11.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/controller:5.6.0
+  public:
+    ref: docker.io/neuvector/controller:5.6.0
+    verifiedPull: true
+    digest: sha256:73e6bd11a5e1971683600faa87a1a9d7a0bff179a425c84abdafb4c261294ae5
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.controller.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: neuvector/upstream.enforcer.image
+  package: neuvector
+  upstreamPackageTag: 2.11.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/enforcer:5.6.0
+  public:
+    ref: docker.io/neuvector/enforcer:5.6.0
+    verifiedPull: true
+    digest: sha256:ae7cde61cd73bcd76d11f09372ebb463b4bd8615d66affd92537e5722ab0dc46
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.enforcer.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: neuvector/upstream.manager.image
+  package: neuvector
+  upstreamPackageTag: 2.11.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/manager:5.6.0
+  public:
+    ref: docker.io/neuvector/manager:5.6.0
+    verifiedPull: true
+    digest: sha256:952144b389e42013c53485cc3530855ba6cb5fd1808ad4db66bb967691cbb265
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.manager.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: neuvector/upstream.cve.adapter.image
+  package: neuvector
+  upstreamPackageTag: 2.11.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/neuvector/registry-adapter:v0.2.9
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.cve.adapter.image
+  notes: no public repo in the 3.33.0 map
+- id: neuvector/upstream.cve.updater.image
+  package: neuvector
+  upstreamPackageTag: 2.11.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+  public:
+    ref: docker.io/curlimages/curl:8.15.0
+    verifiedPull: true
+    digest: sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.cve.updater.image
+  notes: same Iron Bank ref as 3.33.0
+- id: neuvector/upstream.cve.scanner.image
+  package: neuvector
+  upstreamPackageTag: 2.11.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/scanner:5.6.0
+  public:
+    ref: docker.io/neuvector/scanner:6
+    verifiedPull: true
+    digest: sha256:07edf7e8d26da9b809195c2913274d4c05d8b0d8338624f5de7b84ceb9574444
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.cve.scanner.image
+  notes: 3.33.0 public tag; this chart's tag is not on the public registry
+- id: neuvector/monitor.exporter.image
+  package: neuvector
+  upstreamPackageTag: 2.11.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/prometheus-exporter:1-1.0.0
+  public:
+    ref: docker.io/neuvector/prometheus-exporter:1-1.0.0
+    verifiedPull: true
+    digest: sha256:c827a5f78888481005b54414de8aa49c7e424ef41e846a20ba1c6fdf96cfe9b7
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.monitor.exporter.image
+  notes: same Iron Bank ref as 3.33.0
+- id: tempo/upgradeJob.image
+  package: tempo
+  upstreamPackageTag: 2.1.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.34.7
+  public:
+    ref: registry.k8s.io/kubectl:v1.34.7
+    verifiedPull: true
+    digest: sha256:e77b87f5471e9f2c3f0c4a55bb9279e9ccd1734f7814b766b7ac099fd3ae9bfa
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: tempo.values.upgradeJob.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: tempo/bbtests.scripts.image
+  package: tempo
+  upstreamPackageTag: 2.1.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+  public:
+    ref: docker.io/curlimages/curl:8.15.0
+    verifiedPull: true
+    digest: sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: tempo.values.bbtests.scripts.image
+  notes: same Iron Bank ref as 3.33.0
+- id: tempo/upstream.tempo
+  package: tempo
+  upstreamPackageTag: 2.1.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/tempo:2.10.5
+  public:
+    ref: docker.io/grafana/tempo:2.10.5
+    verifiedPull: true
+    digest: sha256:ee21727732c7a7199cb71c3eee9153bbf23f9b0b87619f0555a0cf21a67f1a33
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: tempo.values.upstream.tempo
+  notes: same Iron Bank ref as 3.33.0
+- id: tempo/upstream.tempoQuery
+  package: tempo
+  upstreamPackageTag: 2.1.0-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/tempo-query:2.10.5
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: tempo.values.upstream.tempoQuery
+  notes: no public repo in the 3.33.0 map
+- id: monitoring/upstream.crds.upgradeJob.image.kubectl
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35
+  public:
+    ref: registry.k8s.io/kubectl:v1.35.0
+    verifiedPull: true
+    digest: sha256:0bb95b2a450875fc8ceaea2f9987a99fe27c228846e2e00b93b65ebb0d59034e
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.crds.upgradeJob.image.kubectl
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.alertmanager.alertmanagerSpec.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/alertmanager:v0.33.1
+  public:
+    ref: quay.io/prometheus/alertmanager:v0.33.1
+    verifiedPull: true
+    digest: sha256:9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.alertmanager.alertmanagerSpec.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: monitoring/upstream.grafana.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/grafana/grafana-plugins:13.1.0
+  public:
+    ref: docker.io/grafana/grafana:13.1.0
+    verifiedPull: true
+    digest: sha256:121a7a9ece6dc10b969f1f96eed64b4f07dfac0d0b8abc070f7cb83bbde86f63
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.grafana.image
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.grafana.testFramework
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/bats/bats:1.14.0
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.grafana.testFramework
+  notes: no public repo in the 3.33.0 map
+- id: monitoring/upstream.grafana.sidecar.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar:2.10.1
+  public:
+    ref: quay.io/kiwigrid/k8s-sidecar:2.10.1
+    verifiedPull: true
+    digest: sha256:7eac5c4fed714a18d038fc9fea57d8744d113367935dac0ea4eb6a87cef704a3
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.grafana.sidecar.image
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.grafana.downloadDashboardsImage
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+  public:
+    ref: docker.io/curlimages/curl:8.15.0
+    verifiedPull: true
+    digest: sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.grafana.downloadDashboardsImage
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.grafana.initChownData.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.8
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.grafana.initChownData.image
+  notes: no public repo in the 3.33.0 map
+- id: monitoring/upstream.kube-state-metrics.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kube-state-metrics:v2.19.1
+  public:
+    ref: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.19.1
+    verifiedPull: true
+    digest: sha256:85108987d044b18a098126732f98602df408888c0f7d456241f5abefb9744bc1
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.kube-state-metrics.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: monitoring/upstream.prometheus-node-exporter.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/node-exporter:v1.12.1
+  public:
+    ref: quay.io/prometheus/node-exporter:v1.12.1
+    verifiedPull: true
+    digest: sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheus-node-exporter.image
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.prometheusOperator.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-operator:v0.93.1
+  public:
+    ref: quay.io/prometheus-operator/prometheus-operator:v0.93.1
+    verifiedPull: true
+    digest: sha256:e52bb28fd41c98dd407c7a8cba8bdcfe7eabd7447e250afaf1fe7bb816dedbff
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheusOperator.image
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.prometheusOperator.prometheusConfigReloader.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader:v0.93.1
+  public:
+    ref: quay.io/prometheus-operator/prometheus-config-reloader:v0.93.1
+    verifiedPull: true
+    digest: sha256:428f088fe6fe07ab138bda92113664b04848a1dc408e4d3680a60ecdb55d1a65
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheusOperator.prometheusConfigReloader.image
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.prometheusOperator.thanosImage
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/thanos/thanos:v0.42.4
+  public:
+    ref: quay.io/thanos/thanos:v0.42.4
+    verifiedPull: true
+    digest: sha256:b567818fe608067eb0f1d7c2c4fe361e7ad83c8a256234c97685f1d0bf670cc8
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheusOperator.thanosImage
+  notes: same Iron Bank ref as 3.33.0
+- id: monitoring/upstream.prometheus.prometheusSpec.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/prometheus:v3.13.2
+  public:
+    ref: quay.io/prometheus/prometheus:v3.13.2
+    verifiedPull: true
+    digest: sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheus.prometheusSpec.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: monitoring/blackboxExporter.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/blackbox_exporter:v0.28.0
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.blackboxExporter.image
+  notes: no public repo in the 3.33.0 map
+- id: monitoring/snmpExporter.image
+  package: monitoring
+  upstreamPackageTag: 88.3.0-bb.1
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/snmp_exporter:v0.30.1
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.snmpExporter.image
+  notes: no public repo in the 3.33.0 map
+- id: grafana/autoRollingUpgrade.image
+  package: grafana
+  upstreamPackageTag: 10.5.15-bb.6
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+  public:
+    ref: docker.io/curlimages/curl:8.15.0
+    verifiedPull: true
+    digest: sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.autoRollingUpgrade.image
+  notes: same Iron Bank ref as 3.33.0
+- id: grafana/upstream.image
+  package: grafana
+  upstreamPackageTag: 10.5.15-bb.6
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/grafana/grafana-plugins:13.0.1
+  public:
+    ref: docker.io/grafana/grafana:13.0.1
+    verifiedPull: true
+    digest: sha256:0f86bada30d65ef9d0183b90c1e2682ac92d53d95da8bed322b984ea78a4a73a
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.upstream.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: grafana/upstream.testFramework.image
+  package: grafana
+  upstreamPackageTag: 10.5.15-bb.6
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/bats/bats:1.13.0
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.upstream.testFramework.image
+  notes: no public repo in the 3.33.0 map
+- id: grafana/upstream.initChownData.image
+  package: grafana
+  upstreamPackageTag: 10.5.15-bb.6
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.8
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.upstream.initChownData.image
+  notes: no public repo in the 3.33.0 map
+- id: grafana/upstream.sidecar.image
+  package: grafana
+  upstreamPackageTag: 10.5.15-bb.6
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar:2.8.1
+  public:
+    ref: quay.io/kiwigrid/k8s-sidecar:2.8.1
+    verifiedPull: true
+    digest: sha256:abb55b2165c60e8f97e473862c7a3123df6f67d44f592949577c29b8fb2df9d6
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.upstream.sidecar.image
+  notes: 3.33.0 public repo with this chart's tag
+- id: grafana/upstream.imageRenderer.image
+  package: grafana
+  upstreamPackageTag: 10.5.15-bb.6
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/grafana-image-renderer:v5.9.1
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.upstream.imageRenderer.image
+  notes: no public repo in the 3.33.0 map
+- id: certManager/upstream.image
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/jetstack/cert-manager-controller:v1.20.3
+  public:
+    ref: quay.io/jetstack/cert-manager-controller:v1.20.3
+    verifiedPull: true
+    digest: sha256:6c13d61e0348a5bc3477f8ea9a928624300b30d19b1c72a7d2b90372fc713db4
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.image
+  notes: same Iron Bank ref as 3.33.0
+- id: certManager/upstream.webhook.image
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/jetstack/cert-manager-webhook:v1.20.3
+  public:
+    ref: quay.io/jetstack/cert-manager-webhook:v1.20.3
+    verifiedPull: true
+    digest: sha256:a61e817632cebed3bb59a189327e786fa3fdd7597167d994a1848d98fd55848f
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.webhook.image
+  notes: same Iron Bank ref as 3.33.0
+- id: certManager/upstream.cainjector.image
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/jetstack/cert-manager-cainjector:v1.20.3
+  public:
+    ref: quay.io/jetstack/cert-manager-cainjector:v1.20.3
+    verifiedPull: true
+    digest: sha256:06ad347fe0dc2eb84cc355c26f6752e05e87dceb6447f5cd29b963dd66dfd8bd
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.cainjector.image
+  notes: same Iron Bank ref as 3.33.0
+- id: certManager/upstream.acmesolver.image
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/jetstack/cert-manager-acmesolver:v1.20.3
+  public:
+    ref: quay.io/jetstack/cert-manager-acmesolver:v1.20.3
+    verifiedPull: true
+    digest: sha256:d8d948a9fa0fb9eeb9fd2432dee4945cc202c840ee25a733f0b238fd89fe5cbb
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.acmesolver.image
+  notes: same Iron Bank ref as 3.33.0
+- id: certManager/upstream.startupapicheck.image
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/cleanstart/cert-manager-startupapicheck:1.20.3-amd64
+  public:
+    ref: quay.io/jetstack/cert-manager-startupapicheck:v1.20.3
+    verifiedPull: true
+    digest: sha256:b0c9a2c18d02f3c40a9e091a6fe9afdf39cbf7fb2d9acc18c9881c21c625f2dc
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.startupapicheck.image
+  notes: same Iron Bank ref as 3.33.0
+- id: certManager/bbtests.scripts.image
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.34
+  public:
+    ref: registry.k8s.io/kubectl:v1.34.1
+    verifiedPull: true
+    digest: sha256:59bafa07ff3a6d4b417e7633ddb9d79a9606ca98bf64bac080b3e65748669250
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.bbtests.scripts.image
+  notes: same Iron Bank ref as 3.33.0

@@ -1,0 +1,34 @@
+image:
+  repository: docker.io/library/genesis-console
+  tag: local
+  pullPolicy: IfNotPresent
+# Existing Secret in the console namespace: keys database-url and console-password.
+credentialsSecret: genesis-console
+username: admin
+cluster:
+  namespace: bigbang
+  release: bigbang
+  # Helm stores child release revisions in these namespaces. Secret reads are
+  # limited to this list plus cluster.namespace; there is no cluster-wide Secret grant.
+  releaseNamespaces:
+    - istio-system
+    - istio-gateway
+    - kiali
+    - kyverno
+    - kyverno-reporter
+    - logging
+    - tempo
+    - monitoring
+    - neuvector
+    - cert-manager
+    - alloy
+cache:
+  size: 10Gi
+  storageClass: ""
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi

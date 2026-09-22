@@ -1,0 +1,14 @@
+# Opt in after preparing a self-contained kubeconfig that is reachable from Docker.
+services:
+  console:
+    environment:
+      KUBECONFIG: /run/kube/config
+    volumes:
+      - type: bind
+        source: ${GENESIS_KUBECONFIG:?Set GENESIS_KUBECONFIG to an absolute kubeconfig path}
+        target: /run/kube/config
+        read_only: true
+        bind:
+          create_host_path: false
+    extra_hosts:
+      - host.docker.internal:host-gateway

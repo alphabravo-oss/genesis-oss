@@ -1,0 +1,27 @@
+{{- $fluxSettingsGatekeeper := merge .Values.gatekeeper.flux .Values.flux -}}
+{{- if .Values.gatekeeper.enabled }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gatekeeper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: gatekeeper
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/gatekeeper/values.yaml") . | sha256sum }}
+spec:
+  # Use a non-persistent client to allow for Gatekeeper CRD *magic*
+  persistentClient: false
+  targetNamespace: gatekeeper-system
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "gatekeeper" "package" .Values.gatekeeper "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsGatekeeper | nindent 2 }}
+
+  {{- if .Values.gatekeeper.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.gatekeeper.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "gatekeeper" "root" .) | nindent 2 }}
+{{- end }}

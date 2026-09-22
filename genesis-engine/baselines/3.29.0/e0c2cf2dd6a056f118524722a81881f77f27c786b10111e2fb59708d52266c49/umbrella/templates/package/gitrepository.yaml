@@ -1,0 +1,32 @@
+{{- /* Used for GitOps on a package's Helm chart */ -}}
+{{- range $pkgKey, $vals := .Values.packages -}}
+{{- if and (not $.Values.offline) (dig "enabled" true $vals) ($vals.git) -}}
+{{- $pkg := include "resourceName" $pkgKey -}}
+
+{{- $gitCredsDict := dict
+  "name" $pkg
+  "packageGitScope" $vals.git
+  "rootScope" $
+  "releaseName" $pkg
+}}
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: {{ $pkg }}
+  namespace: {{ if dig "helmRelease" "namespace" nil (index $.Values.packages $pkgKey) }}
+               {{ dig "helmRelease" "namespace" "" (index $.Values.packages $pkgKey) }}
+             {{ else }}
+               {{ default (dig "namespace" "name" $pkg $vals) "" }}
+             {{ end }}
+  labels:
+    app.kubernetes.io/name: {{ $pkg }}
+    {{- include "commonLabels" $ | nindent 4 }}
+spec:
+  interval: {{ $.Values.flux.interval }}
+  url: {{ dig "git" "repo" nil $vals }}
+  ref:
+    {{- include "validRef" $vals.git | nindent 4 -}}
+  {{- include "gitCredsExtended" $gitCredsDict | nindent 2 }}
+---
+{{- end -}}
+{{- end -}}

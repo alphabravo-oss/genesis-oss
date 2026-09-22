@@ -1,0 +1,97 @@
+# oss spike. Pods start and the default UIs answer.
+# Iron Bank security contexts stay in images.yaml. Overrides here are per image.
+edition: oss
+imageSource: public
+conformance: relaxed
+
+bbtests:
+  enabled: false
+  reason: Big Bang test hooks are not part of the spike.
+
+pullSecrets:
+  registry1: absent
+  reason: The spike has no Registry1 credentials. The private-registry pull secret is not created.
+
+waitJobs:
+  enabled: false
+  packages:
+    - istioGateway
+    - kiali
+    - kyvernoPolicies
+  reason: The gluon wait job runs /bin/bash. registry.k8s.io/kubectl has no shell, so the job is turned off instead of pointed at that image.
+
+policies:
+  - name: restrict-image-registries
+    action: allow
+    allow:
+      - docker.io
+      - quay.io
+      - ghcr.io
+      - registry.k8s.io
+      - registry.gitlab.com
+    reason: Upstream allows only registry1.dso.mil and registry.dso.mil. The oss catalog pulls from these five registries.
+
+  - name: disallow-privileged-containers
+    action: keep-upstream-exceptions
+    exceptions:
+      - namespace: neuvector
+        names:
+          - neuvector-enforcer-pod*
+          - neuvector-controller-pod*
+          - neuvector-scanner-pod*
+        reason: NeuVector's enforcer is privileged so it can scan the node. Upstream already excludes these pods. The exceptions stay.
+  - name: disallow-host-namespaces
+    action: keep-upstream-exceptions
+    exceptions:
+      - namespace: neuvector
+        names:
+          - neuvector-enforcer-pod*
+        reason: The enforcer uses the host network namespace to inspect traffic. Upstream already excludes it.
+  - name: add-default-capability-drop
+    action: keep-upstream-exceptions
+    exceptions:
+      - namespace: neuvector
+        names:
+          - neuvector-enforcer-pod*
+          - neuvector-cert-upgrader-job*
+          - neuvector-controller-pod*
+          - neuvector-scanner-pod*
+          - neuvector-prometheus-exporter-pod*
+        reason: Upstream already skips the capability-drop mutation for these pods.
+
+  - name: require-non-root-user
+    action: keep
+    reason: Default-on charts set a non-root user, or add-default-securitycontext fills 65534. No blanket disable.
+  - name: require-non-root-group
+    action: keep
+    reason: Same as require-non-root-user.
+  - name: require-drop-all-capabilities
+    action: keep
+    reason: Default-on charts already drop ALL. restrict-capabilities still allows NET_BIND_SERVICE, and NET_ADMIN plus NET_RAW while Istio is on.
+  - name: restrict-capabilities
+    action: keep
+    reason: The Istio sidecar needs NET_ADMIN and NET_RAW. Upstream allows those while Istio is enabled.
+  - name: add-default-securitycontext
+    action: keep
+    reason: The mutation only fills a user when the pod does not set one. Per-image overrides below set the user first.
+  - name: disallow-privilege-escalation
+    action: keep
+    reason: Default-on charts set allowPrivilegeEscalation false.
+  - name: restrict-host-path-mount
+    action: keep-upstream-exceptions
+    reason: NeuVector and monitoring hostPath exceptions already live in the umbrella values. They stay.
+  - name: restrict-host-path-mount-pv
+    action: keep
+    reason: No extra exception for the default-on set.
+  - name: restrict-host-path-write
+    action: keep-upstream-exceptions
+    reason: NeuVector's writable hostPath exception already lives in the umbrella values. It stays.
+
+securityContextOverrides:
+  - image: grafana/grafana
+    path: grafana.values.upstream.securityContext
+    set:
+      runAsUser: 472
+      runAsGroup: 472
+      fsGroup: 472
+    reason: The chart pins UID 65532 for the Iron Bank grafana-plugins image. docker.io/grafana/grafana runs as UID 472.

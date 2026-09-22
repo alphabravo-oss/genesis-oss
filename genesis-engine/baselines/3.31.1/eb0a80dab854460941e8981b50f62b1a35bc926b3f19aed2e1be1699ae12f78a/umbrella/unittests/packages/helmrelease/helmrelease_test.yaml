@@ -1,0 +1,915 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: Packages - HelmRelease - Shared Helpers and Bug Fixes
+tests:
+
+###############################################################################
+# Enable / Disable - Core packages
+###############################################################################
+
+- it: should render monitoring HelmRelease when enabled
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: monitoring
+
+- it: should not render monitoring HelmRelease when disabled
+  set:
+    monitoring:
+      enabled: false
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render loki HelmRelease when enabled
+  set:
+    loki:
+      enabled: true
+  template: loki/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: loki
+
+- it: should not render loki HelmRelease when disabled
+  set:
+    loki:
+      enabled: false
+  template: loki/helmrelease.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+###############################################################################
+# Enable / Disable - Addon packages
+###############################################################################
+
+- it: should render velero HelmRelease when enabled
+  set:
+    addons:
+      velero:
+        enabled: true
+  template: velero/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: velero
+
+- it: should not render velero HelmRelease when disabled
+  set:
+    addons:
+      velero:
+        enabled: false
+  template: velero/helmrelease.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: should render argocd HelmRelease when enabled
+  set:
+    addons:
+      argocd:
+        enabled: true
+  template: argocd/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: argocd
+
+###############################################################################
+# Chart spec helper - git source
+###############################################################################
+
+- it: should render git sourceRef for monitoring when sourceType is git
+  set:
+    monitoring:
+      enabled: true
+      sourceType: "git"
+      git:
+        repo: https://repo1.dso.mil/big-bang/product/packages/monitoring.git
+        path: chart
+        tag: 1.0.0
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.chart.spec.sourceRef.kind
+      value: GitRepository
+  - equal:
+      path: spec.chart.spec.sourceRef.name
+      value: monitoring
+  - equal:
+      path: spec.chart.spec.chart
+      value: chart
+  - equal:
+      path: spec.chart.spec.interval
+      value: 5m
+
+- it: should render git sourceRef for velero addon when sourceType is git
+  set:
+    addons:
+      velero:
+        enabled: true
+        sourceType: "git"
+        git:
+          repo: https://repo1.dso.mil/big-bang/product/packages/velero.git
+          path: chart
+          tag: 1.0.0
+  template: velero/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.chart.spec.sourceRef.kind
+      value: GitRepository
+  - equal:
+      path: spec.chart.spec.sourceRef.name
+      value: velero
+
+###############################################################################
+# Chart spec helper - helmRepo source
+###############################################################################
+
+- it: should render helmRepo sourceRef when sourceType is not git
+  set:
+    monitoring:
+      enabled: true
+      sourceType: "helmRepo"
+      helmRepo:
+        chartName: kube-prometheus-stack
+        tag: 45.0.0
+        repoName: prometheus-community
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.chart.spec.sourceRef.kind
+      value: HelmRepository
+  - equal:
+      path: spec.chart.spec.sourceRef.name
+      value: prometheus-community
+  - equal:
+      path: spec.chart.spec.chart
+      value: kube-prometheus-stack
+  - equal:
+      path: spec.chart.spec.version
+      value: 45.0.0
+
+###############################################################################
+# ReleaseName framework (phase 1)
+###############################################################################
+
+- it: should not render spec.releaseName by default for framework-enabled monitoring
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - notExists:
+      path: spec.releaseName
+
+- it: should render spec.releaseName when monitoring.releaseName is set
+  set:
+    monitoring:
+      enabled: true
+      releaseName: monitoring-custom
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.releaseName
+      value: monitoring-custom
+
+- it: should render spec.releaseName when argocd.releaseName is set
+  set:
+    addons:
+      argocd:
+        enabled: true
+        releaseName: argocd-custom
+  template: argocd/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.releaseName
+      value: argocd-custom
+
+- it: should not render spec.releaseName by default for framework-enabled renovate
+  set:
+    renovate:
+      enabled: true
+  template: renovate/helmrelease.yaml
+  asserts:
+  - notExists:
+      path: spec.releaseName
+
+- it: should render spec.releaseName when renovate.releaseName is set
+  set:
+    renovate:
+      enabled: true
+      releaseName: renovate-custom
+  template: renovate/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.releaseName
+      value: renovate-custom
+
+- it: should keep explicit releaseName behavior for templates that already define it (alloy)
+  set:
+    alloy:
+      enabled: true
+  template: alloy/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.releaseName
+      value: alloy
+
+###############################################################################
+# ValuesFrom helper
+###############################################################################
+
+- it: should render standard 3-secret valuesFrom for monitoring
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - lengthEqual:
+      path: spec.valuesFrom
+      count: 3
+  - equal:
+      path: spec.valuesFrom[0].valuesKey
+      value: "common"
+  - equal:
+      path: spec.valuesFrom[1].valuesKey
+      value: "defaults"
+  - equal:
+      path: spec.valuesFrom[2].valuesKey
+      value: "overlays"
+
+- it: should render correct secret name in valuesFrom for velero
+  set:
+    addons:
+      velero:
+        enabled: true
+  template: velero/helmrelease.yaml
+  asserts:
+  - matchRegex:
+      path: spec.valuesFrom[0].name
+      pattern: ".*-velero-values$"
+
+- it: should render correct secret name in valuesFrom for ek
+  set:
+    elasticsearchKibana:
+      enabled: true
+  template: elasticsearch-kibana/helmrelease.yaml
+  asserts:
+  - matchRegex:
+      path: spec.valuesFrom[0].name
+      pattern: ".*-ek-values$"
+
+###############################################################################
+# Labels and metadata
+###############################################################################
+
+- it: should include app.kubernetes.io/name label on monitoring
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: metadata.labels["app.kubernetes.io/name"]
+      value: monitoring
+
+- it: should include app.kubernetes.io/component label on monitoring
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: metadata.labels["app.kubernetes.io/component"]
+      value: "core"
+
+- it: should include commonLabels on monitoring
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: metadata.labels["app.kubernetes.io/part-of"]
+      value: "bigbang"
+
+- it: should include checksum annotation on monitoring
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - exists:
+      path: metadata.annotations["checksum/bigbang-values"]
+
+###############################################################################
+# targetNamespace correctness
+###############################################################################
+
+- it: should set targetNamespace to monitoring for monitoring
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.targetNamespace
+      value: monitoring
+
+- it: should set targetNamespace to logging for loki
+  set:
+    loki:
+      enabled: true
+  template: loki/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.targetNamespace
+      value: logging
+
+- it: should set targetNamespace to gatekeeper-system for gatekeeper
+  set:
+    gatekeeper:
+      enabled: true
+  template: gatekeeper/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.targetNamespace
+      value: gatekeeper-system
+
+- it: should set targetNamespace to istio-system for istiod
+  set:
+    istioCRDs:
+      enabled: true
+    istiod:
+      enabled: true
+  template: istiod/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.targetNamespace
+      value: istio-system
+
+- it: should set targetNamespace to kube-system for istio-cni
+  set:
+    istiod:
+      enabled: true
+    istioCNI:
+      enabled: true
+  template: istio-cni/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.targetNamespace
+      value: kube-system
+
+###############################################################################
+# Special cases
+###############################################################################
+
+- it: should set persistentClient to false for gatekeeper
+  set:
+    gatekeeper:
+      enabled: true
+  template: gatekeeper/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.persistentClient
+      value: false
+
+- it: should default loki releaseName to logging-loki
+  set:
+    loki:
+      enabled: true
+  template: loki/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.releaseName
+      value: logging-loki
+
+- it: should set metadata.name to ek for elasticsearch-kibana
+  set:
+    elasticsearchKibana:
+      enabled: true
+  template: elasticsearch-kibana/helmrelease.yaml
+  asserts:
+  - equal:
+      path: metadata.name
+      value: ek
+  - equal:
+      path: metadata.labels["app.kubernetes.io/name"]
+      value: elasticsearch-kibana
+
+###############################################################################
+# Bug fix: grafana flux settings variable (was copy-pasted from monitoring)
+###############################################################################
+
+- it: should use grafana flux settings, not monitoring flux settings
+  set:
+    grafana:
+      enabled: true
+      flux:
+        timeout: 30m
+    monitoring:
+      flux:
+        timeout: 10m
+  template: grafana/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.timeout
+      value: 30m
+
+###############################################################################
+# Bug fix: fluentbit loki dependency should be in outer condition
+###############################################################################
+
+- it: fluentbit should render dependsOn with loki when only loki is enabled
+  set:
+    fluentbit:
+      enabled: true
+    loki:
+      enabled: true
+    elasticsearchKibana:
+      enabled: false
+    gatekeeper:
+      enabled: false
+    istiod:
+      enabled: false
+    kyvernoPolicies:
+      enabled: false
+    kyverno:
+      enabled: false
+    monitoring:
+      enabled: false
+  template: fluentbit/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: loki
+      any: true
+
+###############################################################################
+# Bug fix: gitlab-runner kyverno dependency should be in outer condition
+###############################################################################
+
+- it: gitlab-runner should render dependsOn with kyverno when only kyverno is enabled
+  set:
+    addons:
+      gitlabRunner:
+        enabled: true
+      gitlab:
+        enabled: false
+    gatekeeper:
+      enabled: false
+    kyverno:
+      enabled: true
+    kyvernoPolicies:
+      enabled: false
+    monitoring:
+      enabled: false
+  template: gitlab-runner/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: kyverno
+      any: true
+
+- it: gitlab should append custom HelmRelease dependencies
+  set:
+    addons:
+      gitlab:
+        enabled: true
+        dependsOn:
+          - name: cloudnative-pg
+            namespace: bigbang
+    gatekeeper:
+      enabled: false
+    istiod:
+      enabled: false
+    kyvernoPolicies:
+      enabled: false
+    monitoring:
+      enabled: false
+  template: gitlab/helmrelease.yaml
+  asserts:
+  - lengthEqual:
+      path: spec.dependsOn
+      count: 1
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: cloudnative-pg
+        namespace: bigbang
+
+- it: gitlab should preserve default dependencies when appending custom dependencies
+  set:
+    addons:
+      gitlab:
+        enabled: true
+        dependsOn:
+          - name: cloudnative-pg
+            namespace: bigbang
+    gatekeeper:
+      enabled: false
+    istiod:
+      enabled: true
+    kyvernoPolicies:
+      enabled: true
+    monitoring:
+      enabled: false
+  template: gitlab/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: cloudnative-pg
+        namespace: bigbang
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: kyverno-policies
+        namespace: NAMESPACE
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: istiod
+        namespace: NAMESPACE
+
+###############################################################################
+# DependsOn correctness
+###############################################################################
+
+- it: monitoring should always depend on prometheus-operator-crds
+  set:
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: prometheus-operator-crds
+      any: true
+
+- it: monitoring should depend on istiod when istio is enabled
+  set:
+    monitoring:
+      enabled: true
+    istiod:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: istiod
+      any: true
+
+- it: monitoring should not depend on istiod when istio is disabled
+  set:
+    monitoring:
+      enabled: true
+    istiod:
+      enabled: false
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - notContains:
+      path: spec.dependsOn
+      content:
+        name: istiod
+      any: true
+
+- it: authservice should depend on gateway-api when ambient mode is enabled
+  set:
+    istio:
+      ambient:
+        enabled: true
+    addons:
+      authservice:
+        enabled: true
+    monitoring:
+      enabled: false
+  template: authservice/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: gateway-api
+      any: true
+
+- it: authservice should depend on gateway-api when ambient mode is enabled via ztunnel
+  set:
+    ztunnel:
+      enabled: true
+    addons:
+      authservice:
+        enabled: true
+    monitoring:
+      enabled: false
+  template: authservice/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: gateway-api
+      any: true
+
+- it: standalone gateway-api should not make sidecar authservice depend on it
+  set:
+    gatewayAPI:
+      enabled: true
+    addons:
+      authservice:
+        enabled: true
+    monitoring:
+      enabled: false
+  template: authservice/helmrelease.yaml
+  asserts:
+  - notContains:
+      path: spec.dependsOn
+      content:
+        name: gateway-api
+      any: true
+
+- it: ztunnel-enabled ambient mode should render ztunnel with its istio-cni dependency
+  set:
+    ztunnel:
+      enabled: true
+  template: ztunnel/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: ztunnel
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: istio-cni
+      any: true
+
+- it: ztunnel-enabled ambient mode should render istio-cni
+  set:
+    ztunnel:
+      enabled: true
+  template: istio-cni/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: istio-cni
+
+- it: ztunnel-enabled ambient mode should render gateway-api
+  set:
+    ztunnel:
+      enabled: true
+  template: gateway-api/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: gateway-api
+
+- it: globally enabled ambient mode should render the ambient packages
+  set:
+    istio:
+      ambient:
+        enabled: true
+  templates:
+    - ztunnel/helmrelease.yaml
+    - istio-cni/helmrelease.yaml
+    - gateway-api/helmrelease.yaml
+  asserts:
+  - hasDocuments:
+      count: 1
+
+- it: explicit istio-cni should not render ztunnel
+  set:
+    istioCNI:
+      enabled: true
+  template: ztunnel/helmrelease.yaml
+  asserts:
+  - hasDocuments:
+      count: 0
+
+- it: explicit gateway-api should render outside ambient mode
+  set:
+    gatewayAPI:
+      enabled: true
+  template: gateway-api/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: gateway-api
+
+- it: other Istio-integrated packages should not depend on gateway-api in ambient mode
+  set:
+    istio:
+      ambient:
+        enabled: true
+    monitoring:
+      enabled: true
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - notContains:
+      path: spec.dependsOn
+      content:
+        name: gateway-api
+      any: true
+
+- it: kyverno-policies should always depend on kyverno
+  set:
+    kyvernoPolicies:
+      enabled: true
+    kyverno:
+      enabled: true
+  template: kyverno-policies/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: kyverno
+      any: true
+
+- it: elasticsearch-kibana should always depend on eck-operator
+  set:
+    elasticsearchKibana:
+      enabled: true
+    eckOperator:
+      enabled: true
+  template: elasticsearch-kibana/helmrelease.yaml
+  asserts:
+  - contains:
+      path: spec.dependsOn
+      content:
+        name: eck-operator
+      any: true
+
+- it: gatekeeper should have no dependsOn
+  set:
+    gatekeeper:
+      enabled: true
+  template: gatekeeper/helmrelease.yaml
+  asserts:
+  - notExists:
+      path: spec.dependsOn
+
+- it: prometheus-operator-crds should have no dependsOn
+  set:
+    prometheusOperatorCRDs:
+      enabled: true
+  template: prometheus-operator-crds/helmrelease.yaml
+  asserts:
+  - notExists:
+      path: spec.dependsOn
+
+###############################################################################
+# Compound enable conditions
+###############################################################################
+
+- it: eck-operator should render when elasticsearchKibana is enabled
+  set:
+    eckOperator:
+      enabled: false
+    elasticsearchKibana:
+      enabled: true
+  template: eck-operator/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+
+- it: kyverno should render when kyvernoPolicies is enabled
+  set:
+    kyverno:
+      enabled: false
+    kyvernoPolicies:
+      enabled: true
+  template: kyverno/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+
+- it: minio-operator should render when minio is enabled
+  set:
+    addons:
+      minioOperator:
+        enabled: false
+      minio:
+        enabled: true
+  template: minio-operator/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+
+###############################################################################
+# Sonarqube orphaned values: removed
+###############################################################################
+
+- it: sonarqube should not have an empty inline values block
+  set:
+    addons:
+      sonarqube:
+        enabled: true
+  template: sonarqube/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - notExists:
+      path: spec.values
+
+###############################################################################
+# Flux settings merge
+###############################################################################
+
+- it: should merge package flux settings with global flux settings
+  set:
+    flux:
+      timeout: 10m
+    monitoring:
+      enabled: true
+      flux:
+        timeout: 30m
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.timeout
+      value: 30m
+
+- it: should use global flux settings when no package override
+  set:
+    flux:
+      timeout: 10m
+    monitoring:
+      enabled: true
+      flux: {}
+  template: monitoring/helmrelease.yaml
+  asserts:
+  - equal:
+      path: spec.timeout
+      value: 10m
+
+###############################################################################
+# Mattermost-operator legacy values merge
+###############################################################################
+
+- it: mattermost-operator should render when mattermost is enabled
+  set:
+    addons:
+      mattermostOperator:
+        enabled: false
+      mattermost:
+        enabled: true
+  template: mattermost-operator/helmrelease.yaml
+  asserts:
+  - isKind:
+      of: HelmRelease
+  - equal:
+      path: metadata.name
+      value: mattermost-operator
+
+###############################################################################
+# istiod prerequisite check
+###############################################################################
+
+- it: istiod should fail when istioCRDs is disabled
+  set:
+    istiod:
+      enabled: true
+    istioCRDs:
+      enabled: false
+  template: istiod/helmrelease.yaml
+  asserts:
+  - failedTemplate:
+      errorMessage: "istiod requires istioCRDs to be enabled"
+
+###############################################################################
+# istio-cni prerequisite check
+###############################################################################
+
+- it: istio-cni should fail when istiod is disabled
+  set:
+    istioCNI:
+      enabled: true
+    istiod:
+      enabled: false
+  template: istio-cni/helmrelease.yaml
+  asserts:
+  - failedTemplate:
+      errorMessage: "istioCNI requires istiod to be enabled"

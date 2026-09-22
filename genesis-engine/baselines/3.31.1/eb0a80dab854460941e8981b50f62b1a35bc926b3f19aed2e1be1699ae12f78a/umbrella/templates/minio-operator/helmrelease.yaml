@@ -1,0 +1,48 @@
+{{- $fluxSettingsMinioOperator := merge .Values.addons.minioOperator.flux .Values.flux -}}
+{{- if or .Values.addons.minioOperator.enabled .Values.addons.minio.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: minio-operator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: minio-operator
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/minio-operator/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: minio-operator
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "minio-operator" "package" .Values.addons.minioOperator "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsMinioOperator | nindent 2 }}
+
+  {{- if .Values.addons.minioOperator.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.minioOperator.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "minio-operator" "root" .) | nindent 2 }}
+
+  values:
+    podAnnotations:
+      sidecar.istio.io/inject: "true"
+      traffic.sidecar.istio.io/includeInboundPorts: "*"
+      traffic.sidecar.istio.io/excludeInboundPorts: "9443"
+    imagePullSecrets:
+      - name: private-registry
+
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled }}
+  dependsOn:
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

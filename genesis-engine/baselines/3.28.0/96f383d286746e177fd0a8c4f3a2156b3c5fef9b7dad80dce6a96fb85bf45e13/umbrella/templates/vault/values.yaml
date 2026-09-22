@@ -1,0 +1,230 @@
+{{- if .Values.addons.vault.enabled }}
+{{- /* Create a cleaned copy of vault config and merge deprecated paths into current paths */ -}}
+{{- $vaultPackage := deepCopy .Values.addons.vault -}}
+{{- if .Values.addons.vault.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.vault.values) | fromYaml -}}
+{{- $vaultPackage = set $vaultPackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict 
+"root" $ 
+"package" $vaultPackage 
+"name" "vault" 
+"defaults" ((mergeOverwrite (include "bigbang.defaults.vault" . | fromYaml) (include "bigbang.vault.bb-common-migrations" . | fromYaml)) | toYaml) 
+)}}
+{{- end }}
+
+{{- define "bigbang.defaults.vault" -}}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.vault.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+domain: {{ $domainName }}
+
+{{ $gateway := include "getGatewayName" (dict "gateway" .Values.addons.vault.ingress.gateway "root" .)}}
+{{ $gatewayPort := dig "routes" "inbound" "vault" "passthrough" "gatewayPort" "8443" .Values.addons.vault.values | int }}
+{{ $ingressKey := dig "customAppIngressSelector" "key" "vault-ingress" .Values.addons.vault.values }}
+{{ $ingressValue := dig "customAppIngressSelector" "value" "true" .Values.addons.vault.values | quote }}
+
+openshift: {{ .Values.openshift }}
+
+monitoring:
+  enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+
+routes:
+  inbound:
+    vault:
+      enabled: true
+      gateways:
+        - {{ $gateway }}
+      hosts:
+        - vault.{{ .Values.domain }}
+      service: vault-vault.vault.svc.cluster.local
+      port: 8200
+      passthrough:
+        enabled: true
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.vault.values }}
+      hosts:
+      - repo1.dso.mil
+
+istio:
+  enabled: {{ $istioEnabled }}
+  hardened:
+    enabled: {{ $istioHardenedEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.vault.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.vault.values .) }}
+
+tls:
+  cert: {{ .Values.addons.vault.ingress.cert | quote }}
+  key: {{ .Values.addons.vault.ingress.key | quote }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress:
+    definitions: 
+      {{ toYaml .Values.networkPolicies.ingress.definitions | nindent 6 }}
+      custom-app-ingress:
+        from:
+          - namespaceSelector: {}
+            podSelector:
+              matchLabels:
+                {{ $ingressKey }}: {{ $ingressValue }}
+    to:
+      vault:8200:
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+          definition:
+            custom-app-ingress: true
+      vault-agent-injector:8080:
+        from:
+          cidr:
+            0.0.0.0/0: true
+  egress:
+    definitions:
+      {{ toYaml .Values.networkPolicies.egress.definitions | nindent 6 }}
+      kms:
+        to:
+          - ipBlock:
+              cidr: "0.0.0.0/0"
+        ports:
+          - port: 443
+            protocol: TCP
+    from:
+      vault:
+        to:
+          cidr:
+            169.254.169.254/32: true
+          k8s:
+            tempo/tempo:9411: {{ .Values.tempo.enabled }}
+          definition:
+            kubeAPI: true
+            kms: true
+      vault-agent-injector:
+        to:
+          definition:
+            kubeAPI: true
+      vault-autoinit:
+        podSelector:
+          matchLabels:
+            batch.kubernetes.io/job-name: vault-vault-job-init
+        to:
+          k8s:
+            {{ $gateway }}:{{ $gatewayPort }}: true
+          definition:
+            kubeAPI: true
+
+bbtests:
+  enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
+  cypress:
+    envs:
+      cypress_vault_url: {{ printf "https://vault.%s" $domainName | quote }}
+
+upstream:
+  global:
+    {{- include "secretsImagePullSecretsWithName" . | nindent 4 }}
+
+  injector:
+    image:
+      pullPolicy: {{ .Values.imagePullPolicy }}
+    {{- if $istioEnabled }}
+    annotations:
+      {{ include "istioAnnotation" . }}
+      traffic.sidecar.istio.io/excludeInboundPorts: "8080"
+    {{- end }}
+    {{- if .Values.kiali.enabled }}
+    extraLabels:
+      service.istio.io/canonical-name: vault-vault-agent-injector
+    {{- end }}
+
+  server:
+    {{- if $istioEnabled }}
+    annotations:
+      {{ include "istioAnnotation" . }}
+    {{- end }}
+    image:
+      pullPolicy: {{ .Values.imagePullPolicy }}
+    {{- if .Values.kiali.enabled }}
+    extraLabels:
+      service.istio.io/canonical-name: vault-vault
+    {{- end }}
+    {{- if and .Values.addons.vault.ingress.cert .Values.addons.vault.ingress.key }}
+    # In this context, we do not use any istio helpers (.vault.ingress.gateway would be "passthrough" in both istio versions)
+    {{- if eq .Values.addons.vault.ingress.gateway "passthrough" }}
+    volumes:
+    - name: tls
+      secret:
+        secretName: vault-tls
+    volumeMounts:
+    - name: tls
+      mountPath: "/vault/tls"
+      readOnly: true
+    {{- end }}
+    {{- end }}
+    # bbtests specific config for allowing auto-unseal and kms access
+    {{- if (dig "values" "bbtests" "enabled" false .Values.addons.vault) }}
+    ha:
+      raft:
+        config: |
+          ui = true
+
+          listener "tcp" {
+            tls_disable = false
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            tls_cert_file = "/vault/tls/tls.crt"
+            tls_key_file  = "/vault/tls/tls.key"
+            telemetry {
+              unauthenticated_metrics_access = true
+            }
+          }
+
+          storage "raft" {
+            path = "/vault/data"
+
+            retry_join {
+              leader_api_addr = "https://vault-vault-0.vault-vault-internal:8200"
+              leader_client_cert_file = "/vault/tls/tls.crt"
+              leader_client_key_file = "/vault/tls/tls.key"
+              leader_tls_servername = "vault.dev.bigbang.mil"
+            }
+          }
+
+          seal "awskms" {
+            region     = "us-gov-west-1"
+            access_key = "{{ .Values.addons.vault.kms_access_key }}"
+            secret_key = "{{ .Values.addons.vault.kms_secret_key }}"
+            kms_key_id = "{{ .Values.addons.vault.kms_key_id }}"
+            endpoint   = "https://kms.us-gov-west-1.amazonaws.com"
+          }
+
+          telemetry {
+            prometheus_retention_time = "24h"
+            disable_hostname = true
+          }
+          service_registration "kubernetes" {}
+    {{- end }}
+
+
+  csi:
+    image:
+      pullPolicy: {{ .Values.imagePullPolicy }}
+
+{{- if $istioEnabled }}
+minio:
+  annotations:
+    {{ include "istioAnnotation" . }}
+{{- end }}        
+{{- end -}}

@@ -1,0 +1,45 @@
+{{- $fluxSettingsNeuvector := merge .Values.neuvector.flux .Values.flux -}}
+{{- if .Values.neuvector.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: neuvector
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: neuvector
+    app.kubernetes.io/component: "sandbox"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/neuvector/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: neuvector
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "neuvector" "package" .Values.neuvector "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsNeuvector | nindent 2 }}
+
+  {{- if .Values.neuvector.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.neuvector.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "neuvector" "root" .) | nindent 2 }}
+
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled }}
+  dependsOn:
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

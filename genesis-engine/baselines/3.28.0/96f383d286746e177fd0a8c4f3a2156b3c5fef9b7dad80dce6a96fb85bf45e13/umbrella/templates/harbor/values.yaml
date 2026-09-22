@@ -1,0 +1,113 @@
+{{- $pkg := "harbor" }}
+
+{{- /* Create secret */ -}}
+{{- if (get .Values.addons $pkg).enabled }}
+{{- /* Create a cleaned copy of harbor config and merge deprecated paths into current paths */ -}}
+{{- $harborPackage := deepCopy .Values.addons.harbor -}}
+{{- if .Values.addons.harbor.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.harbor.values) | fromYaml -}}
+{{- $harborPackage = set $harborPackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict 
+  "root" $ 
+  "package" $harborPackage 
+  "name" $pkg 
+  "defaults" ((mergeOverwrite (include "bigbang.defaults.harbor" . | fromYaml) (include "bigbang.harbor.bb-common-migrations" . | fromYaml)) | toYaml)
+)}}
+{{- end }}
+
+{{- define "bigbang.defaults.harbor" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.harbor.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $postgresEnabled := dig "postgresql" "enabled" true .Values.addons.harbor.values }}
+
+externalURL: https://harbor.{{ .Values.domain }}
+
+domain: {{ .Values.domain }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.harbor.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.harbor.values .) }}
+
+routes:
+  inbound:
+    harbor:
+      gateways:
+        - {{ include "getGatewayName" (dict "gateway" .Values.addons.harbor.ingress.gateway "root" .)}}
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.harbor.values }}
+      hosts:
+      - repo1.dso.mil
+      - 'registry1.dso.mil'
+      - 'index.docker.io'
+      - 'auth.docker.io'
+      - 'production.cloudflare.docker.com'
+      - 'ib-prod-harbor-storage.s3.us-gov-west-1.amazonaws.com'
+      - 'ib-prod-harbor-storage.s3.us-gov-east-1.amazonaws.com'
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+    from:
+      harbor:
+        to:
+          definition:
+            database-subnets: {{ not $postgresEnabled }}
+          k8s:
+            tempo/tempo:9411: {{ .Values.tempo.enabled }}
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+    to:
+      harbor:8001:
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+
+bbtests:
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://harbor.%s" .Values.domain | quote }}
+  scripts:
+    envs:
+      HARBOR_REGISTRY: {{ printf "harbor.%s" .Values.domain | quote }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+
+openshift: {{ .Values.openshift }}
+
+global:
+  {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
+  imagePullPolicy: {{ .Values.imagePullPolicy }}
+
+redis-bb:
+  upstream:
+    image:
+      pullSecrets: [] # redis currently sets this value.  Clear it out here, so global values are used
+
+upstream:
+  # upstream doesn't support global, so we set it here.
+  {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
+  imagePullPolicy: {{ .Values.imagePullPolicy }}
+
+  metrics:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    serviceMonitor:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+
+{{- end }}

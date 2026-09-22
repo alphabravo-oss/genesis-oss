@@ -1,0 +1,16 @@
+# Not used in the spike.
+# Strict means the cluster behaves like upstream Big Bang, because the images were built to.
+# Kyverno policies stay as upstream ships them. Security contexts stay as upstream ships them.
+edition: enterprise
+imageSource: enterprise
+conformance: strict
+usedInSpike: false
+
+rules:
+  - id: require-enterprise-images
+    imageSource: enterprise
+    reason: An image with an empty enterprise ref fails the generator.
+  - id: refuse-public
+    reject:
+      imageSource: public
+    reason: Public images are not built to pass upstream Kyverno and the Iron Bank security contexts. The spike does not try to make them pass strict.

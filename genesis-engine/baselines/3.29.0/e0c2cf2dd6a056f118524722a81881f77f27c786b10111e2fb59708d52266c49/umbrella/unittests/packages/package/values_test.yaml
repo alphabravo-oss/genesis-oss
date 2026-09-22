@@ -1,0 +1,184 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: Packages - Package - Values Tests
+templates:
+  - templates/package/values.yaml
+release:
+  name: test
+set:
+  packages:
+    sample:
+      enabled: true
+tests:
+  - it: must not create secret when package is disabled
+    set:
+      packages:
+        sample:
+          enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: must create secret when package is enabled
+    asserts:
+      - hasDocuments:
+          count: 1
+      - documentSelector:
+          path: kind
+          value: Secret
+        isKind:
+          of: Secret
+  - it: must create empty values.yaml when no values or passBigBangValues is set
+    set:
+      packages:
+        sample:
+          passBigBangValues: false
+          bbCommonValues: false
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - equal:
+          path: stringData
+          value:
+            values.yaml: "{}"
+  - it: must create values.yaml with at least the domain when passBigBangValues is set
+    set:
+      packages:
+        sample:
+          passBigBangValues: true
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - matchRegex:
+          path: stringData["values.yaml"]
+          pattern: '.*domain: dev.bigbang.mil.*'
+  - it: must pass distinct authservice selector key and value through Big Bang values
+    set:
+      packages:
+        sample:
+          passBigBangValues: true
+      addons:
+        authservice:
+          values:
+            selector:
+              key: route-key
+              value: route-value
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - matchRegex:
+          path: stringData["values.yaml"]
+          pattern: 'selector:\n\s+key: route-key\n\s+value: route-value'
+  - it: must create values.yaml with custom values when values are set and passBigBangValues is false
+    set:
+      packages:
+        sample:
+          passBigBangValues: false
+          values:
+            customKey: customValue
+            nested:
+              nestedKey: nestedValue
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - equal:
+          path: stringData["values.yaml"]
+          value: |-
+            customKey: customValue
+            nested:
+              nestedKey: nestedValue
+  - it: must create values.yaml with both BigBang values and custom values when both are set
+    set:
+      packages:
+        sample:
+          passBigBangValues: true
+          values:
+            customKey: customValue
+            nested:
+              nestedKey: nestedValue
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - matchRegex:
+          path: stringData["values.yaml"]
+          pattern: '.*customKey: customValue.*'
+      - matchRegex:
+          path: stringData["values.yaml"]
+          pattern: '.*nested:\n\s*nestedKey: nestedValue.*'
+      - matchRegex:
+          path: stringData["values.yaml"]
+          pattern: '.*domain: dev.bigbang.mil.*'
+  - it: must create empty kustomize values when kustomize is true with no values or passBigBangValues
+    set:
+      packages:
+        sample:
+          kustomize: true
+          passBigBangValues: false
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - equal:
+          path: stringData
+          value: {}
+  - it: must create kustomize values with at least the domain when kustomize is true and passBigBangValues is true
+    set:
+      packages:
+        sample:
+          kustomize: true
+          passBigBangValues: true
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - matchRegex:
+          path: stringData.bigbang
+          pattern: '.*domain: dev.bigbang.mil.*'
+      - notExists:
+          path: stringData["values.yaml"]
+  - it: must create kustomize values with custom values when kustomize is true and values are set and passBigBangValues is false
+    set:
+      packages:
+        sample:
+          kustomize: true
+          passBigBangValues: false
+          values:
+            customKey: customValue
+            nested:
+              nestedKey: nestedValue
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - equal:
+          path: stringData
+          value:
+            customKey: customValue
+            nested:
+              nestedKey: nestedValue
+  - it: must create kustomize values with at least the domain and custom values when kustomize is true and both values and passBigBangValues are set
+    set:
+      packages:
+        sample:
+          kustomize: true
+          passBigBangValues: true
+          values:
+            customKey: customValue
+            nested:
+              nestedKey: nestedValue
+    documentSelector:
+      path: metadata.name
+      value: sample-values
+    asserts:
+      - equal:
+          path: stringData.customKey
+          value: customValue
+      - equal:
+          path: stringData.nested.nestedKey
+          value: nestedValue
+      - matchRegex:
+          path: stringData.bigbang
+          pattern: '.*domain: dev.bigbang.mil.*'

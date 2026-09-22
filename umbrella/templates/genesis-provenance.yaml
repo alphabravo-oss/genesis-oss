@@ -1,0 +1,14 @@
+{{- with .Values.genesisProvenance }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-genesis-provenance" $.Release.Name | trunc 63 | trimSuffix "-" }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/part-of: genesis
+  annotations:
+    genesis.alphabravo.io/baseline-sha256: {{ .baselineSha256 | quote }}
+data:
+  provenance.json: {{ toJson . | quote }}
+{{- end }}

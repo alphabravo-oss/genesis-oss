@@ -1,0 +1,14 @@
+**
+!genesis-console/
+!genesis-console/**
+!genesis-engine/
+!genesis-engine/catalogs/
+!genesis-engine/catalogs/**
+!genesis-engine/baselines/
+!genesis-engine/baselines/**
+**/node_modules
+**/dist
+**/.git
+**/.local
+**/.env
+**/*.tsbuildinfo

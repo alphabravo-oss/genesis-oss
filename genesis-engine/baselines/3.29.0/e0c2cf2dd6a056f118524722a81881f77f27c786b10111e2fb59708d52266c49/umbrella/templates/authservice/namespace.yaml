@@ -1,0 +1,16 @@
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- if eq (include "authserviceEnabled" .) "true" }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: authservice
+  labels:
+    {{- if eq (include "ambientEnabled" .) "true" }}
+    istio.io/dataplane-mode: ambient
+    {{- else }}
+    istio-injection: {{ ternary "enabled" "disabled" (and $istioEnabled (eq (dig "istio" "injection" "enabled" .Values.addons.authservice) "enabled")) }}
+    {{- end }}
+    app.kubernetes.io/name: authservice
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+{{- end }}

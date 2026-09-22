@@ -1,0 +1,27 @@
+{{- /* Used for creating values to use for Helm wrapper and package Helm charts. */ -}}
+{{- range $pkgKey, $vals := .Values.packages -}}
+{{- if and (dig "enabled" true $vals) (dig "wrapper" "enabled" false $vals) -}}
+{{- $pkg := include "resourceName" $pkgKey -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $pkg }}-wrapper-values
+  namespace: {{ if dig "helmRelease" "namespace" nil (index $.Values.packages $pkgKey) }}
+               {{ dig "helmRelease" "namespace" "" (index $.Values.packages $pkgKey) }}
+             {{ else }}
+               {{ default (dig "namespace" "name" $pkg $vals) "" }}
+             {{ end }}
+type: Opaque
+stringData:
+  values.yaml: |
+    {{- $merged := dict "bigbang" $.Values "package" $vals }}
+    package:
+      name: {{ $pkg }}
+      {{- if (omit $merged.package "git" "helmRepo" "flux" "postRenderers" "dependsOn") }}
+      {{- tpl (toYaml (omit $merged.package "git" "helmRepo" "flux" "postRenderers" "dependsOn")) $ | nindent 6 }}
+      {{- end }}
+    bigbang:
+      {{- include "values-bigbang" $merged.bigbang | nindent 6 }}
+---
+{{ end -}}
+{{- end -}}

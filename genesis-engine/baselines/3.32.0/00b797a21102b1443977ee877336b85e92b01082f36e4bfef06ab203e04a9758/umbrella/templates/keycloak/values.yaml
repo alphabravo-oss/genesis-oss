@@ -1,0 +1,225 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- if .Values.addons.keycloak.enabled }}
+{{- /* Create a cleaned copy of keycloak config and merge deprecated paths into current paths */ -}}
+{{- $keycloakPackage := deepCopy .Values.addons.keycloak -}}
+{{- if .Values.addons.keycloak.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.keycloak.values) | fromYaml -}}
+{{- $keycloakPackage = set $keycloakPackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict 
+  "root" $ 
+  "package" $keycloakPackage
+  "name" "keycloak" 
+  "defaults" (include "bigbang.defaults.keycloak" . )
+) }}
+{{- end }}
+
+{{- define "bigbang.defaults.keycloak" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.keycloak.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $monitoringEnabled := eq (include "metricScrapingEnabled" .) "true" }}
+{{- $tlsEnabled := and .Values.addons.keycloak.ingress.cert .Values.addons.keycloak.ingress.key -}}
+{{- $externalPostgresEnabled := or (ne .Values.addons.keycloak.database.host "") (ne (dig "upstream" "database" "hostname" "" .Values.addons.keycloak.values) "") -}}
+
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+domain: {{ $domainName }}
+
+istio:
+  hardened:
+    enabled: {{ $istioHardenedEnabled }}
+
+routes:
+  inbound:
+    keycloak:
+      enabled: true
+      gateways:
+        - {{ include "getGatewayName" (dict "default" "passthrough" "gateway" .Values.addons.keycloak.ingress.gateway "root" .)}}
+      hosts:
+        - keycloak.{{ $domainName }}
+      service: keycloak-keycloak-http.keycloak.svc.cluster.local
+      port: 8443
+      passthrough:
+        enabled: true
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.keycloak.values }}
+      hosts:
+      - repo1.dso.mil
+
+networkPolicies:
+  egress:
+    defaults:
+      allowIstiod:
+        enabled: {{ .Values.istiod.enabled }}
+    from:
+      keycloak:
+        to:
+          k8s:
+            tempo/tempo:9411: {{ .Values.tempo.enabled }}
+          definition:
+            database-subnets: {{ $externalPostgresEnabled }}
+  ingress:
+    defaults:
+      allowPrometheusToIstioSidecar:
+        enabled: {{ and .Values.monitoring.enabled .Values.istiod.enabled }}
+    to:
+      keycloak:9000:
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+
+bbtests:
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://keycloak.%s" $domainName | quote }}
+      cypress_tnr_username: "cypress"
+      cypress_tnr_password: "tnr_w!G33ZyAt@C8"
+
+upstream:
+  replicas: 1
+  image:
+    pullPolicy: {{ .Values.imagePullPolicy }}
+  {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
+  {{- with .Values.addons.keycloak.database }}
+  database:
+    existingSecret: ""
+    existingSecretKey: ""
+    vendor: {{ coalesce .type "postgres"}} 
+    hostname: {{ coalesce .host .hostname "keycloak-postgresql" }}
+    port: {{ coalesce .port 5432 }}
+    database: {{ coalesce .database "keycloak" }}
+    username: {{ coalesce .username "keycloak" }}
+    password: {{ coalesce .password "keycloak" | quote }}
+  {{- end }}
+
+  {{- if $istioEnabled }}
+  podAnnotations:
+    {{ include "istioAnnotation" . }}
+  {{- end }}
+
+  {{- if .Values.kiali.enabled }}
+  podLabels:
+    service.istio.io/canonical-name: keycloak-keycloak
+  {{- end }}
+
+  http:
+    internalScheme: HTTP
+
+  extraEnv: |
+    - name: KC_HTTPS_CLIENT_AUTH
+      value: request
+    - name: KC_TRUSTSTORE_PATHS
+      value: /etc/ssl/certs/
+    - name: KC_HOSTNAME
+      value: keycloak.{{ .Values.domain }}
+    - name: KC_HOSTNAME_STRICT
+      value: "true"
+    {{- if $tlsEnabled }}
+    - name: KC_HTTPS_CERTIFICATE_FILE
+      value: /opt/keycloak/conf/tls.crt
+    - name: KC_HTTPS_CERTIFICATE_KEY_FILE
+      value: /opt/keycloak/conf/tls.key
+    {{- if eq (dig "http" "internalScheme" "HTTP" .Values.addons.keycloak.values) "HTTP" }}
+    - name: KC_HTTP_MANAGEMENT_SCHEME
+      value: http
+    {{- end }}
+    {{- end }}
+
+  {{- if $istioEnabled }}
+  serviceHeadless:
+    extraPorts:
+    - name: jgroups
+      port: 7800
+      protocol: TCP
+      targetPort: 7800
+    - name: jgroups-fd
+      port: 57800
+      protocol: TCP
+      targetPort: 57800
+  {{- end }}
+
+  serviceMonitor:
+    enabled: {{ $monitoringEnabled }}
+    {{- if eq (include "metricsSidecarMtls" (list .Values.addons.keycloak .)) "true" }}
+    scheme: https
+    tlsConfig:
+      caFile: /etc/prom-certs/root-cert.pem
+      certFile: /etc/prom-certs/cert-chain.pem
+      keyFile: /etc/prom-certs/key.pem
+      insecureSkipVerify: true
+    {{- end }}
+
+
+  {{- if or .Values.addons.keycloak.database.host (and .Values.addons.keycloak.ingress.cert .Values.addons.keycloak.ingress.key) }}
+  secrets:
+    {{- if $tlsEnabled }}
+    tlscert:
+      stringData:
+        tls.crt: {{ .Values.addons.keycloak.ingress.cert | quote }}
+    tlskey:
+      stringData:
+        tls.key: {{ .Values.addons.keycloak.ingress.key  | quote }}
+    {{- end }}
+
+  {{- end }}
+  {{- if $tlsEnabled }}
+  extraVolumes: |
+    - name: tlscert
+      secret:
+        secretName: '{{ `{{ include "keycloak.fullname" . }}` }}-tlscert'
+    - name: tlskey
+      secret:
+        secretName: '{{ `{{ include "keycloak.fullname" . }}` }}-tlskey'
+
+  extraVolumeMounts: |
+    # keep /etc/x509/https/ for legacy backwards compatibility
+    - name: tlscert
+      mountPath: /etc/x509/https/tls.crt
+      subPath: tls.crt
+      readOnly: true
+    - name: tlskey
+      mountPath: /etc/x509/https/tls.key
+      subPath: tls.key
+      readOnly: true
+    # Quarkus cert paths
+    - name: tlscert
+      mountPath: /opt/keycloak/conf/tls.crt
+      subPath: tls.crt
+      readOnly: true
+    - name: tlskey
+      mountPath: /opt/keycloak/conf/tls.key
+      subPath: tls.key
+      readOnly: true
+  {{- end }}
+
+postgresql:
+  {{- if $externalPostgresEnabled }}
+  enabled: false
+  {{- else }}
+  enabled: true
+  auth:
+    enablePostgresUser: true
+  global:
+    {{- include "secretsImagePullSecrets" . | nindent 4 }}
+    postgresql:
+      auth:
+        username: keycloak
+        password: keycloak
+        database: keycloak
+  {{- end }}
+
+  {{- if $istioEnabled }}
+  primary:
+    {{- if $istioEnabled }}
+    annotations:
+      {{- include "istioAnnotation" . | nindent 6 }}
+    {{- end }}
+  readReplicas:
+    {{- if $istioEnabled }}
+    annotations:
+      {{- include "istioAnnotation" . | nindent 6 }}
+    {{- end }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,47 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $pkg := "harbor" }}
+{{- $fluxSettingsHarbor := mergeOverwrite (deepCopy .Values.flux) .Values.addons.harbor.flux -}}
+{{- if (get .Values.addons $pkg).enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $pkg }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $pkg }}
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/harbor/values.yaml") . | sha256sum }}
+spec:
+  releaseName: {{ $pkg }}
+  targetNamespace: {{ $pkg }}
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "harbor" "package" (get .Values.addons $pkg) "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsHarbor | nindent 2 }}
+
+  postRenderers:
+  {{ include "harbor.fixRegistryPostRender" . | nindent 2 }}
+  {{- if and $istioEnabled (ne (include "ambientEnabled" .) "true") }}
+  {{ include "harbor.ServiceMonitorPostRenderer" . | nindent 2 }}
+  {{- end }}
+  {{- if (get .Values.addons $pkg).postRenderers }}
+  {{ toYaml (get .Values.addons $pkg).postRenderers | nindent 2 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "harbor" "root" .) | nindent 2 }}
+
+  {{- if or $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled }}
+  dependsOn:
+  {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- end }}
+{{- end }}

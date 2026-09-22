@@ -1,0 +1,27 @@
+{{- $enableFlag := .Values.addons.metricsServer.enabled | toString }}
+{{- $existingMetricsApi := (.Capabilities.APIVersions.Has "metrics.k8s.io/v1beta1") }}
+{{- $existingMetricsHelmRelease := (lookup "helm.toolkit.fluxcd.io/v2" "HelmRelease" "bigbang" "metrics-server") }}
+{{- if or ( eq $enableFlag "true") (and (eq $enableFlag "auto") (or (not $existingMetricsApi) $existingMetricsHelmRelease)) }}
+{{- include "values-secret" (dict "root" $ "package" .Values.addons.metricsServer "name" "metrics" "defaults" (include "bigbang.defaults.metrics-server" .)) }}
+{{- end }}
+
+{{- define "bigbang.defaults.metrics-server" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+
+upstream:
+  domain: {{ $domainName }}
+
+  nameOverride: "metrics-server"
+  fullnameOverride: "metrics-server"
+
+  serviceMonitor:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    dashboards:
+      namespace: monitoring
+
+  metrics:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+
+{{- end }}

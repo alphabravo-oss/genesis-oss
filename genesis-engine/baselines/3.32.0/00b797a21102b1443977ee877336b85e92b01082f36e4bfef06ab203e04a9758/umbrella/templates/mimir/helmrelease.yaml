@@ -1,0 +1,48 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsMimir := mergeOverwrite (deepCopy .Values.flux) .Values.addons.mimir.flux -}}
+{{- if .Values.addons.mimir.enabled }}
+{{- if and (dig "minio-tenant" "enabled" false .Values.addons.mimir.values) (not .Values.addons.minioOperator.enabled) }}
+{{- fail "mimir with minio-tenant.enabled=true requires addons.minioOperator.enabled to be true" }}
+{{- end }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: mimir
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: mimir
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/mimir/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: mimir
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "mimir" "package" .Values.addons.mimir "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsMimir | nindent 2 }}
+  {{- if or .Values.addons.mimir.postRenderers $istioEnabled }}
+  postRenderers:
+  {{- if $istioEnabled }}
+  {{ include "mimir.istioPostRenderers" . | nindent 2 }}
+  {{- end }}
+  {{- with .Values.addons.mimir.postRenderers }}
+  {{ toYaml . | nindent 2 }}
+  {{- end }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "mimir" "root" .) | nindent 2 }}
+
+  {{- if or $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled .Values.addons.minioOperator.enabled }}
+  dependsOn:
+  {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.addons.minioOperator.enabled }}
+    - name: minio-operator
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- end }}
+{{- end }}

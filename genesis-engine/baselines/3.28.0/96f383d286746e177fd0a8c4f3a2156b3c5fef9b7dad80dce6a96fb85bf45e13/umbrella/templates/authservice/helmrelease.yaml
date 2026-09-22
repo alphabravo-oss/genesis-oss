@@ -1,0 +1,33 @@
+{{- $fluxSettingsAuthservice := merge .Values.addons.authservice.flux .Values.flux -}}
+{{- if eq (include "authserviceEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authservice
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: authservice
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/authservice/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: authservice
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "authservice" "package" .Values.addons.authservice "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsAuthservice | nindent 2 }}
+
+  {{- if .Values.addons.authservice.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.authservice.postRenderers | nindent 4 }}
+  {{- end }}
+
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "authservice" "root" .) | nindent 2 }}
+
+  dependsOn:
+  {{- include "istioHelmReleases" . | nindent 2 }}
+  {{- if .Values.monitoring.enabled }}
+  - name: monitoring
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+{{- end }}

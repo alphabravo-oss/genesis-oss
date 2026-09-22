@@ -1,0 +1,127 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/helm-unittest/helm-unittest/main/schema/helm-testsuite.json
+suite: Schema - Istio Gateway Values
+tests:
+  - it: should pass validation with default values
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with acceptable values
+    set:
+      istioGateway:
+        values:
+          gateways:
+            custom:
+              upstream:
+                labels:
+                  istio: ingressgateway
+              gateway:
+                servers:
+                  - hosts:
+                      - "*.example.com"
+                    port:
+                      name: https
+                      number: 8443
+                      protocol: HTTPS
+                    tls:
+                      credentialName: cert
+                    mode: SIMPLE
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with waitJob values
+    set:
+      istioGateway:
+        values:
+          shared:
+            waitJob:
+              enabled: false
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with classificationBanner values
+    set:
+      istioGateway:
+        values:
+          shared:
+            classificationBanner:
+              enabled: true
+              classificationLevel: cui
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with gateway values
+    set:
+      istioGateway:
+        values:
+          shared:
+            gateway:
+              servers:
+                - hosts:
+                    - '*.dev.bigbang.mil'
+                  port:
+                    name: http
+                    number: 8080
+                    protocol: HTTP
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with gluon values
+    set:
+      istioGateway:
+        values:
+          shared:
+            gluon:
+              wait:
+                enabled: true
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with networkPolicies values
+    set:
+      istioGateway:
+        values:
+          shared:
+            networkPolicies:
+              enabled: true
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with mtls values
+    set:
+      istioGateway:
+        values:
+          shared:
+            mtls:
+              mode: STRICT
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with tracing values
+    set:
+      istioGateway:
+        values:
+          shared:
+            tracing:
+              enabled: true
+    asserts:
+      - notFailedTemplate: {}
+  - it: should pass validation with upstream values
+    set:
+      istioGateway:
+        values:
+          shared:
+            upstream:
+              image:
+                registry: registry1.dso.mil
+    asserts:
+      - notFailedTemplate: {}
+  - it: should fail validation with invalid istioGateway values
+    set:
+      istioGateway:
+        values:
+          invalidProperty:
+            foo: bar
+    asserts:
+      - failedTemplate:
+          errorPattern: ".*"
+  - it: should fail validation with package values outside shared or gateways
+    set:
+      istioGateway:
+        values:
+          waitJob:
+            enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: ".*"

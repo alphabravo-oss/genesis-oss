@@ -1,0 +1,77 @@
+{{- if or .Values.addons.minioOperator.enabled .Values.addons.minio.enabled }}
+  {{- $minioOperatorPackage := deepCopy .Values.addons.minioOperator -}}
+
+  {{- if .Values.addons.minioOperator.values -}}
+    {{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.minioOperator.values) | fromYaml -}}
+    {{- $minioOperatorPackage = set $minioOperatorPackage "values" $cleanedValues -}}
+  {{- end -}}
+
+  {{- include "values-secret" (dict 
+    "root" $ 
+    "package" $minioOperatorPackage 
+    "name" "minio-operator" 
+    "defaults" ((mergeOverwrite (include "bigbang.defaults.minio-operator" . | fromYaml) (include "bigbang.minio-operator.bb-common-migrations" . | fromYaml)) | toYaml)
+  )}}
+{{- end }}
+
+{{- define "bigbang.defaults.minio-operator" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+hostname: {{ $domainName }}
+domain: {{ $domainName }}
+
+podAnnotations:
+  sidecar.istio.io/inject: "true"
+  traffic.sidecar.istio.io/includeInboundPorts: "*"
+  traffic.sidecar.istio.io/excludeInboundPorts: "9443"
+
+upstream:
+  operator:
+    image:
+      pullPolicy: {{ .Values.imagePullPolicy}}
+    {{- include "secretsImagePullSecretsWithName" . | nindent 4 }}
+
+    {{- if .Values.monitoring.enabled }}
+    env:
+      - name: CLUSTER_DOMAIN
+        value: "cluster.local"
+      - name: WATCHED_NAMESPACE
+        value: ""
+      - name: PROMETHEUS_NAMESPACE
+        value: "monitoring"
+    {{- end }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  egress:
+    from:
+      minio-operator:
+        to:
+          k8s:
+            tempo/tempo:9411: {{ .Values.tempo.enabled }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+  console:
+    gateways:
+      - {{ include "getGatewayName" (dict "gateway" .Values.addons.minio.ingress.gateway "root" .)}}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.minioOperator.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.minioOperator.values .) }}
+
+routes:
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.minioOperator.values }}
+      hosts:
+      - repo1.dso.mil
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+{{- end -}}

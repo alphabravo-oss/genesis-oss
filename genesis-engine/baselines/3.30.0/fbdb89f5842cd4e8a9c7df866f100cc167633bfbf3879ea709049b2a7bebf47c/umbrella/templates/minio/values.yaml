@@ -1,0 +1,98 @@
+{{- if .Values.addons.minio.enabled }}
+  {{- $minioPackage := deepCopy .Values.addons.minio -}}
+  {{- if .Values.addons.minio.values -}}
+    {{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.minio.values) | fromYaml -}}
+    {{- $minioPackage = set $minioPackage "values" $cleanedValues -}}
+  {{- end -}}
+  {{- include "values-secret" (dict 
+    "root" $ 
+    "package" $minioPackage 
+    "name" "minio" 
+    "defaults" ((mergeOverwrite (include "bigbang.defaults.minio" . | fromYaml) (include "bigbang.minio.bb-common-migrations" . | fromYaml)) | toYaml)
+  )}}
+{{- end }}
+
+{{- define "bigbang.defaults.minio" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardened := dig "hardened" "enabled" false .Values.istiod.values }}
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+istio:
+  enabled: {{ $istioEnabled }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.minio.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.minio.values .) }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+    from:
+      minio:
+        to:
+          k8s:
+            tempo/tempo:9411: {{ .Values.tempo.enabled }}
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+
+routes:
+  inbound:
+    api:
+      enabled: true
+      gateways:
+      - istio-gateway/public-ingressgateway
+      hosts:
+      - minio-api.{{ .Values.domain }}
+      service: minio
+      port: 80
+      containerPort: 9000
+    console:
+      enabled: true
+      gateways:
+      - istio-gateway/public-ingressgateway
+      hosts:
+      - minio.{{ .Values.domain }}
+      service: minio-minio-minio-instance-console
+      port: 9090
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.minio.values }}
+      hosts:
+      - repo1.dso.mil
+
+bbtests:
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://minio.%s/login" $domainName | quote }}
+  scripts:
+    envs:
+      MINIO_PORT: ''
+      MINIO_HOST: {{ printf "https://minio-api.%s" $domainName | quote }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+
+upstream:
+  tenant:
+    name: minio-minio-minio-instance
+    image:
+      pullPolicy: {{ .Values.imagePullPolicy }}
+    {{- include "secretsImagePullSecretWithName" . | nindent 4 }}
+    metrics:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    configSecret:
+      accessKey: {{ .Values.addons.minio.accesskey | default "minio" }}
+      secretKey: {{ .Values.addons.minio.secretkey | default "minio123" }}  
+    {{- if .Values.monitoring.enabled }}
+    env:
+      - name: MINIO_PROMETHEUS_AUTH_TYPE
+        value: "public"
+    {{- end }}
+
+{{- end -}}
+
+

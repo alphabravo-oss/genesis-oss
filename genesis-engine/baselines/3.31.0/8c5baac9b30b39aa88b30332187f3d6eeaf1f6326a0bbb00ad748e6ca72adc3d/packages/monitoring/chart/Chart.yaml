@@ -1,0 +1,126 @@
+apiVersion: v2
+description: kube-prometheus-stack collects Kubernetes manifests, Grafana dashboards, and Prometheus rules combined with documentation and scripts to provide easy to operate end-to-end Kubernetes cluster monitoring with Prometheus using the Prometheus Operator.
+icon: https://raw.githubusercontent.com/prometheus/prometheus.github.io/master/assets/prometheus_logo-cb55bb5c346.png
+type: application
+name: monitoring
+sources:
+  - https://github.com/prometheus-community/helm-charts
+  - https://github.com/prometheus-operator/kube-prometheus
+version: 88.3.0-bb.0
+# Please do not add a renovate hint here, since appVersion updates involves manual tasks
+appVersion: v0.93.1
+kubeVersion: ">=1.19.0-0"
+home: https://github.com/prometheus-operator/kube-prometheus
+keywords:
+  - operator
+  - prometheus
+  - kube-prometheus
+annotations:
+  bigbang.dev/maintenanceTrack: bb_integrated
+  "artifacthub.io/license": Apache-2.0
+  "artifacthub.io/operator": "true"
+  "artifacthub.io/links": |
+    - name: Chart Source
+      url: https://github.com/prometheus-community/helm-charts
+    - name: Upstream Project
+      url: https://github.com/prometheus-operator/kube-prometheus
+    - name: Upgrade Process
+      url: https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/README.md#upgrading-chart
+  "bigbang.dev/upstreamReleaseNotesMarkdown": |
+    - [Find our upstream chart's CHANGELOG here](https://github.com/prometheus-community/helm-charts/blob/main/charts/kube-prometheus-stack/README.md#upgrading-chart)
+    - [and our upstream application release notes here](https://github.com/prometheus-operator/kube-prometheus/blob/main/CHANGELOG.md)
+  # The big-bang/base image being deployed by this chart is dependent on a few different conditions being true
+  # cleanUpgrade.enabled, grafana.enabled, prometheusOperator.admissionWebhooks.enabled
+  helm.sh/images: |
+    - name: alertmanager
+      image: registry1.dso.mil/ironbank/opensource/prometheus/alertmanager:v0.33.1
+      condition: upstream.alertmanager.enabled
+    - name: base
+      image: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+    - name: grafana
+      image: registry1.dso.mil/ironbank/big-bang/grafana/grafana-plugins:13.1.0
+      condition: upstream.grafana.enabled
+      dependency: grafana
+    - name: init-chown-data
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.8
+      condition: grafana.initChownData.enabled
+    - name: k8s-sidecar
+      image: registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar:2.10.1
+      condition: upstream.grafana.enabled
+      dependency: grafana
+    - name: kube-state-metrics
+      image: registry1.dso.mil/ironbank/opensource/kubernetes/kube-state-metrics:v2.19.1
+      condition: upstream.kubeStateMetrics.enabled
+      dependency: kube-state-metrics
+    - name: kube-webhook-certgen
+      image: registry1.dso.mil/ironbank/opensource/ingress-nginx/kube-webhook-certgen:v1.6.9
+      condition: upstream.prometheusOperator.admissionWebhooks.patch.enabled
+    - name: prometheus
+      image: registry1.dso.mil/ironbank/opensource/prometheus/prometheus:v3.13.2
+      condition: upstream.prometheus.enabled
+    - name: prometheus-config-reloader
+      image: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader:v0.93.1
+      condition: upstream.prometheusOperator.enabled
+    - name: prometheus-operator
+      image: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-operator:v0.93.1
+      condition: upstream.prometheusOperator.enabled
+    - name: prometheus-node-exporter
+      image: registry1.dso.mil/ironbank/opensource/prometheus/node-exporter:v1.12.1
+      condition: nodeExporter.enabled
+      dependency: prometheus-node-exporter
+    - name: prometheus-snmp-exporter
+      image: registry1.dso.mil/ironbank/opensource/prometheus/snmp_exporter:v0.30.1
+      condition: snmpExporter.enabled
+      dependency: prometheus-snmp-exporter
+    - name: prometheus-blackbox-exporter
+      image: registry1.dso.mil/ironbank/opensource/prometheus/blackbox_exporter:v0.28.0
+      condition: blackboxExporter.enabled
+      dependency: prometheus-blackbox-exporter
+    - name: test-framework
+      image: registry1.dso.mil/ironbank/opensource/bats/bats:1.14.0
+      condition: upstream.grafana.enabled
+      dependency: grafana
+    - name: thanos
+      image: registry1.dso.mil/ironbank/opensource/thanos/thanos:v0.42.4
+      condition: upstream.prometheusOperator.enabled
+    - name: thanos-ruler
+      image: registry1.dso.mil/ironbank/opensource/thanos/thanos:v0.42.4
+      condition: upstream.thanosRuler.enabled
+dependencies:
+  - name: bb-common
+    version: "1.4.0"
+    repository: oci://registry1.dso.mil/bigbang
+  - name: kube-prometheus-stack
+    version: "88.3.0"
+    repository: https://prometheus-community.github.io/helm-charts
+    alias: upstream
+    import-values:
+      - child: alertmanager
+        parent: alertmanager
+      - child: crds
+        parent: crds
+      - child: grafana
+        parent: grafana
+      - child: kube-state-metrics
+        parent: kube-state-metrics
+      - child: prometheus
+        parent: prometheus
+      - child: prometheusOperator
+        parent: prometheusOperator
+      - child: prometheus-node-exporter
+        parent: prometheus-node-exporter
+      - child: thanosRuler
+        parent: thanosRuler
+  - name: prometheus-snmp-exporter
+    repository: https://prometheus-community.github.io/helm-charts
+    version: "9.17.1"
+    condition: snmpExporter.enabled
+    alias: snmpExporter
+  - name: prometheus-blackbox-exporter
+    repository: https://prometheus-community.github.io/helm-charts
+    version: "11.17.2"
+    condition: blackboxExporter.enabled
+    alias: blackboxExporter
+  - name: gluon
+    version: "1.1.5"
+    repository: oci://registry1.dso.mil/bigbang

@@ -1,0 +1,15 @@
+# Optional LDAP for Keycloak. Genesis does not ship an IDM.
+# Use this with profiles/keycloak.yaml. The chart has no LDAP toggle.
+# Configure user federation in the realm, and keep the bind password in a Secret:
+#
+#   kubectl create secret generic keycloak-ldap -n keycloak \
+#     --from-literal=bindPassword='replace-me'
+#
+# Suggested realm settings:
+#   connection URL: ldaps://ldap.example.com:636
+#   bind DN: cn=genesis,ou=services,dc=example,dc=com
+#   users DN: ou=people,dc=example,dc=com
+#   bind credential: secret keycloak-ldap / bindPassword
+#
+# This file is comments on purpose. Applying it does not change the install.
+{}

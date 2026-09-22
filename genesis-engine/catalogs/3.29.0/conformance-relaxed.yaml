@@ -1,0 +1,105 @@
+# Carried from 3.33.0 for Big Bang 3.29.0. Public registry allow list is unchanged.
+bbtests:
+  enabled: false
+  reason: Big Bang test hooks are not part of the spike.
+conformance: relaxed
+edition: oss
+imageSource: public
+policies:
+- action: allow
+  allow:
+  - docker.io
+  - quay.io
+  - ghcr.io
+  - registry.k8s.io
+  - registry.gitlab.com
+  name: restrict-image-registries
+  reason: Upstream allows only registry1.dso.mil and registry.dso.mil. The oss catalog
+    pulls from these five registries.
+- action: keep-upstream-exceptions
+  exceptions:
+  - names:
+    - neuvector-enforcer-pod*
+    - neuvector-controller-pod*
+    - neuvector-scanner-pod*
+    namespace: neuvector
+    reason: NeuVector's enforcer is privileged so it can scan the node. Upstream already
+      excludes these pods. The exceptions stay.
+  name: disallow-privileged-containers
+- action: keep-upstream-exceptions
+  exceptions:
+  - names:
+    - neuvector-enforcer-pod*
+    namespace: neuvector
+    reason: The enforcer uses the host network namespace to inspect traffic. Upstream
+      already excludes it.
+  name: disallow-host-namespaces
+- action: keep-upstream-exceptions
+  exceptions:
+  - names:
+    - neuvector-enforcer-pod*
+    - neuvector-cert-upgrader-job*
+    - neuvector-controller-pod*
+    - neuvector-scanner-pod*
+    - neuvector-prometheus-exporter-pod*
+    namespace: neuvector
+    reason: Upstream already skips the capability-drop mutation for these pods.
+  name: add-default-capability-drop
+- action: keep
+  name: require-non-root-user
+  reason: Default-on charts set a non-root user, or add-default-securitycontext fills
+    65534. No blanket disable.
+- action: keep
+  name: require-non-root-group
+  reason: Same as require-non-root-user.
+- action: keep
+  name: require-drop-all-capabilities
+  reason: Default-on charts already drop ALL. restrict-capabilities still allows NET_BIND_SERVICE,
+    and NET_ADMIN plus NET_RAW while Istio is on.
+- action: keep
+  name: restrict-capabilities
+  reason: The Istio sidecar needs NET_ADMIN and NET_RAW. Upstream allows those while
+    Istio is enabled.
+- action: keep
+  name: add-default-securitycontext
+  reason: The mutation only fills a user when the pod does not set one. Per-image
+    overrides below set the user first.
+- action: keep
+  name: disallow-privilege-escalation
+  reason: Default-on charts set allowPrivilegeEscalation false.
+- action: keep-upstream-exceptions
+  name: restrict-host-path-mount
+  reason: NeuVector and monitoring hostPath exceptions already live in the umbrella
+    values. They stay.
+- action: keep
+  name: restrict-host-path-mount-pv
+  reason: No extra exception for the default-on set.
+- action: keep-upstream-exceptions
+  name: restrict-host-path-write
+  reason: NeuVector's writable hostPath exception already lives in the umbrella values.
+    It stays.
+pullSecrets:
+  reason: The spike has no Registry1 credentials. The private-registry pull secret
+    is not created.
+  registry1: absent
+securityContextOverrides:
+- image: grafana/grafana
+  path: grafana.values.upstream.securityContext
+  reason: The chart pins UID 65532 for the Iron Bank grafana-plugins image. docker.io/grafana/grafana
+    runs as UID 472.
+  set:
+    fsGroup: 472
+    runAsGroup: 472
+    runAsUser: 472
+waitJobs:
+  enabled: false
+  packages:
+  - istioGateway
+  - kiali
+  - kyvernoPolicies
+  reason: The gluon wait job runs /bin/bash. registry.k8s.io/kubectl has no shell,
+    so the job is turned off instead of pointed at that image.
+disabledPackages:
+- key: bbctl
+  reason: bbctl's images are Iron Bank builds with no verified public ref. The package
+    is left in the snapshot and turned off.

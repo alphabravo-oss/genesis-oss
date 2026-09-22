@@ -1,12 +1,9 @@
 # Optional profiles
 
-Pass one of these with the generated overlay. None of them are on by default.
+Select these by name with the generated installer. None are on by default. Repeat `--profile` in application order; custom `-f` files apply last. The installer records checksums for automatic console comparison.
 
 ```bash
-helm upgrade --install bigbang umbrella \
-  -n bigbang \
-  -f umbrella/values-genesis.yaml \
-  -f profiles/keycloak.yaml
+python3 scripts/install.py --profile keycloak -f /private/path/site-values.yaml
 ```
 
 | File | What it adds |

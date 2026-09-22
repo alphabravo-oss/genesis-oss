@@ -1,0 +1,38 @@
+{{- $fluxSettingsArgo := merge .Values.addons.argocd.flux .Values.flux -}}
+{{- if .Values.addons.argocd.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: argocd
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: argocd
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/argocd/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: argocd
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "argocd" "package" .Values.addons.argocd "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsArgo | nindent 2 }}
+
+  {{- if .Values.addons.argocd.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.argocd.postRenderers | nindent 4 }}
+  {{- end }}
+
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "argocd" "root" .) | nindent 2 }}
+
+  {{- if or .Values.monitoring.enabled $istioEnabled }}
+  dependsOn:
+  {{- if $istioEnabled }}
+  {{- include "istioHelmReleases" . | nindent 2 }}
+  {{- end }}
+  {{- if .Values.monitoring.enabled }}
+  - name: monitoring
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- end }}
+{{- end }}

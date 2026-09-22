@@ -1,0 +1,42 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsIstioCNI := mergeOverwrite (deepCopy .Values.flux) .Values.istioCNI.flux -}}
+{{- if or .Values.istioCNI.enabled (eq (include "ambientEnabled" .) "true") }}
+{{- if not .Values.istiod.enabled }}
+{{- fail "istioCNI requires istiod to be enabled" }}
+{{- end }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: istio-cni
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: istio-cni
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/istio-cni/values.yaml") . | sha256sum }}
+spec:
+  releaseName: istio-cni
+  targetNamespace: kube-system
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "istio-cni" "package" .Values.istioCNI "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsIstioCNI | nindent 2 }}
+
+  {{- if .Values.istioCNI.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.istioCNI.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "istio-cni" "root" .) | nindent 2 }}
+
+  dependsOn:
+    - name: istiod
+      namespace: {{ .Release.Namespace }}
+  {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+{{- end }}

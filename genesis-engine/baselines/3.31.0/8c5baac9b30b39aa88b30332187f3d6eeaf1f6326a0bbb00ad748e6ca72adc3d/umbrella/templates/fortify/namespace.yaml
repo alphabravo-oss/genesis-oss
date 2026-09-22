@@ -1,0 +1,4 @@
+{{- $pkg := "fortify" }}
+{{- if (get .Values.addons $pkg).enabled }}
+{{- include "bigbang.namespace" (dict "root" . "name" $pkg "appName" $pkg "component" "core" "package" (get .Values.addons $pkg)) }}
+{{- end }}

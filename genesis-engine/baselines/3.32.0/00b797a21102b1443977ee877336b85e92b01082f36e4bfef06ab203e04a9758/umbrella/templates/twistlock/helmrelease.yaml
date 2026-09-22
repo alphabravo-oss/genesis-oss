@@ -1,0 +1,46 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsTwistlock := mergeOverwrite (deepCopy .Values.flux) .Values.twistlock.flux -}}
+{{- if .Values.twistlock.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: twistlock
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: twistlock
+    app.kubernetes.io/component: "security"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/twistlock/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: twistlock
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "twistlock" "package" .Values.twistlock "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsTwistlock | nindent 2 }}
+  
+  {{- if .Values.twistlock.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.twistlock.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "twistlock" "root" .) | nindent 2 }}
+
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled }}
+  dependsOn:
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

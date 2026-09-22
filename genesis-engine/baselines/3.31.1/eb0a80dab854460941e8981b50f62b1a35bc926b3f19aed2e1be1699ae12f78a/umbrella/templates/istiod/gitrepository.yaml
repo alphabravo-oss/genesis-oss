@@ -1,0 +1,3 @@
+{{- if and (eq .Values.istiod.sourceType "git") (not .Values.offline) .Values.istiod.enabled }}
+{{- include "bigbang.gitRepository" (dict "name" "istiod" "gitCredsName" "istiod" "git" .Values.istiod.git "component" "core" "root" .) }}
+{{- end }}

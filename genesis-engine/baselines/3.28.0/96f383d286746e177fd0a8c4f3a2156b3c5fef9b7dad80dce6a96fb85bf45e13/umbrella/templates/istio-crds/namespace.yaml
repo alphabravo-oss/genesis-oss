@@ -1,0 +1,25 @@
+{{- if .Values.istioCRDs.enabled }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+  labels:
+    istio-base-managed: Reconcile
+    istio-injection: disabled
+    app.kubernetes.io/name: istio-system
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+{{- if .Values.istioGateway.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-gateway
+  labels:
+    istio-gateway-managed: Reconcile
+    istio-injection: enabled
+    app.kubernetes.io/name: istio-gateway
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+{{- end }}
+{{- end }}

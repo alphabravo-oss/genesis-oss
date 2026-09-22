@@ -1,0 +1,3 @@
+{{- if .Values.addons.gitlabRunner.enabled }}
+{{- include "bigbang.namespace" (dict "root" . "name" "gitlab-runner" "appName" "gitlab-runner" "component" "developer-tools" "package" .Values.addons.gitlabRunner) }}
+{{- end }}

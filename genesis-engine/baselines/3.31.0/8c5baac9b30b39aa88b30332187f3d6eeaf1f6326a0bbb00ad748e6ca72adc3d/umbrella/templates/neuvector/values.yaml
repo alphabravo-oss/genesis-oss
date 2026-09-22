@@ -1,0 +1,187 @@
+{{- define "bigbang.defaults.neuvector" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.neuvector) "enabled") -}}
+
+# Check for existing NeuVector exporter secret, otherwise generate new random password
+{{- $existingSecret := lookup "v1" "Secret" "neuvector" "neuvector-prometheus-exporter-pod-secret" }}
+{{- $neuvectorMetricsPass := "" }}
+{{- if $existingSecret }}
+  {{- $neuvectorMetricsPass = (get $existingSecret.data "CTRL_PASSWORD" | b64dec) }}
+{{- else }}
+  # Includes suffix of "A1a" to ensure password always meets default minimum password requirements
+  {{- $neuvectorMetricsPass = join "" (list (randAlphaNum 12) (randAlpha 2 | upper) (randAlpha 2 | lower) (randNumeric 2)) }}
+{{- end }}
+
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.neuvector.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+domain: {{ default .Values.domain .Values.hostname }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  injection: {{ ternary "enabled" "disabled" $istioInjection }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.neuvector.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.neuvector.values .) }}
+
+routes:
+  inbound:
+    neuvector:
+      gateways:
+        - {{ include "getGatewayName" (dict "gateway" .Values.neuvector.ingress.gateway "root" .)}}
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.neuvector.values }}
+      hosts:
+      - repo1.dso.mil
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+    from:
+      controller:
+        podSelector:
+          matchLabels:
+            app: neuvector-controller-pod
+        to:
+          definition:
+            sso: {{ .Values.neuvector.sso.enabled }}
+
+bbtests:
+  enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://neuvector.%s" .Values.domain | quote }}
+      {{- include "bigbang.cypressKeycloakValues" (dict "package" .Values.neuvector "values" .Values) | nindent 6 }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+
+upstream:
+  
+  {{- include "secretsImagePullSecretsSingle" . | nindent 2 }}
+
+  openshift: {{ .Values.openshift }}
+  {{- if or .Values.monitoring.enabled $istioEnabled .Values.neuvector.sso.enabled }}
+  controller:
+    {{- if $istioEnabled }}
+    podAnnotations:
+      {{ include "istioAnnotation" . }}
+    {{- end }}
+    {{- if or .Values.monitoring.enabled .Values.neuvector.sso.enabled }}
+    secret:
+      enabled: true
+      data: 
+        {{- if .Values.monitoring.enabled }}
+        userinitcfg.yaml:
+          always_reload: true
+          users:
+          - username: metrics
+            password: {{ $neuvectorMetricsPass }}
+            role: reader
+            fullname: metrics
+        {{- end }}
+        {{- if .Values.neuvector.sso.enabled }}
+        oidcinitcfg.yaml:
+          always_reload: true
+          enable: {{ .Values.neuvector.sso.enabled }}
+          issuer: {{ default (include "sso.url" .) (tpl (default "" .Values.neuvector.sso.issuer) .) }}
+          client_id: {{ .Values.neuvector.sso.client_id }}
+          client_secret: {{ .Values.neuvector.sso.client_secret | default "no-secret" }}
+          default_role: {{ .Values.neuvector.sso.default_role }}
+          group_claim: {{ .Values.neuvector.sso.group_claim }}
+          {{- if .Values.neuvector.sso.group_mapped_roles }}
+          group_mapped_roles: 
+            {{- toYaml .Values.neuvector.sso.group_mapped_roles | nindent 10 }}
+          {{- else }}
+          group_mapped_roles: []
+          {{- end }}
+        {{- end }}
+    {{- end }}
+    {{- if and .Values.neuvector.sso.enabled (or .Values.sso.certificate_authority (dig "certificateAuthority" "cert" false .Values.sso)) }}
+    sso:
+      certificateAuthority:
+        secretName: {{ default (dig "certificateAuthority" "secretName" "" .Values.sso) .Values.sso.secretName }}
+    {{- end }}
+  {{- end }}
+
+  {{- if $istioEnabled }}
+  enforcer:
+    podAnnotations:
+      {{ include "istioAnnotation" . }}
+  cve:
+    updater:
+      podAnnotations:
+        {{ include "istioAnnotation" . }}
+    scanner:
+      podAnnotations:
+        {{ include "istioAnnotation" . }}
+  manager:
+    podAnnotations:
+      {{ include "istioAnnotation" . }}
+  {{- end }}
+
+monitor:
+  install: {{ eq (include "metricScrapingEnabled" .) "true" }}
+
+  {{- include "secretsImagePullSecretsSingle" . | nindent 2 }}
+
+  exporter:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    {{- if or (eq (include "metricScrapingEnabled" .) "true") $istioEnabled }}
+    podAnnotations:
+      {{- if eq (include "metricScrapingEnabled" .) "true" }}
+      checksum/metrics-pass: {{ sha256sum $neuvectorMetricsPass }}
+      {{- end }}
+      {{- if $istioEnabled }}
+      {{ include "istioAnnotation" . }}
+      {{- end }}
+    {{- end }}
+    serviceMonitor:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+      {{- if eq (include "metricsSidecarMtls" (list .Values.neuvector .)) "true" }}
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prom-certs/root-cert.pem
+        certFile: /etc/prom-certs/cert-chain.pem
+        keyFile: /etc/prom-certs/key.pem
+        insecureSkipVerify: true
+      {{- end }}
+
+    svc:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+      type: ClusterIP
+    CTRL_USERNAME: metrics
+    CTRL_PASSWORD: {{ $neuvectorMetricsPass }}
+
+{{- end }}
+
+{{- /* Create secret */ -}}
+{{- if .Values.neuvector.enabled }}
+# handle legacy istio hardened keys in neuvector values
+{{- $neuvectorPackage := deepCopy .Values.neuvector -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.neuvector.values) | fromYaml -}}
+{{- $neuvectorPackage = set $neuvectorPackage "values" $cleanedValues -}}
+
+{{- include "values-secret" (dict 
+  "root" $ 
+  "package" $neuvectorPackage 
+  "name" "neuvector" 
+  "defaults" ((mergeOverwrite (include "bigbang.defaults.neuvector" . | fromYaml) (include "bigbang.neuvector.bb-common-migrations" . | fromYaml)) | toYaml)
+) }}
+{{- end }}

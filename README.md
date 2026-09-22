@@ -19,7 +19,7 @@ This repository is the `genesis-oss` edition. It is generated. The durable edits
 | Visibility | Public. GitHub org `alphabravo-oss`, repository `genesis-oss`. |
 | Images | Anonymously pullable public images. |
 | Conformance | Relaxed. Pods start and the default UIs answer. Posture may be softer than upstream Big Bang. |
-| UI | A light management UI comes after the stack is up. |
+| UI | Packaged read-only console: deployment inspection, baseline comparison, and image scans. See [Console](docs/console.md). |
 | First tag | `3.33.0`, after the k3d deploy works. |
 
 Iron Bank image names and security contexts stay in the engine catalog as data. This edition pulls public images at deploy time.
@@ -34,7 +34,9 @@ Upstream chart `LICENSE` files ship with the generated snapshot and stay Apache-
 
 ## What you install
 
-The install entrypoint is the umbrella chart in this repo. Package charts for the default-on set are snapshotted beside it. Addons that Big Bang ships disabled stay disabled. Deploys use no Registry1 pull secret and no image from `registry1.dso.mil` or `registry.dso.mil`.
+The [console](docs/console.md) is included in `genesis-console/`. Run `./genesis-console/scripts/up.sh` from this checkout to build and start it with Docker Compose. Its required catalogs and archived comparison baselines are included under `genesis-engine/`.
+
+The Kubernetes install entrypoint is the umbrella chart in this repo. Package charts for the default-on set are snapshotted beside it. Addons that Big Bang ships disabled stay disabled. Deploys use no Registry1 pull secret and no image from `registry1.dso.mil` or `registry.dso.mil`.
 
 ## Status
 

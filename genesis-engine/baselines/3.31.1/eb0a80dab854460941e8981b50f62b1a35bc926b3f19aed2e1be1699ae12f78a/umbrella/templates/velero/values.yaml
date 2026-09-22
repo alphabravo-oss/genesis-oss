@@ -1,0 +1,123 @@
+{{- if .Values.addons.velero.enabled }}
+{{- /* Create a cleaned copy of loki config and merge deprecated paths into current paths */ -}}
+{{- $veleroPackage := deepCopy .Values.addons.velero -}}
+{{- if .Values.addons.velero.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.velero.values) | fromYaml -}}
+{{- $veleroPackage = set $veleroPackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict 
+  "root" $ 
+  "package" .Values.addons.velero 
+  "name" "velero" 
+  "defaults" ((mergeOverwrite (include "bigbang.defaults.velero" . | fromYaml) (include "bigbang.velero.bb-common-migrations" . | fromYaml)) | toYaml)
+)}}
+{{- end }}
+
+{{- define "bigbang.defaults.velero" -}}
+{{- $domainName := .Values.domain }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.velero.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+
+domain: {{ $domainName }}
+
+{{- if $istioEnabled }}
+podAnnotations:
+  {{ include "istioAnnotation" . }}
+{{- end }}
+
+monitoring:
+  enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+  hardened:
+    enabled: {{ $istioHardenedEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.velero.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.velero.values .) }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6 }}
+    to:
+      velero:8085:
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6 }}
+    from:
+      "*":
+        to:
+          k8s:
+            tempo/tempo:9411: {{ .Values.tempo.enabled }}
+          definition:
+            kubeAPI: true
+      velero:
+        to:
+          definition:
+            storage-subnets: true
+      velero-upgrade-crds:
+        podSelector:
+          matchLabels:
+            batch.kubernetes.io/job-name: velero-upgrade-crds
+        to:
+          definition:
+            kubeAPI:
+              enabled: true
+              metadata:
+                annotations:
+                  helm.sh/hook: pre-upgrade
+                  helm.sh/hook-weight: "-10"
+                  helm.sh/hook-delete-policy: hook-succeeded,hook-failed,before-hook-creation
+
+bbtests:
+  scripts:
+    envs:
+      MINIO_HOST: {{ printf "https://minio-api.%s" $domainName | quote }}
+
+openshift: {{ .Values.openshift }}
+
+upstream:
+  image:
+    pullPolicy: {{ .Values.imagePullPolicy }}
+    {{- include "secretsImagePullSecrets" . | nindent 4 }}
+
+  {{- if eq (include "metricScrapingEnabled" .) "true" }}
+  metrics:
+    enabled: true
+    scrapeInterval: 30s
+    scrapeTimeout: 10s
+    service:
+      annotations: {}
+      labels: {}
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8085"
+      prometheus.io/path: "/metrics"
+    serviceMonitor:
+      enabled: true
+      additionalLabels: {}
+      {{- if eq (include "metricsSidecarMtls" (list .Values.addons.velero .)) "true" }}
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prom-certs/root-cert.pem
+        certFile: /etc/prom-certs/cert-chain.pem
+        keyFile: /etc/prom-certs/key.pem
+        insecureSkipVerify: true
+      {{- end }}
+    prometheusRule:
+      enabled: true
+  {{- end }}
+
+{{- end -}}

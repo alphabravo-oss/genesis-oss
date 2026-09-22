@@ -1,0 +1,54 @@
+{{- $fluxSettingsGitlab := merge .Values.addons.gitlab.flux .Values.flux -}}
+{{- if .Values.addons.gitlab.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: gitlab
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: gitlab
+    app.kubernetes.io/component: "developer-tools"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/gitlab/values.yaml") . | sha256sum }}
+spec:
+  releaseName: gitlab
+  targetNamespace: gitlab
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "gitlab" "package" .Values.addons.gitlab "root" .) | nindent 2 }}
+
+
+  {{- toYaml $fluxSettingsGitlab | nindent 2 }}
+  {{- if or .Values.addons.gitlab.postRenderers (and .Values.monitoring.enabled (ne (include "ambientEnabled" .) "true")) }}
+  postRenderers:
+  {{- if and .Values.monitoring.enabled (ne (include "ambientEnabled" .) "true") }}
+  {{ include "gitlab.serviceMonitorPostRenderers" . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.addons.gitlab.postRenderers }}
+  {{ toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "gitlab" "root" .) | nindent 2 }}
+
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled .Values.addons.gitlab.dependsOn }}
+  dependsOn:
+  {{- if .Values.gatekeeper.enabled }}
+  - name: gatekeeper
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if $istioEnabled }}
+  {{- include "istioHelmReleases" . | nindent 2 }}
+  {{- end }}
+  {{- if .Values.kyvernoPolicies.enabled }}
+  - name: kyverno-policies
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.monitoring.enabled }}
+  - name: monitoring
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- with .Values.addons.gitlab.dependsOn }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+  {{- end }}
+{{- end }}

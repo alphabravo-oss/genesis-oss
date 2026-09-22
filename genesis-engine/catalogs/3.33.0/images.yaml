@@ -1,0 +1,1413 @@
+generated: '2026-09-21'
+upstream:
+  tag: 3.33.0
+  commit: c371ef0ed40289038e9661cd0b7d10e5ee40ecfe
+render:
+  method: helm template the umbrella at kubeVersion 1.36.4 with the metrics.k8s.io/v1beta1 API present,
+    then helm template each package with the merged HelmRelease values
+  metricsServer: addons.metricsServer.enabled is auto. With the metrics API present, as on k3s, the HelmRelease
+    is not rendered. It is not in this catalog.
+  packagesWithNoImages:
+  - istioCRDs
+  - prometheusOperatorCRDs
+  gaps: []
+images:
+- id: alloy/operator
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: workload
+  renderedIn:
+  - alloy
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/alloy-operator:1.11.0
+    rendered: registry1.dso.mil/ironbank/opensource/grafana/alloy-operator:1.11.0
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+        runAsGroup: 1001
+        runAsUser: 1001
+      pod:
+        runAsNonRoot: true
+  public:
+    ref: ghcr.io/grafana/alloy-operator:1.11.0
+    verifiedPull: true
+    digest: sha256:913ea3c5c0a5581e6888802c9c25cad5304bc4b3daf45915a39d969de0921df7
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.alloy-operator.image
+  notes: Upstream k8s-monitoring publishes the operator on ghcr.io/grafana.
+- id: alloy/alloy
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: runtime-composed
+  renderedIn:
+  - alloy
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/alloy:v1.18.0
+    rendered: registry1.dso.mil/ironbank/opensource/grafana/alloy:v1.18.0
+    securityContext: {}
+  public:
+    ref: docker.io/grafana/alloy:v1.18.0
+    verifiedPull: true
+    digest: sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.collectorCommon.alloy.image
+  notes: Composed in the Alloy collector CR (registry + repository + tag). The operator pulls it.
+- id: alloy/config-reloader
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: runtime-composed
+  renderedIn:
+  - alloy
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader:v0.93.0
+    rendered: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader:v0.93.0
+    securityContext: {}
+  public:
+    ref: quay.io/prometheus-operator/prometheus-config-reloader:v0.93.0
+    verifiedPull: true
+    digest: sha256:0ccb22ca9f3f6fd9f76ce95585d18bd2e363d421c534dde710be4bd13caa551d
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.collectorCommon.alloy.configReloader.image
+  notes: Composed in the Alloy collector CR.
+- id: alloy/kubectl-toolbox
+  package: alloy
+  upstreamPackageTag: 4.3.2-bb.0
+  class: utility-kubectl
+  renderedIn:
+  - alloy
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/helm-chart-toolbox-kubectl:1.0
+    rendered: registry1.dso.mil/ironbank/opensource/grafana/helm-chart-toolbox-kubectl:1.0
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 4242
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: ghcr.io/grafana/helm-chart-toolbox-kubectl:0.1.6
+    verifiedPull: true
+    digest: sha256:93766638612873629f97f26805391b46a4fe346dcfeb49b5ee881efe0b38d638
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: alloy.values.upstream.alloy-operator.waitForAlloyRemoval.image
+  notes: Iron Bank tag is 1.0. The public ghcr.io/grafana/helm-chart-toolbox-kubectl tags are 0.1.0 through
+    0.1.6. 0.1.6 is the newest of those.
+- id: cert-manager/controller
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  renderedIn:
+  - cert-manager
+  ironbank:
+    ref: registry1.dso.mil/ironbank/jetstack/cert-manager-controller:v1.20.3
+    rendered: registry1.dso.mil/ironbank/jetstack/cert-manager-controller:v1.20.3
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: quay.io/jetstack/cert-manager-controller:v1.20.3
+    verifiedPull: true
+    digest: sha256:6c13d61e0348a5bc3477f8ea9a928624300b30d19b1c72a7d2b90372fc713db4
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.image
+  notes: Upstream chart imageRegistry is quay.io and imageNamespace is jetstack.
+- id: cert-manager/webhook
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  renderedIn:
+  - cert-manager
+  ironbank:
+    ref: registry1.dso.mil/ironbank/jetstack/cert-manager-webhook:v1.20.3
+    rendered: registry1.dso.mil/ironbank/jetstack/cert-manager-webhook:v1.20.3
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: quay.io/jetstack/cert-manager-webhook:v1.20.3
+    verifiedPull: true
+    digest: sha256:a61e817632cebed3bb59a189327e786fa3fdd7597167d994a1848d98fd55848f
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.webhook.image
+  notes: ''
+- id: cert-manager/cainjector
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: workload
+  renderedIn:
+  - cert-manager
+  ironbank:
+    ref: registry1.dso.mil/ironbank/jetstack/cert-manager-cainjector:v1.20.3
+    rendered: registry1.dso.mil/ironbank/jetstack/cert-manager-cainjector:v1.20.3
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: quay.io/jetstack/cert-manager-cainjector:v1.20.3
+    verifiedPull: true
+    digest: sha256:06ad347fe0dc2eb84cc355c26f6752e05e87dceb6447f5cd29b963dd66dfd8bd
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.cainjector.image
+  notes: ''
+- id: cert-manager/acmesolver
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: runtime-composed
+  renderedIn:
+  - cert-manager
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/jetstack/cert-manager-acmesolver:v1.20.3
+    rendered: registry1.dso.mil/ironbank/opensource/jetstack/cert-manager-acmesolver:v1.20.3
+    securityContext: {}
+  public:
+    ref: quay.io/jetstack/cert-manager-acmesolver:v1.20.3
+    verifiedPull: true
+    digest: sha256:d8d948a9fa0fb9eeb9fd2432dee4945cc202c840ee25a733f0b238fd89fe5cbb
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.acmesolver.image
+  notes: Passed as --acme-http01-solver-image. Pulled only when an HTTP-01 solver runs.
+- id: cert-manager/startupapicheck
+  package: certManager
+  upstreamPackageTag: v1.20.3-bb.2
+  class: helm-hook
+  renderedIn:
+  - cert-manager
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/cleanstart/cert-manager-startupapicheck:1.20.3-amd64
+    rendered: registry1.dso.mil/ironbank/opensource/cleanstart/cert-manager-startupapicheck:1.20.3-amd64
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: quay.io/jetstack/cert-manager-startupapicheck:v1.20.3
+    verifiedPull: true
+    digest: sha256:b0c9a2c18d02f3c40a9e091a6fe9afdf39cbf7fb2d9acc18c9881c21c625f2dc
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: certManager.values.upstream.startupapicheck.image
+  notes: Iron Bank tag is 1.20.3-amd64 on a cleanstart path. Public jetstack tag is v1.20.3. Helm install
+    hook.
+- id: grafana/grafana
+  package: grafana
+  upstreamPackageTag: 12.10.0-bb.0
+  class: workload
+  renderedIn:
+  - grafana
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/grafana/grafana-plugins:13.1.0
+    rendered: registry1.dso.mil/ironbank/big-bang/grafana/grafana-plugins:13.1.0
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        seccompProfile:
+          type: RuntimeDefault
+      pod: &id001
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+  public:
+    ref: docker.io/grafana/grafana:13.1.0
+    verifiedPull: true
+    digest: sha256:121a7a9ece6dc10b969f1f96eed64b4f07dfac0d0b8abc070f7cb83bbde86f63
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.upstream.image
+  notes: Big Bang replaces the Grafana image with a plugin bundle. The upstream chart default is docker.io/grafana/grafana
+    at the chart appVersion (13.1.0). Stock Grafana includes the Loki datasource. Baked-in Big Bang plugins
+    are not in that image.
+- id: grafana/k8s-sidecar
+  package: grafana
+  upstreamPackageTag: 12.10.0-bb.0
+  class: workload
+  renderedIn:
+  - grafana
+  ironbank:
+    ref: registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar:2.10.1
+    rendered: registry1.dso.mil/ironbank/kiwigrid/k8s-sidecar:2.10.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        seccompProfile:
+          type: RuntimeDefault
+      pod: *id001
+  public:
+    ref: quay.io/kiwigrid/k8s-sidecar:2.10.1
+    verifiedPull: true
+    digest: sha256:7eac5c4fed714a18d038fc9fea57d8744d113367935dac0ea4eb6a87cef704a3
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: grafana.values.upstream.sidecar.image
+  notes: Upstream chart default tag is 2.10.0. Big Bang pins 2.10.1.
+- id: istio/pilot
+  package: istiod
+  upstreamPackageTag: 1.30.4-bb.0
+  class: workload
+  renderedIn:
+  - istiod
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/istio/pilot:1.30.4
+    rendered: registry1.dso.mil/ironbank/opensource/istio/pilot:1.30.4
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop:
+          - ALL
+  public:
+    ref: docker.io/istio/pilot:1.30.4
+    verifiedPull: true
+    digest: sha256:c236c1df5cc127fe193e5a17d8ece9cdd0dc17c5d89b4e20baf01d464f029dce
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: istiod.values.upstream.global.hub
+  notes: Hub and tag are upstream.global.hub and upstream.global.tag. The upstream subchart hub is registry.istio.io/release.
+    Public images for this tag are on docker.io/istio. The same hub also selects proxyv2.
+- id: istio/proxyv2
+  package: istiod
+  upstreamPackageTag: 1.30.4-bb.0
+  class: runtime-composed
+  renderedIn:
+  - istiod
+  - passthrough-ingressgateway
+  - public-ingressgateway
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/istio/proxyv2:1.30.4
+    rendered: registry1.dso.mil/ironbank/opensource/istio/proxyv2:1.30.4
+    securityContext: {}
+  public:
+    ref: docker.io/istio/proxyv2:1.30.4
+    verifiedPull: true
+    digest: sha256:43b6aeab7428470d3d0ea6b6f0bc217e5b36df2b279bba337643df48590226d9
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: istiod.values.upstream.global.hub
+  notes: 'Gateway pods render image: auto. Istiod resolves that from global.hub plus the proxyv2 image
+    name and global.tag. The gateway chart annotation helm.sh/images names this ref. Sidecars use it too.'
+- id: istio/busybox-example
+  package: istiod
+  upstreamPackageTag: 1.30.4-bb.0
+  class: template-example
+  renderedIn:
+  - istiod
+  ironbank:
+    ref: ''
+    rendered: busybox:1.28
+    securityContext: {}
+  public:
+    ref: docker.io/library/busybox:1.28
+    verifiedPull: true
+    digest: sha256:141c253bc4c3fd0a201d32dc1f493bcf3fff003b6df416dea4f41046e0f37d47
+  enterprise:
+    ref: ''
+  apply:
+    kind: none
+    path: ''
+  notes: Literal inside istiod's grpc-simple injection template in a ConfigMap. It is not a workload pod.
+    Already a public image. Changing it would be a chart patch.
+- id: istio-gateway/auto
+  package: istioGateway
+  upstreamPackageTag: 1.30.4-bb.0
+  class: istio-auto
+  renderedIn:
+  - passthrough-ingressgateway
+  - public-ingressgateway
+  ironbank:
+    ref: ''
+    rendered: auto
+    securityContext:
+      container:
+        capabilities:
+          drop:
+          - ALL
+        allowPrivilegeEscalation: false
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+      pod:
+        sysctls:
+        - name: net.ipv4.ip_unprivileged_port_start
+          value: '0'
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: none
+    path: istiod.values.upstream.global.hub
+  notes: Not a pullable reference. Resolved at runtime to istio/proxyv2.
+- id: istio-gateway/kubectl
+  package: istioGateway
+  upstreamPackageTag: 1.30.4-bb.0
+  class: utility-wait-job
+  renderedIn:
+  - passthrough-ingressgateway
+  - public-ingressgateway
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35
+    rendered: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+  public:
+    ref: registry.k8s.io/kubectl:v1.35.0
+    verifiedPull: true
+    digest: sha256:0bb95b2a450875fc8ceaea2f9987a99fe27c228846e2e00b93b65ebb0d59034e
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: istioGateway.values.waitJob.image
+  notes: Iron Bank tag is v1.35 with no patch. Public tag v1.35.0 pulls. The gluon wait job command is
+    /bin/bash, and registry.k8s.io/kubectl is distroless, so the relaxed profile sets waitJob.enabled
+    false instead of swapping this image in.
+- id: kiali/operator
+  package: kiali
+  upstreamPackageTag: 2.31.0-bb.0
+  class: workload
+  renderedIn:
+  - kiali
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kiali/kiali-operator:v2.31.0
+    rendered: registry1.dso.mil/ironbank/opensource/kiali/kiali-operator:v2.31.0
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 2001
+        runAsNonRoot: true
+        runAsUser: 2001
+  public:
+    ref: quay.io/kiali/kiali-operator:v2.31.0
+    verifiedPull: true
+    digest: sha256:f837d8f25545c7659e2b52050ab2b88bb0a184aace354c5f9cad9c92fae5f40a
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kiali.values.upstream.image
+  notes: Upstream chart default repo is quay.io/kiali/kiali-operator.
+- id: kiali/kiali
+  package: kiali
+  upstreamPackageTag: 2.31.0-bb.0
+  class: runtime-composed
+  renderedIn:
+  - kiali
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kiali/kiali:v2.31.0
+    rendered: registry1.dso.mil/ironbank/opensource/kiali/kiali:v2.31.0
+    securityContext: {}
+  public:
+    ref: quay.io/kiali/kiali:v2.31.0
+    verifiedPull: true
+    digest: sha256:df636734606c220263c1eae85f473940b52ced3c026abfe7110c64014098fb41
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kiali.values.upstream.cr.spec.deployment.image_name
+  notes: Kiali CR image_name plus image_version v2.31.0. The operator creates the server pod.
+- id: kiali/kubectl
+  package: kiali
+  upstreamPackageTag: 2.31.0-bb.0
+  class: utility-wait-job
+  renderedIn:
+  - kiali
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.8
+    rendered: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.35.8
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+  public:
+    ref: registry.k8s.io/kubectl:v1.35.8
+    verifiedPull: true
+    digest: sha256:1ec2791a3ddd245559e18a887f2dcd25cdfee7a649c5b73ca2715e3d7f6bf6f8
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kiali.values.waitJob.image
+  notes: Gluon wait job command is /bin/bash. Relaxed profile sets waitJob.enabled false.
+- id: kyverno/kyverno
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: workload
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno:v1.19.1
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno:v1.19.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      pod: &id002
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+  public:
+    ref: ghcr.io/kyverno/kyverno:v1.19.1
+    verifiedPull: true
+    digest: sha256:b31d8511ae5fd6010e2a01ea72ebae08eb82fa51d91af14a1d9fe989949b4edb
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.admissionController.container.image
+  notes: Upstream chart defaultRegistry is reg.kyverno.io, repository kyverno/kyverno. Public images for
+    this release are on ghcr.io/kyverno.
+- id: kyverno/pre
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: workload
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre:v1.19.1
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/kyvernopre:v1.19.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      pod: *id002
+  public:
+    ref: ghcr.io/kyverno/kyvernopre:v1.19.1
+    verifiedPull: true
+    digest: sha256:c25c47461f06f2845a48c319ae86fbbc1730a7b9ed5b701889c9dc1f9ee94b09
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.admissionController.initContainer.image
+  notes: ''
+- id: kyverno/background-controller
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: workload
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller:v1.19.1
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/background-controller:v1.19.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      pod:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+  public:
+    ref: ghcr.io/kyverno/background-controller:v1.19.1
+    verifiedPull: true
+    digest: sha256:8f1e9143373a27578cafc2d28d2c66ba0926c63b4c77e63de8d2fdd4a122859f
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.backgroundController.image
+  notes: ''
+- id: kyverno/cleanup-controller
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: workload
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller:v1.19.1
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/cleanup-controller:v1.19.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      pod:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+  public:
+    ref: ghcr.io/kyverno/cleanup-controller:v1.19.1
+    verifiedPull: true
+    digest: sha256:67a48e62a8d8f8120c86914ff822b90017c54054c7b64ef8a1555645e9d9761e
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.cleanupController.image
+  notes: ''
+- id: kyverno/reports-controller
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: workload
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller:v1.19.1
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/reports-controller:v1.19.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      pod:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+  public:
+    ref: ghcr.io/kyverno/reports-controller:v1.19.1
+    verifiedPull: true
+    digest: sha256:c0eee97b9b44a0dd35805d56b358fa52548480f79d4944602b9609538eccd64c
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.reportsController.image
+  notes: ''
+- id: kyverno/cli
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: helm-hook
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli:v1.19.1
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/kyvernocli:v1.19.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: ghcr.io/kyverno/kyverno-cli:v1.19.1
+    verifiedPull: true
+    digest: sha256:ced7b2be0b04250cabfe695f15307f69eb715fe23234816388af4f3812915b2a
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.crds.migration.image
+  notes: CRD migration job, helm post-upgrade hook. Upstream repository is kyverno/kyverno-cli.
+- id: kyverno/readiness-checker
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: helm-test
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker:v1.19.1
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/kyverno/readiness-checker:v1.19.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: ghcr.io/kyverno/readiness-checker:v1.19.1
+    verifiedPull: true
+    digest: sha256:31bb42ce7f5b2e27c1cf633aeff4f0cad1f5bb63761e2cb09f0e25cdd26572bf
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.test.image
+  notes: Helm test hook only. Flux test.enable is false in the umbrella, so a normal install does not
+    pull it. The rendered manifest still contains the ref.
+- id: kyverno/kubectl
+  package: kyverno
+  upstreamPackageTag: 3.9.1-bb.0
+  class: utility-kubectl
+  renderedIn:
+  - kyverno
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.37
+    rendered: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.37
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      pod:
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+  public:
+    ref: registry.k8s.io/kubectl:v1.37.0
+    verifiedPull: true
+    digest: sha256:5ed410ebac5dc976cc717098994dcdb29bbbd38f6bd65f582311f5be4ba719cf
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyverno.values.upstream.webhooksCleanup.image
+  notes: Webhook cleanup hook. Iron Bank tag is v1.37. Public tag v1.37.0 pulls. This hook's command is
+    the chart's own cleanup command, not the gluon bash wait script.
+- id: kyverno-policies/kubectl
+  package: kyvernoPolicies
+  upstreamPackageTag: 3.3.4-bb.87
+  class: utility-wait-job
+  renderedIn:
+  - kyverno-policies
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.34
+    rendered: registry1.dso.mil/ironbank/opensource/kubernetes/kubectl:v1.34
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+  public:
+    ref: registry.k8s.io/kubectl:v1.34.1
+    verifiedPull: true
+    digest: sha256:59bafa07ff3a6d4b417e7633ddb9d79a9606ca98bf64bac080b3e65748669250
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoPolicies.values.waitJob.image
+  notes: Iron Bank tag is v1.34. Public tag v1.34.1 pulls. Gluon wait script needs /bin/bash, so the relaxed
+    profile sets waitJob.enabled false. Policy match lines in this package are not images.
+- id: kyverno-policies/pattern-registry
+  package: kyvernoPolicies
+  upstreamPackageTag: 3.3.4-bb.87
+  class: policy-pattern
+  renderedIn:
+  - kyverno-policies
+  ironbank:
+    ref: registry1.dso.mil* | registry.dso.mil*
+    rendered: registry1.dso.mil* | registry.dso.mil*
+    securityContext: {}
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: none
+    path: ''
+  notes: Kyverno policy match expression, not a container image.
+- id: kyverno-policies/pattern-any
+  package: kyvernoPolicies
+  upstreamPackageTag: 3.3.4-bb.87
+  class: policy-pattern
+  renderedIn:
+  - kyverno-policies
+  ironbank:
+    ref: ''
+    rendered: '*:*'
+    securityContext: {}
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: none
+    path: ''
+  notes: Kyverno policy match expression, not a container image.
+- id: kyverno-policies/pattern-latest
+  package: kyvernoPolicies
+  upstreamPackageTag: 3.3.4-bb.87
+  class: policy-pattern
+  renderedIn:
+  - kyverno-policies
+  ironbank:
+    ref: ''
+    rendered: '!*:latest'
+    securityContext: {}
+  public:
+    ref: ''
+    verifiedPull: false
+    digest: ''
+  enterprise:
+    ref: ''
+  apply:
+    kind: none
+    path: ''
+  notes: Kyverno policy match expression, not a container image.
+- id: policy-reporter/reporter
+  package: kyvernoReporter
+  upstreamPackageTag: 3.10.0-bb.2
+  class: workload
+  renderedIn:
+  - kyverno-reporter
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter:3.10.0
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter:3.10.0
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1234
+        seccompProfile:
+          type: RuntimeDefault
+      pod:
+        fsGroup: 1234
+  public:
+    ref: ghcr.io/kyverno/policy-reporter:3.10.0
+    verifiedPull: true
+    digest: sha256:a77e93fe511772e105aae30274d205ed1377f231c6d1ec272604221dc04a3c2c
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoReporter.values.upstream.image
+  notes: Upstream chart registry is ghcr.io, repository kyverno/policy-reporter. Upstream tag is empty
+    (chart appVersion). Big Bang pins 3.10.0.
+- id: policy-reporter/ui
+  package: kyvernoReporter
+  upstreamPackageTag: 3.10.0-bb.2
+  class: workload
+  renderedIn:
+  - kyverno-reporter
+  ironbank:
+    ref: registry1.dso.mil/ironbank/nirmata/policy-reporter/policy-reporter-ui:2.8.1
+    rendered: registry1.dso.mil/ironbank/nirmata/policy-reporter/policy-reporter-ui:2.8.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1234
+        seccompProfile:
+          type: RuntimeDefault
+      pod:
+        runAsGroup: 1234
+        runAsUser: 1234
+  public:
+    ref: ghcr.io/kyverno/policy-reporter-ui:2.8.1
+    verifiedPull: true
+    digest: sha256:748d8c18851ba76ca8129a14b28f43bf9bee04ac9fc80926abd28f6fcba99a06
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoReporter.values.upstream.ui.image
+  notes: Upstream chart image is ghcr.io/kyverno/policy-reporter-ui:2.8.1. Big Bang points this at an
+    Iron Bank nirmata path. Same tag.
+- id: policy-reporter/kyverno-plugin
+  package: kyvernoReporter
+  upstreamPackageTag: 3.10.0-bb.2
+  class: workload
+  renderedIn:
+  - kyverno-reporter
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter/kyverno-plugin:0.6.2
+    rendered: registry1.dso.mil/ironbank/opensource/kyverno/policy-reporter/kyverno-plugin:0.6.2
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 1234
+        seccompProfile:
+          type: RuntimeDefault
+      pod:
+        runAsGroup: 1234
+        runAsUser: 1234
+  public:
+    ref: ghcr.io/kyverno/policy-reporter/kyverno-plugin:0.6.2
+    verifiedPull: true
+    digest: sha256:f84d330794b002618d02f7e175d3f0dea49c5a2c6d577e5eb8de39cc8c585af3
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: kyvernoReporter.values.upstream.plugin.kyverno.image
+  notes: Upstream chart default tag is 0.7.1. Big Bang pins 0.6.2. Use whichever tag pulls.
+- id: loki/loki
+  package: loki
+  upstreamPackageTag: 6.55.0-bb.7
+  class: workload
+  renderedIn:
+  - loki
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/loki:3.7.7
+    rendered: registry1.dso.mil/ironbank/opensource/grafana/loki:3.7.7
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+  public:
+    ref: docker.io/grafana/loki:3.7.7
+    verifiedPull: true
+    digest: sha256:d70e4659623f3e109af669cae76fe2a5dd5be54e2298fe8aed380d982fbc2500
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: loki.values.loki.image
+  notes: Monolith strategy renders this single image. Other Loki images in values (gateway, memcached,
+    canary, enterprise) are not in the default render.
+- id: monitoring/prometheus
+  package: monitoring
+  upstreamPackageTag: 88.6.2-bb.0
+  class: workload
+  renderedIn:
+  - monitoring
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/prometheus:v3.14.0
+    rendered: registry1.dso.mil/ironbank/opensource/prometheus/prometheus:v3.14.0
+    securityContext: {}
+  public:
+    ref: quay.io/prometheus/prometheus:v3.14.0
+    verifiedPull: true
+    digest: sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheus.prometheusSpec.image
+  notes: ''
+- id: monitoring/alertmanager
+  package: monitoring
+  upstreamPackageTag: 88.6.2-bb.0
+  class: workload
+  renderedIn:
+  - monitoring
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/alertmanager:v0.34.0
+    rendered: registry1.dso.mil/ironbank/opensource/prometheus/alertmanager:v0.34.0
+    securityContext: {}
+  public:
+    ref: quay.io/prometheus/alertmanager:v0.34.0
+    verifiedPull: true
+    digest: sha256:690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.alertmanager.alertmanagerSpec.image
+  notes: ''
+- id: monitoring/node-exporter
+  package: monitoring
+  upstreamPackageTag: 88.6.2-bb.0
+  class: workload
+  renderedIn:
+  - monitoring
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus/node-exporter:v1.12.1
+    rendered: registry1.dso.mil/ironbank/opensource/prometheus/node-exporter:v1.12.1
+    securityContext:
+      container:
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+  public:
+    ref: quay.io/prometheus/node-exporter:v1.12.1
+    verifiedPull: true
+    digest: sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheus-node-exporter.image
+  notes: ''
+- id: monitoring/kube-state-metrics
+  package: monitoring
+  upstreamPackageTag: 88.6.2-bb.0
+  class: workload
+  renderedIn:
+  - monitoring
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/kubernetes/kube-state-metrics:v2.20.0
+    rendered: registry1.dso.mil/ironbank/opensource/kubernetes/kube-state-metrics:v2.20.0
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0
+    verifiedPull: true
+    digest: sha256:42cfe3723a5f058171c627537fb57a3ea0f26e4380fa18555a95cb1a1b4cfc5b
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.kube-state-metrics.image
+  notes: ''
+- id: monitoring/operator
+  package: monitoring
+  upstreamPackageTag: 88.6.2-bb.0
+  class: workload
+  renderedIn:
+  - monitoring
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-operator:v0.93.1
+    rendered: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-operator:v0.93.1
+    securityContext:
+      container:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        readOnlyRootFilesystem: true
+      pod:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+  public:
+    ref: quay.io/prometheus-operator/prometheus-operator:v0.93.1
+    verifiedPull: true
+    digest: sha256:e52bb28fd41c98dd407c7a8cba8bdcfe7eabd7447e250afaf1fe7bb816dedbff
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheusOperator.image
+  notes: ''
+- id: monitoring/config-reloader
+  package: monitoring
+  upstreamPackageTag: 88.6.2-bb.0
+  class: runtime-composed
+  renderedIn:
+  - monitoring
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader:v0.93.1
+    rendered: registry1.dso.mil/ironbank/opensource/prometheus-operator/prometheus-config-reloader:v0.93.1
+    securityContext: {}
+  public:
+    ref: quay.io/prometheus-operator/prometheus-config-reloader:v0.93.1
+    verifiedPull: true
+    digest: sha256:428f088fe6fe07ab138bda92113664b04848a1dc408e4d3680a60ecdb55d1a65
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheusOperator.prometheusConfigReloader.image
+  notes: Operator arg --prometheus-config-reloader. The operator adds this container to Prometheus and
+    Alertmanager pods.
+- id: monitoring/thanos
+  package: monitoring
+  upstreamPackageTag: 88.6.2-bb.0
+  class: runtime-composed
+  renderedIn:
+  - monitoring
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/thanos/thanos:v0.42.4
+    rendered: registry1.dso.mil/ironbank/opensource/thanos/thanos:v0.42.4
+    securityContext: {}
+  public:
+    ref: quay.io/thanos/thanos:v0.42.4
+    verifiedPull: true
+    digest: sha256:b567818fe608067eb0f1d7c2c4fe361e7ad83c8a256234c97685f1d0bf670cc8
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: monitoring.values.upstream.prometheusOperator.thanosImage
+  notes: Operator arg --thanos-default-base-image. No Thanos sidecar is in the default render. The string
+    is still in the operator Deployment, so the overlay has to replace it.
+- id: neuvector/controller
+  package: neuvector
+  upstreamPackageTag: 2.11.1-bb.0
+  class: workload
+  renderedIn:
+  - neuvector
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/controller:5.6.1
+    rendered: registry1.dso.mil/ironbank/neuvector/neuvector/controller:5.6.1
+    securityContext:
+      container:
+        runAsUser: 0
+  public:
+    ref: docker.io/neuvector/controller:5.6.1
+    verifiedPull: true
+    digest: sha256:ae45c394f1aca52aaac27dba63f93429e80f1c0c572d6832878e4d18607f355d
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.controller.image.repository
+  notes: Image is upstream.registry plus repository plus upstream.tag (5.6.1). Public registry is docker.io
+    and repository is neuvector/controller. Enforcer and manager share upstream.registry, so that one
+    value has to change with the repositories.
+- id: neuvector/enforcer
+  package: neuvector
+  upstreamPackageTag: 2.11.1-bb.0
+  class: workload
+  renderedIn:
+  - neuvector
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/enforcer:5.6.1
+    rendered: registry1.dso.mil/ironbank/neuvector/neuvector/enforcer:5.6.1
+    securityContext:
+      container:
+        privileged: true
+  public:
+    ref: docker.io/neuvector/enforcer:5.6.1
+    verifiedPull: true
+    digest: sha256:aa2137cc90ece4704880ce897f655632b64e60d310ea7b21e726bb6fdc0128f1
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.enforcer.image.repository
+  notes: Enforcer is privileged in the chart. That exception already exists upstream and stays.
+- id: neuvector/manager
+  package: neuvector
+  upstreamPackageTag: 2.11.1-bb.0
+  class: workload
+  renderedIn:
+  - neuvector
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/manager:5.6.1
+    rendered: registry1.dso.mil/ironbank/neuvector/neuvector/manager:5.6.1
+    securityContext:
+      container: &id003
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        capabilities:
+          drop:
+          - ALL
+      pod: &id004
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+  public:
+    ref: docker.io/neuvector/manager:5.6.1
+    verifiedPull: true
+    digest: sha256:9e729010b7eb31546cd53345f19df2aed3dc7250e97f3ca644f2cc1909e1ca5b
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.manager.image.repository
+  notes: Copied from neuvector chart values upstream.manager.containerSecurityContext and securityContext.
+    The upstream manager template does not render them.
+- id: neuvector/scanner
+  package: neuvector
+  upstreamPackageTag: 2.11.1-bb.0
+  class: workload
+  renderedIn:
+  - neuvector
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/scanner:6
+    rendered: registry1.dso.mil/ironbank/neuvector/neuvector/scanner:6
+    securityContext:
+      container: *id003
+      pod: *id004
+  public:
+    ref: docker.io/neuvector/scanner:6
+    verifiedPull: true
+    digest: sha256:07edf7e8d26da9b809195c2913274d4c05d8b0d8338624f5de7b84ceb9574444
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.cve.scanner.image.repository
+  notes: 'Tag 6 is the upstream subchart default (cve.scanner.image.tag), not 5.6.1. Big Bang overrides
+    the repository and leaves the tag. Copied from neuvector chart values upstream.cve.scanner.containerSecurityContext
+    and securityContext. Those keys are marked VALIDATE in the chart: the upstream scanner template does
+    not reference them.'
+- id: neuvector/prometheus-exporter
+  package: neuvector
+  upstreamPackageTag: 2.11.1-bb.0
+  class: workload
+  renderedIn:
+  - neuvector
+  ironbank:
+    ref: registry1.dso.mil/ironbank/neuvector/neuvector/prometheus-exporter:1-1.0.0
+    rendered: registry1.dso.mil/ironbank/neuvector/neuvector/prometheus-exporter:1-1.0.0
+    securityContext:
+      container:
+        capabilities:
+          drop:
+          - ALL
+        runAsGroup: 1001
+        runAsUser: 1001
+  public:
+    ref: docker.io/neuvector/prometheus-exporter:1-1.0.0
+    verifiedPull: true
+    digest: sha256:c827a5f78888481005b54414de8aa49c7e424ef41e846a20ba1c6fdf96cfe9b7
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.monitor.exporter.image
+  notes: Umbrella defaults turn the monitor exporter on. Tag 1-1.0.0 is the Big Bang pin.
+- id: neuvector/updater
+  package: neuvector
+  upstreamPackageTag: 2.11.1-bb.0
+  class: utility-curl
+  renderedIn:
+  - neuvector
+  ironbank:
+    ref: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+    rendered: registry1.dso.mil/ironbank/big-bang/base:2.1.0
+    securityContext:
+      container: *id003
+      pod: *id004
+  public:
+    ref: docker.io/curlimages/curl:8.15.0
+    verifiedPull: true
+    digest: sha256:4026b29997dc7c823b51c164b71e2b51e0fd95cce4601f78202c513d97da2922
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: neuvector.values.upstream.cve.updater.image
+  notes: CronJob that curls the Kubernetes API to restart the scanner. The command is /bin/sh and /usr/bin/curl.
+    curlimages/curl is the curl image the upstream Grafana chart uses. The job is not a Big Bang wait
+    script. Copied from neuvector chart values upstream.cve.updater.containerSecurityContext and securityContext.
+- id: tempo/tempo
+  package: tempo
+  upstreamPackageTag: 2.1.0-bb.2
+  class: workload
+  renderedIn:
+  - tempo
+  ironbank:
+    ref: registry1.dso.mil/ironbank/opensource/grafana/tempo:2.10.5
+    rendered: registry1.dso.mil/ironbank/opensource/grafana/tempo:2.10.5
+    securityContext:
+      container:
+        capabilities:
+          drop:
+          - ALL
+      pod:
+        fsGroup: 1001
+        runAsGroup: 1001
+        runAsNonRoot: true
+        runAsUser: 1001
+  public:
+    ref: docker.io/grafana/tempo:2.10.5
+    verifiedPull: true
+    digest: sha256:ee21727732c7a7199cb71c3eee9153bbf23f9b0b87619f0555a0cf21a67f1a33
+  enterprise:
+    ref: ''
+  apply:
+    kind: values
+    path: tempo.values.upstream.tempo
+  notes: Upstream tempo chart image is docker.io/grafana/tempo.

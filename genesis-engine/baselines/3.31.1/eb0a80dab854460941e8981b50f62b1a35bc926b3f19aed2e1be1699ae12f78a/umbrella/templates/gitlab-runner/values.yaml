@@ -1,0 +1,120 @@
+{{- $pkg := "gitlab-runner" }}
+
+{{- if .Values.addons.gitlabRunner.enabled }}
+{{- /* Create a cleaned copy of gitlab-runner config and merge deprecated paths into current paths */ -}}
+{{- $gitlabRunnerPackage := deepCopy .Values.addons.gitlabRunner -}}
+{{- if .Values.addons.gitlabRunner.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.addons.gitlabRunner.values) | fromYaml -}}
+{{- $gitlabRunnerPackage = set $gitlabRunnerPackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict "root" $ "package" $gitlabRunnerPackage "name" $pkg "defaults" (include "bigbang.defaults.gitlab-runner" .)) }}
+{{- end }}
+
+{{- define "bigbang.defaults.gitlab-runner" -}}
+{{- $domainName := .Values.domain }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioInjection := and $istioEnabled (ne (include "ambientEnabled" .) "true") (eq (dig "istio" "injection" "enabled" .Values.addons.gitlabRunner) "enabled") }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.addons.gitlabRunner.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $autoRegisterEnabled := and .Values.kyverno.enabled .Values.addons.gitlab.enabled (dig "autoRegister" "enabled" true .Values.addons.gitlabRunner) }}
+
+istio:
+  enabled: {{ $istioEnabled }}
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.addons.gitlabRunner.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.addons.gitlabRunner.values .) }}
+
+routes:
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.addons.gitlabRunner.values }}
+      hosts:
+      - 'repo1.dso.mil'
+      - gitlab.{{ $domainName }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  egress:
+    from:
+      gitlab-runner:
+        podSelector:
+          matchLabels:
+            app: gitlab-runner
+        to:
+          k8s:
+            gitlab/*: true
+          definition:
+            kubeAPI: true
+  ingress:
+    to:
+      gitlab-runner:9252:
+        podSelector:
+          matchLabels:
+            app: gitlab-runner
+        from:
+          k8s:
+            alloy-alloy-metrics@alloy/alloy-metrics: {{ dig "alloyMetrics" "enabled" false .Values.alloy }}
+            monitoring-monitoring-kube-prometheus@monitoring/prometheus: {{ .Values.monitoring.enabled }}
+  additionalPolicies: []
+
+bbtests:
+  enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://gitlab.%s" $domainName | quote }}
+
+openshift: {{ .Values.openshift }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+
+# Passthrough chart upstream config (main gitlab-runner chart values)
+upstream:
+  imagePullPolicy: {{ .Values.imagePullPolicy }}
+
+  {{- include "secretsImagePullSecretsWithName" . | nindent 2 }}
+
+  podLabels:
+    app.kubernetes.io/name: gitlab-runner
+
+  metrics:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+    serviceMonitor:
+      enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+      {{- if eq (include "metricsSidecarMtls" (list .Values.addons.gitlabRunner .)) "true" }}
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prom-certs/root-cert.pem
+        certFile: /etc/prom-certs/cert-chain.pem
+        keyFile: /etc/prom-certs/key.pem
+        insecureSkipVerify: true
+      {{- end }}
+    podMonitor:
+      enabled: false
+
+  service:
+    enabled: {{ eq (include "metricScrapingEnabled" .) "true" }}
+
+  {{- if $autoRegisterEnabled }}
+  runners:
+    secret: gitlab-gitlab-runner-secret
+  {{- end }}
+
+  # When istio injected, add an annotation with the istio version to the manager pods only
+  {{- if $istioEnabled }}
+  podAnnotations:
+    {{ include "istioAnnotation" . }}
+  {{- end }}
+
+# autoRegister requires kyverno
+{{- if and .Values.kyverno.enabled .Values.addons.gitlab.enabled }}
+autoRegister:
+  enabled: {{ dig  "autoRegister" "enabled" "true" .Values.addons.gitlabRunner }}
+{{- end }}
+
+{{- end -}}

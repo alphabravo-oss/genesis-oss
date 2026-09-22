@@ -1,0 +1,49 @@
+{{- $fluxSettingsKeycloak := merge .Values.addons.keycloak.flux .Values.flux -}}
+{{- if .Values.addons.keycloak.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $tlsEnabled := and .Values.addons.keycloak.ingress.cert .Values.addons.keycloak.ingress.key -}}
+{{ $name := "keycloak" }}
+{{ $component := "security-tools" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/keycloak/values.yaml") . | sha256sum }}
+spec:
+  releaseName: {{ $name }}
+  targetNamespace: {{ $name }}
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "keycloak" "package" .Values.addons.keycloak "root" .) | nindent 2 }}
+
+  {{- if .Values.addons.keycloak.postRenderers }}
+    {{ toYaml .Values.addons.keycloak.postRenderers | nindent 2 }}
+  {{- end }}
+
+  {{- toYaml $fluxSettingsKeycloak | nindent 2 }}
+
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "keycloak" "root" .) | nindent 2 }}
+
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled }}
+  dependsOn:
+  {{- if .Values.gatekeeper.enabled }}
+  - name: gatekeeper
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if $istioEnabled }}
+  {{- include "istioHelmReleases" . | nindent 2 }}
+  {{- end }}
+  {{- if .Values.kyvernoPolicies.enabled }}
+  - name: kyverno-policies
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.monitoring.enabled }}
+  - name: monitoring
+    namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- end }}
+{{- end }}

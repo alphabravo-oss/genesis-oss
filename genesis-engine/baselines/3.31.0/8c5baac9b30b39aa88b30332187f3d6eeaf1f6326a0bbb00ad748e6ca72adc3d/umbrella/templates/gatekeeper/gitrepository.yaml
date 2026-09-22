@@ -1,0 +1,3 @@
+{{- if and (eq .Values.gatekeeper.sourceType "git") (not .Values.offline) .Values.gatekeeper.enabled }}
+{{- include "bigbang.gitRepository" (dict "name" "gatekeeper" "gitCredsName" "gatekeeper" "git" .Values.gatekeeper.git "component" "core" "root" .) }}
+{{- end }}

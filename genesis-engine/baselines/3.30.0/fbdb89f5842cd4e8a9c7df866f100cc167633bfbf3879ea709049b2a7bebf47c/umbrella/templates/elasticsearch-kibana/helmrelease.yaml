@@ -1,0 +1,42 @@
+{{- $fluxSettingsEk := merge .Values.elasticsearchKibana.flux .Values.flux -}}
+{{- if .Values.elasticsearchKibana.enabled }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ek
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: elasticsearch-kibana
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/elasticsearch-kibana/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: logging
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "elasticsearch-kibana" "package" .Values.elasticsearchKibana "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsEk | nindent 2 }}
+
+  {{- if .Values.elasticsearchKibana.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.elasticsearchKibana.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "ek" "root" .) | nindent 2 }}
+
+  {{/* ECK and Logging _always_ depend on .Values.elasticsearchKibana being enabled, so can assume they exist here */}}
+  dependsOn:
+    - name: eck-operator
+      namespace: {{ .Release.Namespace }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+{{- end }}

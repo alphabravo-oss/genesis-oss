@@ -1,0 +1,3 @@
+{{- if and (eq .Values.kiali.sourceType "git") (not .Values.offline) .Values.kiali.enabled }}
+{{- include "bigbang.gitRepository" (dict "name" "kiali" "gitCredsName" "kiali" "git" .Values.kiali.git "component" "core" "root" .) }}
+{{- end }}

@@ -1,0 +1,60 @@
+apiVersion: v2
+name: bbctl
+description: |
+  bbctl as a helm chart for partial automated management of Big Bang.
+
+  ## Introduction
+
+  `bbctl` is a command line interface (CLI) tool to simplify development, deployment, auditing, and maintaining the deployment of Big Bang a kubernetes cluster.
+
+  This repository is for the `bbctl` chart. For `bbctl` application, development please refer to: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
+
+  ## Developer Documentation
+
+  Help Contribute! See [CONTRIBUTING.md](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/blob/main/CONTRIBUTING.md) and the [developer documentation](https://repo1.dso.mil/big-bang/product/packages/bbctl/-/blob/main/docs/DEVELOPMENT_MAINTENANCE.md) for more information. The CLI tool is developed in Go language and uses the [cobra](https://github.com/spf13/cobra/) library to implement commands.
+
+  ## `bbctl` Usage and Design Priorities
+
+  ### Multiple execution contexts
+
+  `bbctl` will be running as a cronjob in cluster, possibly as web server in cluster, potentially in pipelines, and on developer machines.
+
+  ### External _and_ internal users
+
+  `bbctl` is currently used both inside and outside the Big Bang team as a fully open source project.
+type: application
+# This is the chart version. This version number should be incremented each time you make changes
+version: 3.0.1-bb.3
+# This is the version number of the application being deployed.
+appVersion: "2.3.1"
+keywords:
+- bigbang
+- bbctl
+home: https://repo1.dso.mil/big-bang/product/packages/bbctl
+icon: https://repo1.dso.mil/uploads/-/system/group/avatar/3988/bigbanglogo.png?width=48
+sources:
+- https://repo1.dso.mil/big-bang/product/packages/bbctl
+maintainers:
+- name: Big Bang Tooling and Automation Team
+  url: https://join.slack.com/t/bigbanguniver-ft39451/shared_invite/zt-21zrvwacw-zoionTAz0UdzVbjnAFSnDw
+annotations:
+  bigbang.dev/maintenanceTrack: bb_integrated
+  bigbang.dev/applicationVersions: |
+    - bbctl: 2.3.1
+  bigbang.dev/upstreamReleaseNotesMarkdown: |
+    There is no upstream for this chart.
+    Application development for `bbctl` is done in this repository: https://repo1.dso.mil/big-bang/apps/developer-tools/bbctl.
+  helm.sh/images: |
+    - name: bbctl
+      image: registry1.dso.mil/ironbank/big-bang/bbctl:2.3.1
+    - name: yq
+      image: registry1.dso.mil/ironbank/opensource/yq/yq:4.50.1
+    - name: ubi9-minimal
+      image: registry1.dso.mil/ironbank/redhat/ubi/ubi9-minimal:9.7
+dependencies:
+  - name: gluon
+    version: "0.9.8"
+    repository: "oci://registry1.dso.mil/bigbang"
+  - name: bb-common
+    version: 0.14.0
+    repository: "oci://registry1.dso.mil/bigbang"

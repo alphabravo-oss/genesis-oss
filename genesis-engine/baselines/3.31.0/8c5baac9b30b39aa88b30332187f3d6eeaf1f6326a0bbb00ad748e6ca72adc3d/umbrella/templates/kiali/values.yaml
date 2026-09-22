@@ -1,0 +1,200 @@
+{{- if .Values.kiali.enabled }}
+{{- /* Create a cleaned copy of kiali config and merge deprecated paths into current paths */ -}}
+{{- $kialiPackage := deepCopy .Values.kiali -}}
+{{- if .Values.kiali.values -}}
+{{- $cleanedValues := include "mergeLegacyIstioHardenedKeys" (dict "values" .Values.kiali.values) | fromYaml -}}
+{{- $kialiPackage = set $kialiPackage "values" $cleanedValues -}}
+{{- end -}}
+{{- include "values-secret" (dict 
+  "root" $ 
+  "package" $kialiPackage 
+  "name" "kiali" 
+  "defaults" ((mergeOverwrite (include "bigbang.defaults.kiali" . | fromYaml) (include "bigbang.kiali.bb-common-migrations" . | fromYaml)) | toYaml)
+)}}
+{{- end }}
+
+{{- define "bigbang.defaults.kiali" -}}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+{{- $istioHardenedEnabled := or (dig "istio" "hardened" "enabled" false .Values.kiali.values) (dig "hardened" "enabled" false .Values.istiod.values) }}
+{{- $grafanaUrl := first (dig "routes" "inbound" "grafana" "hosts" list .Values.grafana.values) }}
+# hostname is deprecated and replaced with domain. But if hostname exists then use it.
+{{- $domainName := default .Values.domain .Values.hostname }}
+domain: {{ $domainName }}
+
+sso:
+  enabled: {{ .Values.kiali.sso.enabled }}
+
+monitoring:
+  enabled: {{ .Values.monitoring.enabled }}
+
+tracing:
+  enabled: {{ .Values.tempo.enabled }}
+
+openshift: {{ .Values.openshift}}
+
+istio:
+  enabled: {{ $istioEnabled }}
+
+  sidecar:
+    enabled: {{ and $istioHardenedEnabled (ne (include "ambientEnabled" .) "true") }}
+
+  ambient:
+    enabled: {{ include "ambientEnabled" . }}
+
+  authorizationPolicies:
+    enabled: {{ include "authorizationPoliciesEnabled" (list .Values.kiali.values .) }}
+    generateFromNetpol: {{ include "authorizationPoliciesEnabled" (list .Values.kiali.values .) }}
+
+routes:
+  inbound:
+    kiali:
+      gateways:
+        - {{ include "getGatewayName" (dict "gateway" .Values.kiali.ingress.gateway "root" .)}}
+  outbound:
+    bb-tests:
+      enabled: {{ dig "bbtests" "enabled" false .Values.kiali.values }}
+      hosts:
+      - repo1.dso.mil
+    grafana:
+      enabled: {{ .Values.grafana.enabled }}
+      hosts:
+      - {{ $grafanaUrl | default (printf "%s.%s" "grafana" $domainName) }}
+    sso:
+      enabled: {{ .Values.kiali.sso.enabled }}
+      hosts:
+      - {{ include "sso.host" . }}
+
+networkPolicies:
+  enabled: {{ include "networkPoliciesEnabled" . }}
+  hbonePortInjection:
+    enabled: {{ include "ambientEnabled" . }}
+  ingress:
+    definitions: {{ .Values.networkPolicies.ingress.definitions | toYaml | nindent 6}}
+    defaults:
+      allowPrometheusToIstioSidecar:
+        enabled: {{ and .Values.monitoring.enabled .Values.istiod.enabled }}
+  egress:
+    definitions: {{ .Values.networkPolicies.egress.definitions | toYaml | nindent 6}}
+    defaults:
+      allowIstiod:
+        enabled: {{ .Values.istiod.enabled }}
+    from:
+      kiali:
+        to:
+          k8s:
+            monitoring/prometheus:9090: {{ .Values.monitoring.enabled }}
+            monitoring/grafana:3000: {{ .Values.grafana.enabled }}
+            tempo/tempo:3200: {{ .Values.tempo.enabled }}
+            istio-system/istiod:15014: {{ .Values.istiod.enabled }}
+          definition:
+            sso: {{ .Values.kiali.sso.enabled }}
+
+waitJob:
+  enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
+bbtests:
+  enableImagePullSecrets: {{ ne .Values.registryCredentials nil }}
+  cypress:
+    envs:
+      cypress_url: {{ printf "https://kiali.%s" $domainName | quote }}
+      cypress_check_data: {{ .Values.grafana.enabled | quote }}
+      cypress_ambient_enabled: {{ include "ambientEnabled" . | quote }}
+      cypress_pod_monitor_name: "monitoring-monitoring-istio-envoy"
+      {{- include "bigbang.cypressKeycloakValues" (dict "package" .Values.kiali "values" .Values) | nindent 6 }}
+
+{{- if and .Values.kiali.enabled .Values.kiali.sso.enabled (or .Values.sso.certificate_authority (dig "certificateAuthority" "cert" false .Values.sso))  }}
+oidcCaCert: {{ default (dig "certificateAuthority" "cert" "" .Values.sso) .Values.sso.certificate_authority | quote }}
+{{- end }}
+
+upstream:
+  {{- if $istioEnabled }}
+  podAnnotations:
+    {{ include "istioAnnotation" . | nindent 4 }}
+  {{- end }}
+  image:
+    pullPolicy: {{ .Values.imagePullPolicy }}
+    {{- include "secretsPullSecrets" . | nindent 4 }}
+
+  cr:
+    spec:
+      {{- if $istioEnabled }}
+      istio_namespace: istio-system
+      {{- end}}
+      deployment:
+        image_pull_policy: {{ .Values.imagePullPolicy }}
+        {{- if ( include "imagePullSecret" . ) }}
+        image_pull_secrets:
+        - private-registry
+        {{- else }}
+        image_pull_secrets: []
+        {{- end }}
+        {{- if eq (include "istioEnabled" .) "true" }}
+        pod_annotations:
+          {{ include "istioAnnotation" . }}
+        {{- end }}
+        pod_labels:
+          service.istio.io/canonical-name: kiali
+        hpa:
+          spec:
+            maxReplicas: 2
+            minReplicas: 1
+            targetCPUUtilizationPercentage: 80
+      server:
+        web_port: "443"
+      auth:
+        {{- if .Values.kiali.sso.enabled }}
+        strategy: openid
+        openid:
+          client_id: "{{ .Values.kiali.sso.client_id }}"
+          disable_rbac: true
+          issuer_uri: "{{ include "sso.url" . }}"
+          scopes:
+          - openid
+          - email
+          username_claim: {{ dig "oidc" "claims" "email" "email" .Values.sso }}
+        {{- else }}
+        strategy: token
+        {{- end }}
+      external_services:
+        grafana:
+          enabled: {{ .Values.grafana.enabled }}
+          external_url: https://{{ tpl ($grafanaUrl | default (printf "%s.%s" "grafana" $domainName)) . }}
+          {{- if .Values.grafana.enabled }}
+          auth:
+            {{- if (dig "admin" "existingSecret" "" .Values.grafana.values) }}
+            {{- $userKey := (dig "admin" "userKey" "admin-user" .Values.grafana.values) }}
+            {{- with lookup "v1" "Secret" "monitoring" .Values.grafana.values.admin.existingSecret }}
+            username: {{ (get .data $userKey | b64dec) | default "admin" }}
+            {{- end }}
+            {{- else }}
+            username: {{ dig "adminUser" "admin" .Values.grafana.values }}
+            {{- end }}
+            password: "secret:grafana-auth:password"
+          {{- end }}
+        {{- if or .Values.istiod.enabled .Values.tempo.enabled }}
+        tracing:
+          enabled: true
+          {{- if .Values.tempo.enabled }}
+          external_url: https://{{ tpl ($grafanaUrl | default (printf "%s.%s" "grafana" $domainName)) . }}
+          internal_url: http://tempo-tempo.tempo.svc.cluster.local:3200
+          provider: tempo
+          tempo_config:
+            datasource_uid: tempo
+          {{- end}}
+        {{- end }}
+        istio:
+          component_status:
+            components:
+              {{- if .Values.istioGateway.enabled }}
+              {{- range $name, $gw := include "enabledGateways" $ | fromYaml }}
+              {{- if eq $gw.type "ingressgateway" }}
+              - app_label: {{ $gw.serviceName }}
+                is_core: true
+                is_proxy: true
+                namespace: istio-gateway
+              {{- end -}}
+              {{- end -}}
+              {{- end -}}
+          {{- if .Values.istiod.enabled }}
+          egress_gateway_namespace: istio-gateway
+          {{- end }}
+{{- end -}}

@@ -1,0 +1,276 @@
+syntax = "proto3";
+
+package console.v1;
+
+option go_package = "github.com/alphabravo/genesis-console/gen/console/v1;consolev1";
+
+service ConsoleService {
+  rpc ListReleases(ListReleasesRequest) returns (ListReleasesResponse);
+  rpc GetRelease(GetReleaseRequest) returns (ReleaseDetail);
+  rpc GetCluster(GetClusterRequest) returns (ClusterStatus);
+  rpc GetPackageComparison(GetPackageComparisonRequest) returns (PackageComparison);
+  rpc StartScan(StartScanRequest) returns (ScanJob);
+  rpc ListScanJobs(ListScanJobsRequest) returns (ListScanJobsResponse);
+  rpc GetScanJob(GetScanJobRequest) returns (ScanJob);
+  rpc GetScanSettings(GetScanSettingsRequest) returns (ScanSettings);
+  rpc SetScanSettings(SetScanSettingsRequest) returns (ScanSettings);
+  rpc CleanImages(CleanImagesRequest) returns (CleanImagesResponse);
+}
+
+message ListReleasesRequest {}
+
+message ReleaseSummary {
+  string tag = 1;
+  string chart_version = 2;
+  int32 enabled = 3;
+  int32 disabled = 4;
+}
+
+message ListReleasesResponse {
+  repeated ReleaseSummary releases = 1;
+  string loaded_at = 2;
+}
+
+message GetReleaseRequest {
+  string tag = 1;
+}
+
+message ImageRow {
+  string id = 1;
+  string package_key = 2;
+  string name = 3;
+  string ref = 4;
+  string registry = 5;
+  string digest = 6;
+  string when = 7;
+  string signature = 8;
+  int32 critical = 9;
+  int32 high = 10;
+  string ironbank = 11;
+  bool scanned = 12;
+  repeated string cves = 13;
+  string scanned_at = 14;
+  string db_version = 15;
+  repeated Vulnerability vulnerabilities = 16;
+}
+
+message Vulnerability {
+  string id = 1;
+  string severity = 2;
+  string package_name = 3;
+  string installed = 4;
+  string fixed = 5;
+  string title = 6;
+  string url = 7;
+}
+
+message PackageTile {
+  string key = 1;
+  bool enabled = 2;
+  int32 images = 3;
+}
+
+message RegistryCount {
+  string name = 1;
+  int32 count = 2;
+}
+
+message ReleaseDetail {
+  string tag = 1;
+  string chart_version = 2;
+  string domain = 3;
+  repeated PackageTile packages = 4;
+  repeated ImageRow images = 5;
+  repeated RegistryCount registries = 6;
+}
+
+message GetClusterRequest {
+  string tag = 1;
+  repeated string profiles = 2;
+  bool use_recorded_profiles = 3;
+}
+
+message GetPackageComparisonRequest {
+  string tag = 1;
+  repeated string profiles = 2;
+  string package_key = 3;
+  bool use_recorded_profiles = 4;
+}
+
+message HelmReleaseStatus {
+  string name = 1;
+  string package_key = 2;
+  bool ready = 3;
+  string reason = 4;
+  string namespace = 5;
+  string target_namespace = 6;
+  string configured_version = 7;
+  string deployed_version = 8;
+  string health = 9;
+  string drift = 10;
+  string drift_note = 11;
+}
+
+message PodCount {
+  string namespace = 1;
+  int32 running = 2;
+  int32 other = 3;
+}
+
+message ClusterStatus {
+  bool connected = 1;
+  string error = 2;
+  string revision = 3;
+  string tag = 4;
+  repeated HelmReleaseStatus releases = 5;
+  repeated PodCount pods = 6;
+  string context = 7;
+  string namespace = 8;
+  string observed_at = 9;
+  string deployment_state = 10;
+  string version_evidence = 11;
+  repeated ObservationCheck checks = 12;
+  repeated PackageComparison packages = 13;
+  repeated RuntimeImage images = 14;
+  repeated ServiceEndpoint services = 15;
+  string baseline_tag = 16;
+  string baseline_error = 17;
+  repeated string available_profiles = 18;
+  repeated string profiles = 19;
+  string release_name = 20;
+  string deployed_at = 21;
+  string source_tag = 22;
+  InstallationProvenance provenance = 23;
+  string baseline_sha256 = 24;
+  // Saved findings once per observed image digest, shared by all container replicas.
+  repeated ImageRow image_findings = 25;
+}
+
+message InstallationProvenance {
+  string tag = 1;
+  string baseline_sha256 = 2;
+  repeated string profiles = 3;
+  bool custom_values = 4;
+  string status = 5;
+  string note = 6;
+}
+
+message ObservationCheck {
+  string name = 1;
+  bool checked = 2;
+  string message = 3;
+}
+
+message ConfigurationChange {
+  string path = 1;
+  string category = 2;
+  string standard = 3;
+  string configured = 4;
+  string deployed = 5;
+  string status = 6;
+  string source = 7;
+}
+
+message PackageComparison {
+  string key = 1;
+  bool standard_known = 2;
+  bool standard_enabled = 3;
+  string standard_version = 4;
+  bool configured_known = 5;
+  bool configured_enabled = 6;
+  string configured_version = 7;
+  string deployed_version = 8;
+  string health = 9;
+  string drift = 10;
+  string note = 11;
+  repeated ConfigurationChange changes = 12;
+  repeated string releases = 13;
+  bool values_checked = 14;
+  string comparison = 15;
+}
+
+message RuntimeImage {
+  string package_key = 1;
+  string namespace = 2;
+  string pod = 3;
+  string container = 4;
+  string ref = 5;
+  string digest = 6;
+  bool ready = 7;
+  bool init = 8;
+  string comparison = 9;
+  string standard = 10;
+  bool scanned = 11;
+  int32 critical = 12;
+  int32 high = 13;
+}
+
+message ServiceEndpoint {
+  string name = 1;
+  string package_key = 2;
+  string url = 3;
+  string source = 4;
+}
+
+message StartScanRequest {
+  string tag = 1;
+  // deployed, selected, default-on, or public.
+  string scope = 2;
+  // For deployed: observed digest, or configured reference if no digest is observed.
+  // Legacy namespace/pod/init/container IDs are also accepted. Otherwise: catalog image IDs.
+  repeated string image_ids = 3;
+}
+
+message ScanItem {
+  string image_id = 1;
+  string ref = 2;
+  string digest = 3;
+  string state = 4;
+  string error = 5;
+  repeated Vulnerability vulnerabilities = 6;
+  bool findings_available = 7;
+  int32 critical = 8;
+  int32 high = 9;
+  string scanned_at = 10;
+}
+
+message ScanJob {
+  string id = 1;
+  string tag = 2;
+  string scope = 3;
+  string state = 4;
+  int32 total = 5;
+  int32 done = 6;
+  int32 failed = 7;
+  int32 skipped = 8;
+  string error = 9;
+  string started_at = 10;
+  string finished_at = 11;
+  repeated ScanItem items = 12;
+}
+
+message ListScanJobsRequest {}
+
+message ListScanJobsResponse {
+  repeated ScanJob jobs = 1;
+}
+
+message GetScanJobRequest {
+  string id = 1;
+}
+
+message GetScanSettingsRequest {}
+
+message SetScanSettingsRequest {
+  bool auto_clean = 1;
+}
+
+message ScanSettings {
+  bool auto_clean = 1;
+}
+
+message CleanImagesRequest {}
+
+message CleanImagesResponse {
+  bool cleaned = 1;
+}

@@ -1,0 +1,3 @@
+{{- if and (eq .Values.addons.thanos.sourceType "git") (not .Values.offline) .Values.addons.thanos.enabled }}
+{{- include "bigbang.gitRepository" (dict "name" "thanos" "gitCredsName" "thanos" "git" .Values.addons.thanos.git "root" .) }}
+{{- end }}
