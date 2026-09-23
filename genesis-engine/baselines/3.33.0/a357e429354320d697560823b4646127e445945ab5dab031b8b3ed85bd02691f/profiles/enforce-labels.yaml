@@ -1,0 +1,7 @@
+# Turns require-labels from Audit to Enforce.
+# Apply profiles/policies/add-standard-labels.yaml first, or pods that lack
+# app.kubernetes.io/name and app.kubernetes.io/version will be rejected.
+kyvernoPolicies:
+  values:
+    require-labels:
+      validationFailureAction: Enforce

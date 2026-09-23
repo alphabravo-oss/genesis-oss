@@ -16,6 +16,14 @@ policies:
   name: restrict-image-registries
   reason: Upstream allows only registry1.dso.mil and registry.dso.mil. The oss catalog
     pulls from these five registries.
+- name: disallow-deprecated-apis
+  action: disable
+  requiresKubeVersion: '1.32'
+  reason: Every API this policy looks for was removed by Kubernetes 1.32, and Genesis
+    requires 1.34 or later, so it can only report skips. Its rules match every version
+    of busy kinds such as Lease, so each leader-election renewal produced an admission
+    report; the reports controller spent its API budget aggregating them and kept
+    losing its leader lease.
 - action: keep-upstream-exceptions
   exceptions:
   - names:

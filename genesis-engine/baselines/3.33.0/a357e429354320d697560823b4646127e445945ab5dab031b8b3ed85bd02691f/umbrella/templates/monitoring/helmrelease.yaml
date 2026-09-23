@@ -1,0 +1,57 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsMonitoring := mergeOverwrite (deepCopy .Values.flux) .Values.monitoring.flux -}}
+{{- if .Values.monitoring.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: monitoring
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/monitoring/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: monitoring
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "monitoring" "package" .Values.monitoring "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsMonitoring | nindent 2 }}
+
+  {{- if or .Values.monitoring.postRenderers (ne (include "ambientEnabled" .) "true") }}
+  postRenderers:
+  {{- if ne (include "ambientEnabled" .) "true" }}
+  {{- include "monitoring.operatorServiceMonitorPostRenderer" . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.monitoring.postRenderers }}
+  {{ toYaml .Values.monitoring.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "monitoring" "root" .) | nindent 2 }}
+
+  dependsOn:
+    - name: prometheus-operator-crds
+      namespace: {{ .Release.Namespace }}
+  {{- if .Values.certManager.enabled }}
+    - name: cert-manager
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if or .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled .Values.addons.vault.enabled }}
+  {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+  {{- end }}
+  {{- if .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- if .Values.addons.vault.enabled }}
+    - name: vault
+      namespace: {{ .Release.Namespace }}
+  {{- end }}
+  {{- end }}
+{{- end }}

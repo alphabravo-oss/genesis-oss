@@ -1,0 +1,25 @@
+# Optional Keycloak. Off unless you pass this file.
+# Admin password in the chart default is "password". Change it before exposure.
+# The bundled Postgres chart is Bitnami. No public postgresql:18.4 image of that
+# layout was found. This profile turns it off. Point database.host at Postgres
+# 18. docker.io/library/postgres:18.4 was verified on 2026-09-21.
+addons:
+  keycloak:
+    enabled: true
+    database:
+      host: ""
+      type: postgres
+      port: 5432
+    values:
+      bbtests:
+        enabled: false
+      postgresql:
+        enabled: false
+      upstream:
+        image:
+          repository: quay.io/keycloak/keycloak
+          tag: "26.7.2"
+        database:
+          hostname: ""
+          database: keycloak
+          username: keycloak

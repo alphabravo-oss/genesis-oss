@@ -1,0 +1,41 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsMattermost := mergeOverwrite (deepCopy .Values.flux) .Values.addons.mattermost.flux -}}
+{{- if .Values.addons.mattermost.enabled }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: mattermost
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: mattermost
+    app.kubernetes.io/component: "collaboration-tools"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/mattermost/values.yaml") . | sha256sum }}
+spec:
+  releaseName: mattermost
+  targetNamespace: mattermost
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "mattermost" "package" .Values.addons.mattermost "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsMattermost | nindent 2 }}
+
+  {{- if .Values.addons.mattermost.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.mattermost.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "mattermost" "root" .) | nindent 2 }}
+
+  dependsOn:
+    - name: mattermost-operator
+      namespace: {{ .Release.Namespace }}
+
+    {{- if .Values.addons.minioOperator.enabled }} 
+    - name: minio-operator 
+      namespace: {{ $.Release.Namespace }} 
+    {{- end }}
+
+    {{- if and .Values.addons.mattermost.elasticsearch.enabled .Values.elasticsearchKibana.enabled }}
+    - name: ek
+      namespace: {{ $.Release.Namespace }}
+    {{- end }}
+{{- end }}

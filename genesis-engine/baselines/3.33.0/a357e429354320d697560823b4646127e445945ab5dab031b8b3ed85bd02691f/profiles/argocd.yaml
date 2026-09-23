@@ -1,0 +1,26 @@
+# Optional Argo CD. Flux remains the installer of the umbrella.
+# quay.io/argoproj/argocd:v3.4.5 and ghcr.io/dexidp/dex:v2.45.1 were verified.
+# redis-bb is a Bitnami chart. This profile uses Argo CD's own Redis instead.
+# The CRD upgrade job runs the Big Bang base image, so it is off here.
+addons:
+  argocd:
+    enabled: true
+    values:
+      bbtests:
+        enabled: false
+      upgradeJob:
+        enabled: false
+      global:
+        image:
+          repository: quay.io/argoproj/argocd
+          tag: v3.4.5
+        imagePullSecrets: []
+      redis-bb:
+        enabled: false
+      upstream:
+        redis:
+          enabled: true
+        dex:
+          image:
+            repository: ghcr.io/dexidp/dex
+            tag: v2.45.1

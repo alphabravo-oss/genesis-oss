@@ -1,0 +1,37 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsMinio := mergeOverwrite (deepCopy .Values.flux) .Values.addons.minio.flux -}}
+{{- if .Values.addons.minio.enabled }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: minio
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: minio
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/minio/values.yaml") . | sha256sum }}
+spec:
+  targetNamespace: minio
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "minio" "package" .Values.addons.minio "root" . "emitReleaseName" true) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsMinio | nindent 2 }}
+  
+  {{- if .Values.addons.minio.postRenderers }}
+  postRenderers:
+  {{ toYaml .Values.addons.minio.postRenderers | nindent 4 }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "minio" "root" .) | nindent 2 }}
+
+  dependsOn:
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    - name: minio-operator
+      namespace: {{ .Release.Namespace }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}      
+{{- end }}

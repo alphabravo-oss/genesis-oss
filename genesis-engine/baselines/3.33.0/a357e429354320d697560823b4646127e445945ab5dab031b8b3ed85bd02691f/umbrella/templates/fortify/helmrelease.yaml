@@ -1,0 +1,48 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $pkg := "fortify" }}
+{{- $fluxSettingsFortify := mergeOverwrite (deepCopy .Values.flux) .Values.addons.fortify.flux -}}
+{{- if (get .Values.addons $pkg).enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: {{ $pkg }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $pkg }}
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/fortify/values.yaml") . | sha256sum }}
+spec:
+  releaseName: {{ $pkg }}
+  targetNamespace: {{ $pkg }}
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "fortify" "package" (get .Values.addons $pkg) "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsFortify | nindent 2 }}
+
+  {{- if or (get .Values.addons $pkg).postRenderers (dig "mysql" "enabled" true (get .Values.addons $pkg).values) }}
+  postRenderers:
+  {{- if dig "mysql" "enabled" true (get .Values.addons $pkg).values }}
+  {{ include "fortify.postRenderers" . | nindent 2 }}
+  {{- end }}
+  {{- with (get .Values.addons $pkg).postRenderers }}
+  {{ toYaml . | nindent 2 }}
+  {{- end }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "fortify" "root" .) | nindent 2 }}
+
+  {{- if or $istioEnabled .Values.kyvernoPolicies.enabled .Values.monitoring.enabled }}
+  dependsOn:
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}

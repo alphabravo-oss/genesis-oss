@@ -1,0 +1,47 @@
+apiVersion: v2
+version: v1.20.3-bb.2
+appVersion: v1.20.3
+description: A Helm chart for cert-manager
+home: https://cert-manager.io
+icon: https://raw.githubusercontent.com/cert-manager/community/4d35a69437d21b76322157e6284be4cd64e6d2b7/logo/logo-small.png
+keywords:
+  - cert-manager
+  - kube-lego
+  - letsencrypt
+  - tls
+kubeVersion: ">= 1.22.0-0"
+maintainers:
+  - email: cert-manager-maintainers@googlegroups.com
+    name: cert-manager-maintainers
+    url: https://cert-manager.io
+name: cert-manager
+sources:
+  - https://github.com/cert-manager/cert-manager
+dependencies:
+  - name: gluon
+    version: "1.1.1"
+    repository: "oci://registry1.dso.mil/bigbang"
+  - name: bb-common
+    version: "1.0.2"
+    repository: "oci://registry1.dso.mil/bigbang"
+  - name: cert-manager
+    version: "v1.20.3"
+    repository: "https://charts.jetstack.io"
+    alias: "upstream"
+annotations:
+  bigbang.dev/maintenanceTrack: bb_integrated
+  bigbang.dev/applicationVersions: |
+    - cert-manager: v1.20.3
+  helm.sh/images: |
+    - name: cert-manager-controller
+      image: registry1.dso.mil/ironbank/jetstack/cert-manager-controller:v1.20.3
+    - name: cert-manager-webhook
+      image: registry1.dso.mil/ironbank/jetstack/cert-manager-webhook:v1.20.3
+    - name: cert-manager-cainjector
+      image: registry1.dso.mil/ironbank/jetstack/cert-manager-cainjector:v1.20.3
+    - name: cert-manager-acmesolver
+      image: registry1.dso.mil/ironbank/opensource/jetstack/cert-manager-acmesolver:v1.20.3
+    - name: cert-manager-startupapicheck
+      image: registry1.dso.mil/ironbank/opensource/cleanstart/cert-manager-startupapicheck:1.20.3-amd64
+  bigbang.dev/upstreamReleaseNotesMarkdown: |
+    - [Find upstream chart's release notes and CHANGELOG here](https://github.com/cert-manager/cert-manager)
