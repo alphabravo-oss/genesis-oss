@@ -7,13 +7,17 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/alphabravo/genesis-console/internal/server/database/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type memoryConnections struct{ row *db.GetClusterConnectionRow }
+type memoryConnections struct {
+	row      *db.GetClusterConnectionRow
+	failSave bool
+}
 
 func (m *memoryConnections) GetClusterConnection(context.Context) (db.GetClusterConnectionRow, error) {
 	if m.row == nil {
@@ -22,6 +26,9 @@ func (m *memoryConnections) GetClusterConnection(context.Context) (db.GetCluster
 	return *m.row, nil
 }
 func (m *memoryConnections) SaveClusterConnection(_ context.Context, p db.SaveClusterConnectionParams) error {
+	if m.failSave {
+		return errors.New("database unavailable")
+	}
 	m.row = &db.GetClusterConnectionRow{Name: p.Name, Context: p.Context, Server: p.Server, Kubeconfig: p.Kubeconfig, UpdatedAt: pgtype.Timestamptz{Valid: true}}
 	return nil
 }
@@ -177,5 +184,86 @@ func TestLoadKeepsInsecureWarning(t *testing.T) {
 	defer restarted.Close()
 	if info := restarted.Info(); len(info.Warnings) != 1 || !strings.Contains(info.Warnings[0], "TLS verification is off") {
 		t.Fatalf("the insecure-TLS warning must survive a restart: %+v", info)
+	}
+}
+
+func TestSaveKeepsDatabaseAndRuntimeInStep(t *testing.T) {
+	c, store, _ := newTestConnections(t, testKey(1))
+	if _, err := c.Save(context.Background(), ConnectionInput{Name: "first", Kubeconfig: sampleKubeconfig}); err != nil {
+		t.Fatal(err)
+	}
+	active, _ := os.ReadFile(kubeconfig())
+
+	store.failSave = true
+	if _, err := c.Save(context.Background(), ConnectionInput{Name: "second", Kubeconfig: sampleKubeconfig, Context: "other"}); err == nil {
+		t.Fatal("a failed database write must fail the save")
+	}
+	if now, _ := os.ReadFile(kubeconfig()); string(now) != string(active) || c.Info().Name != "first" {
+		t.Fatal("a failed database write must leave the running connection unchanged")
+	}
+	if leftovers, _ := filepath.Glob(filepath.Join(c.dir, "kubeconfig-*")); len(leftovers) != 0 {
+		t.Fatalf("staged files left behind: %v", leftovers)
+	}
+
+	store.failSave = false
+	c.probe = func(context.Context, string) ConnectionTest { os.RemoveAll(c.dir); return ConnectionTest{} }
+	if _, err := c.Save(context.Background(), ConnectionInput{Name: "third", Kubeconfig: sampleKubeconfig}); err == nil {
+		t.Fatal("an unwritable connection directory must fail the save")
+	}
+	if store.row.Name != "first" {
+		t.Fatalf("the database must not record a connection that could not be activated, got %q", store.row.Name)
+	}
+}
+
+// One observation must read one cluster, even if the connection switches mid-read.
+func TestReadClusterUsesOneKubeconfig(t *testing.T) {
+	bin, log, marker := t.TempDir(), filepath.Join(t.TempDir(), "calls"), filepath.Join(t.TempDir(), "metadata-started")
+	script := `#!/bin/sh
+echo "$KUBECONFIG" >> "` + log + `"
+case "$*" in
+  "config view"*) echo ctx ;;
+  "get metadata"*) touch "` + marker + `"; sleep 0.5; echo '{"chart":"bigbang-3.33.0","status":"deployed","revision":1,"version":"3.33.0"}' ;;
+  "get values"*) echo '{}' ;;
+  *) echo '{"items":[]}' ;;
+esac
+`
+	for _, name := range []string{"kubectl", "helm"} {
+		os.WriteFile(filepath.Join(bin, name), []byte(script), 0o755)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Cleanup(func() { activeKubeconfig.Store(nil) })
+	first, second := "/first/kubeconfig", "/second/kubeconfig"
+	activeKubeconfig.Store(&first)
+	done := make(chan *clusterSnapshot)
+	go func() { done <- readCluster(context.Background()) }()
+	for i := 0; i < 200; i++ {
+		if _, err := os.Stat(marker); err == nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	activeKubeconfig.Store(&second)
+	<-done
+	raw, _ := os.ReadFile(log)
+	calls := strings.Fields(string(raw))
+	if len(calls) < 3 {
+		t.Fatalf("fake binaries were not used: %v", calls)
+	}
+	for _, used := range calls {
+		if used != first {
+			t.Fatalf("an observation mixed clusters: %v", calls)
+		}
+	}
+}
+
+func TestSaveClearsServiceSnapshot(t *testing.T) {
+	svc := &Service{clusterCache: &clusterSnapshot{observed: "old cluster"}, clusterRead: time.Now()}
+	c, _, _ := newTestConnections(t, testKey(1))
+	c.onChange = svc.ResetCluster
+	if _, err := c.Save(context.Background(), ConnectionInput{Name: "prod", Kubeconfig: sampleKubeconfig}); err != nil {
+		t.Fatal(err)
+	}
+	if svc.clusterCache != nil {
+		t.Fatal("the next observation must read the new cluster, not the cached one")
 	}
 }

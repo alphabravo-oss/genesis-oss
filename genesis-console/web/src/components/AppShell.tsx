@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLoaderData, useLocation, useNavigation, useRe
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { create } from "@bufbuild/protobuf";
 import { ListScanJobsResponseSchema } from "@/gen/console/v1/console_pb";
-import { Container, Images, LayoutDashboard, PanelLeftClose, PanelLeftOpen, ScanSearch, Search, AppWindow } from "lucide-react";
+import { AlertTriangle, Container, Images, LayoutDashboard, PanelLeftClose, PanelLeftOpen, ScanSearch, Search, AppWindow } from "lucide-react";
 import { isRouteErrorResponse, useRouteError } from "react-router";
 import type { ShellData } from "@/shell-loader";
 import { consoleClient } from "@/lib/connect";
@@ -13,7 +13,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { UserMenu } from "@/components/UserMenu";
 import { useScanEvents } from "@/lib/use-scan-events";
 import { comparisonReady } from "@/lib/comparison";
-import { sourceLabel } from "@/lib/connection";
+import { connectionWarning, sourceLabel } from "@/lib/connection";
 
 const NAV = [
   { label: "Overview", path: "/", icon: LayoutDashboard },
@@ -161,7 +161,7 @@ export function AppShell() {
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm"><span className="font-semibold" translate="no">Genesis</span><span className="text-[var(--muted)]"> / {page}</span></div>
             <p className="hidden flex-wrap gap-x-2 text-xs text-[var(--muted)] sm:flex">
-              <Link to="/settings/cluster" className="max-w-full truncate hover:text-[var(--foreground)] hover:underline" title={`Context ${cluster.context || "unknown"} · namespace ${cluster.namespace || "unknown"} · change connection`}>{sourceLabel(connectionQuery.data, cluster.context)} / {cluster.namespace || "Namespace unknown"}</Link>
+              <Link to="/settings/cluster" className="max-w-full truncate hover:text-[var(--foreground)] hover:underline" title={`Context ${cluster.context || "unknown"} · namespace ${cluster.namespace || "unknown"} · change connection`}>{connectionWarning(connectionQuery.data) ? <AlertTriangle className="mr-1 inline size-3 text-[var(--amber)]" aria-label={`Saved connection problem: ${connectionWarning(connectionQuery.data)}`} /> : null}{sourceLabel(connectionQuery.data, cluster.context)} / {cluster.namespace || "Namespace unknown"}</Link>
               <span className="whitespace-nowrap">Installed Genesis {cluster.tag || "not confirmed"}</span>
             </p>
           </div>

@@ -18,3 +18,13 @@ test("saving needs a fresh test after any input change", () => {
     assert.equal(sameInput(base, { ...base, ...change }), false);
   }
 });
+
+test("a saved connection that failed to load can still be removed and is flagged", async () => {
+  const { canDisconnect, connectionWarning } = await import("../src/lib/connection.ts");
+  assert.equal(canDisconnect({ source: "saved", error: "" }), true);
+  assert.equal(canDisconnect({ source: "environment", error: "A saved connection (prod) exists, but no connection key is configured." }), true);
+  assert.equal(canDisconnect({ source: "environment", error: "" }), false);
+  assert.equal(connectionWarning({ error: "could not be decrypted" }), "could not be decrypted");
+  assert.equal(connectionWarning({ error: "" }), "");
+  assert.equal(connectionWarning(undefined), "");
+});

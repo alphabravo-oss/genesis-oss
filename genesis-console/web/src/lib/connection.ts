@@ -14,3 +14,12 @@ export function sourceLabel(info: Pick<ConnectionInfo, "name" | "source"> | unde
 export function sameInput(a: FormInput, b: FormInput) {
   return a.name.trim() === b.name.trim() && a.kubeconfig === b.kubeconfig && a.context === b.context && a.rewrite === b.rewrite;
 }
+
+// A saved row that failed to load (missing or changed key) must still be removable.
+export function canDisconnect(info: Pick<ConnectionInfo, "source" | "error">) {
+  return info.source === "saved" || Boolean(info.error);
+}
+
+export function connectionWarning(info: Pick<ConnectionInfo, "error"> | undefined) {
+  return info?.error ?? "";
+}

@@ -59,3 +59,14 @@ func TestLoadConnectionKey(t *testing.T) {
 		t.Fatal("short key accepted")
 	}
 }
+
+func TestLoadConnectionKeyHidesItFromChildProcesses(t *testing.T) {
+	t.Setenv("GENESIS_CONNECTION_KEY_FILE", "")
+	t.Setenv("GENESIS_CONNECTION_KEY", base64.StdEncoding.EncodeToString(testKey(5)))
+	if key, err := LoadConnectionKey(); err != nil || !bytes.Equal(key, testKey(5)) {
+		t.Fatalf("key not loaded: %v", err)
+	}
+	if _, set := os.LookupEnv("GENESIS_CONNECTION_KEY"); set {
+		t.Fatal("kubectl, helm, and trivy inherit the environment; the key must be removed after loading")
+	}
+}
