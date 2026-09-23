@@ -1,0 +1,57 @@
+name: upstream
+
+# Weekdays, look for Big Bang releases newer than the newest Genesis tag and
+# open one issue per release with the release checklist. The engine is not on
+# GitHub yet, so the sync itself stays a local step (docs/releasing.md).
+on:
+  schedule:
+    - cron: "17 13 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print what would be opened instead of opening issues
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look for newer Big Bang releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+          tags() { git ls-remote --tags "$1" | sed -n 's|.*refs/tags/\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$|\1|p' | sort -uV; }
+          newest=${NEWEST:-$(tags "https://github.com/${REPO}.git" | tail -1)}
+          found=0
+          for tag in $(tags https://github.com/DoD-Platform-One/bigbang.git); do
+            [ "$tag" != "$newest" ] && [ "$(printf '%s\n%s\n' "$newest" "$tag" | sort -V | tail -1)" = "$tag" ] || continue
+            found=1
+            title="Big Bang ${tag} is available"
+            if [ -n "$(gh issue list --repo "$REPO" --state all --search "\"$title\" in:title" --json number --jq '.[0].number')" ]; then
+              echo "issue already exists: $title"
+              continue
+            fi
+            body="Big Bang [${tag}](https://github.com/DoD-Platform-One/bigbang/releases/tag/${tag}) is newer than Genesis ${newest}.
+
+          Follow \`docs/releasing.md\` in genesis-engine:
+
+          - [ ] Pin the new tag and refresh the upstream cache
+          - [ ] Backfill the catalog and review \`catalogs/${tag}/diff-${newest}.md\`
+          - [ ] \`python3 ../genesis-engine/hack/sync.py ${tag}\` and review the diff
+          - [ ] \`python3 hack/test_install.py\` and a k3d deploy
+          - [ ] Commit, tag \`${tag}\`, and publish the release"
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would open: $title"
+            else
+              gh issue create --repo "$REPO" --title "$title" --body "$body"
+            fi
+          done
+          [ "$found" = 1 ] || echo "no Big Bang release newer than ${newest}"
