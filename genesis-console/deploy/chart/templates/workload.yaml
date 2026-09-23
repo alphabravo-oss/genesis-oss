@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .Release.Name }}
+{{- if .Values.console.enabled }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -44,12 +45,14 @@ spec:
           type: RuntimeDefault
       containers:
         - name: console
-          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          image: {{ printf "%s:%s" .Values.image.repository (.Values.image.tag | default .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - {name: http, containerPort: 8080}
           env:
             - {name: ADDR, value: "0.0.0.0:8080"}
+            # The decrypted saved kubeconfig lives only in this memory-backed volume.
+            - {name: GENESIS_CONNECTION_DIR, value: /run/genesis}
             - {name: GENESIS_NAMESPACE, value: {{ .Values.cluster.namespace | quote }}}
             - {name: GENESIS_RELEASE, value: {{ .Values.cluster.release | quote }}}
             - {name: GENESIS_AUTH_USERNAME, value: {{ .Values.username | quote }}}
@@ -63,6 +66,12 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.credentialsSecret }}
                   key: console-password
+            - name: GENESIS_CONNECTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: connection-key
+                  optional: true
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -81,11 +90,14 @@ spec:
           volumeMounts:
             - {name: cache, mountPath: /var/cache/genesis}
             - {name: tmp, mountPath: /tmp}
+            - {name: connection, mountPath: /run/genesis}
       volumes:
         - name: cache
           persistentVolumeClaim: {claimName: {{ .Release.Name }}-cache}
         - name: tmp
           emptyDir: {sizeLimit: 256Mi}
+        - name: connection
+          emptyDir: {medium: Memory, sizeLimit: 1Mi}
 ---
 apiVersion: v1
 kind: Service
@@ -97,3 +109,4 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
   ports:
     - {name: http, port: 8080, targetPort: http}
+{{- end }}

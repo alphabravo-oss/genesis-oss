@@ -375,3 +375,21 @@ fi
 		}
 	}
 }
+
+func TestComparisonIgnoresEquivalentValues(t *testing.T) {
+	standard := inspectionObject(t, `alloy: {git: {repo: https://github.com/example/genesis.git}, values: {image: {digest: null}}}`)
+	wanted := inspectionObject(t, `alloy: {git: {repo: http://mirror.internal/genesis.git}, values: {image: {}}}`)
+	changes := compareValues(standard, wanted, nil, "test")
+	if len(changes) != 1 || changes[0].Path != "alloy.git.repo" || changes[0].Status != "Installation" {
+		t.Fatalf("null should equal unset and a Git mirror is installation-specific: %v", changes)
+	}
+	defaulted := object{"chart": fluxChartDefaults(inspectionObject(t, `spec: {chart: alloy}`))}
+	explicit := object{"chart": fluxChartDefaults(inspectionObject(t, `spec: {chart: alloy, version: "*", reconcileStrategy: ChartVersion}`))}
+	if changes := compareValues(defaulted, explicit, nil, "test"); len(changes) != 0 {
+		t.Fatalf("Flux chart defaults reported as differences: %v", changes)
+	}
+	pinned := object{"chart": fluxChartDefaults(inspectionObject(t, `spec: {chart: alloy, version: 1.2.3}`))}
+	if changes := compareValues(defaulted, pinned, nil, "test"); len(changes) != 1 || changes[0].Status != "Customized" {
+		t.Fatalf("a pinned chart version must still differ: %v", changes)
+	}
+}

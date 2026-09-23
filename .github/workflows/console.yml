@@ -1,0 +1,78 @@
+name: console
+
+# Tests the console on every change. A release tag also publishes the console
+# image and chart to GHCR under the same version as the Genesis tag.
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: genesis-console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: genesis-console/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: genesis-console/web/.nvmrc
+      - run: npm install --global pnpm@11.18.0
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.1
+      - name: Go
+        run: go vet ./... && go test ./internal/...
+      - name: Web
+        run: |
+          pnpm --dir web install --frozen-lockfile
+          pnpm --dir web typecheck
+          pnpm --dir web test
+      - name: Chart and packaging
+        run: |
+          helm lint deploy/chart
+          helm template t deploy/chart --set console.enabled=false > /dev/null
+          python3 scripts/test_package.py
+
+  publish:
+    if: github.ref_type == 'tag'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: genesis-console/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/genesis-console:${{ github.ref_name }}
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.1
+      - name: Chart
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "$TOKEN" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          helm package genesis-console/deploy/chart --version "$GITHUB_REF_NAME" --app-version "$GITHUB_REF_NAME" --destination /tmp/chart
+          helm push "/tmp/chart/genesis-console-${GITHUB_REF_NAME}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"

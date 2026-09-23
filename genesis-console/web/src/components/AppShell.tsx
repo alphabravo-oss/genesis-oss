@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { NavLink, Outlet, useLoaderData, useLocation, useNavigation, useRevalidator, useSearchParams } from "react-router";
+import { Link, NavLink, Outlet, useLoaderData, useLocation, useNavigation, useRevalidator, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { create } from "@bufbuild/protobuf";
 import { ListScanJobsResponseSchema } from "@/gen/console/v1/console_pb";
@@ -13,6 +13,7 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { UserMenu } from "@/components/UserMenu";
 import { useScanEvents } from "@/lib/use-scan-events";
 import { comparisonReady } from "@/lib/comparison";
+import { sourceLabel } from "@/lib/connection";
 
 const NAV = [
   { label: "Overview", path: "/", icon: LayoutDashboard },
@@ -60,11 +61,12 @@ export function AppShell() {
     staleTime: 2000,
     refetchInterval: (query) => scanEventsConnected ? false : (query.state.data?.jobs.some((job) => jobActive(job.state)) ? 2000 : 20000),
   });
+  const connectionQuery = useQuery({ queryKey: ["connection"], queryFn: ({ signal }) => consoleClient.getConnection({}, { signal }), staleTime: 60_000 });
   const cluster = clusterQuery.data ?? data.cluster;
   const jobs = jobsQuery.dataUpdatedAt > data.fetchedAt ? jobsQuery.data.jobs : data.jobs;
   const scanning = jobs.some((job) => jobActive(job.state));
   const refreshedJobs = useRef(new Set<string>());
-  const page = NAV.find((item) => item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path))?.label ?? "Console";
+  const page = location.pathname.startsWith("/settings/cluster") ? "Cluster connection" : NAV.find((item) => item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path))?.label ?? "Console";
 
   useEffect(() => {
     if (!following || !cluster.tag || cluster.tag === data.tag || !data.releases.some((release) => release.tag === cluster.tag)) return;
@@ -158,8 +160,8 @@ export function AppShell() {
         <header className="relative z-30 flex min-h-[var(--header-height)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--card)] px-3 py-2 lg:gap-3 lg:px-6">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm"><span className="font-semibold" translate="no">Genesis</span><span className="text-[var(--muted)]"> / {page}</span></div>
-            <p className="flex flex-wrap gap-x-2 text-xs text-[var(--muted)]">
-              <span className="max-w-full truncate" title={`${cluster.context} / ${cluster.namespace}`}>{cluster.context || "Cluster context unknown"} / {cluster.namespace || "Namespace unknown"}</span>
+            <p className="hidden flex-wrap gap-x-2 text-xs text-[var(--muted)] sm:flex">
+              <Link to="/settings/cluster" className="max-w-full truncate hover:text-[var(--foreground)] hover:underline" title={`Context ${cluster.context || "unknown"} · namespace ${cluster.namespace || "unknown"} · change connection`}>{sourceLabel(connectionQuery.data, cluster.context)} / {cluster.namespace || "Namespace unknown"}</Link>
               <span className="whitespace-nowrap">Installed Genesis {cluster.tag || "not confirmed"}</span>
             </p>
           </div>
@@ -170,7 +172,7 @@ export function AppShell() {
         {clusterQuery.isError || jobsQuery.isError ? <p role="alert" className="border-b border-[var(--amber)] bg-[var(--amber-bg)] px-4 py-2 text-sm text-[var(--amber)]">{clusterQuery.error?.message || "Live updates are unavailable."} {cluster.observedAt ? `Showing observations from ${formatWhen(cluster.observedAt)}.` : "Deployment state has not been confirmed."} Retrying automatically.</p> : null}
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto max-w-[1600px] space-y-6">
-            {data.detail || location.pathname === "/" ? <Outlet key={data.tag} context={{ ...data, cluster, jobs, selection, useRecordedProfiles, scanEventsConnected, clusterPending: clusterQuery.isPending, clusterError: clusterQuery.error?.message ?? "", comparisonReady: comparisonReady(data.tag, cluster.tag, following) }} /> : <p className="text-[var(--muted)]">No Genesis catalogs were loaded.</p>}
+            {data.detail || location.pathname === "/" || location.pathname.startsWith("/settings") ? <Outlet key={data.tag} context={{ ...data, cluster, jobs, selection, useRecordedProfiles, scanEventsConnected, clusterPending: clusterQuery.isPending, clusterError: clusterQuery.error?.message ?? "", comparisonReady: comparisonReady(data.tag, cluster.tag, following) }} /> : <p className="text-[var(--muted)]">No Genesis catalogs were loaded.</p>}
           </div>
         </main>
       </div>

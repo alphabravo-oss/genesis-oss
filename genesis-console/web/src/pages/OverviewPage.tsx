@@ -1,92 +1,141 @@
+import type { ReactNode } from "react";
 import { Link, useOutletContext } from "react-router";
+import { AlertTriangle, CheckCircle2, ChevronRight } from "lucide-react";
 import type { ShellContext } from "@/pages/shell-context";
-import { formatWhen, withSearch } from "@/lib/cluster";
+import { formatAgo, formatWhen, plural, withSearch } from "@/lib/cluster";
 import { hasComparisonDifference, profileSummary } from "@/lib/comparison";
+
+const unhealthy = ["Not ready", "Reconciling", "Suspended"];
 
 export function OverviewPage() {
   const { cluster, tag, selection, clusterPending, useRecordedProfiles, comparisonReady } = useOutletContext<ShellContext>();
-  const profiles = useRecordedProfiles ? cluster.profiles : (selection.profiles ? selection.profiles.split(",") : []);
-  const packages = cluster.packages.filter((pkg) => pkg.key !== "global");
-  const attention = packages.filter((pkg) => ["Not ready", "Reconciling", "Suspended"].includes(pkg.health) || (pkg.configuredKnown && pkg.configuredEnabled && pkg.health === "Not installed"));
-  const different = cluster.packages.filter((pkg) => hasComparisonDifference(pkg.comparison));
-  const drifted = packages.filter((pkg) => pkg.drift === "Drifted");
-  const images = [...new Map(cluster.images.map((image) => [image.digest || image.ref, image])).values()];
-  const critical = images.filter((image) => image.scanned && image.critical > 0).length;
-  const scanned = images.filter((image) => image.scanned).length;
-  const packageRead = cluster.checks.some((check) => check.name === "Helm releases" && check.checked);
-  const podsRead = cluster.checks.some((check) => check.name === "Pods" && check.checked);
-  const findingsUnavailable = cluster.checks.some((check) => check.name === "Saved image findings" && !check.checked);
-  const unchecked = packages.filter((pkg) => pkg.drift === "Not checked").length;
   const link = (path: string, extra?: Record<string, string>) => withSearch(path, tag, { ...selection, ...extra });
+  const checked = (name: string) => cluster.checks.some((check) => check.name === name && check.checked);
+  const packageRead = checked("Helm releases");
+  const podsRead = checked("Pods");
+  const findingsUnavailable = cluster.checks.some((check) => check.name === "Saved image findings" && !check.checked);
+
+  const packages = cluster.packages.filter((pkg) => pkg.key !== "global");
+  const attention = packages.filter((pkg) => unhealthy.includes(pkg.health) || (pkg.configuredKnown && pkg.configuredEnabled && pkg.health === "Not installed"));
+  const installed = packages.filter((pkg) => !["Disabled", "Not installed", "Unknown"].includes(pkg.health));
+  const ready = installed.filter((pkg) => pkg.health === "Ready" || pkg.health === "Included").length;
+  const drifted = packages.filter((pkg) => pkg.drift === "Drifted");
+  const driftUnchecked = installed.filter((pkg) => pkg.drift === "Not checked").length;
+  const different = cluster.packages.filter((pkg) => hasComparisonDifference(pkg.comparison)).length;
+
+  // One entry per running image version, keyed like the Images page.
+  const images = [...new Map(cluster.images.map((image) => [image.digest || image.ref, image])).values()];
+  const scanned = images.filter((image) => image.scanned).length;
+  const severe = images.filter((image) => image.scanned && image.critical + image.high > 0)
+    .sort((a, b) => b.critical - a.critical || b.high - a.high);
+  const failedSources = cluster.checks.filter((check) => !check.checked);
+
+  const actions: ReactNode[] = [
+    ...failedSources.map((check) => <Action key={`source-${check.name}`} tone="warn" title={`${check.name} could not be read`} detail={check.message} />),
+    ...attention.map((pkg) => <Action key={`pkg-${pkg.key}`} to={link(`/packages/${encodeURIComponent(pkg.key)}`)} tone="warn" title={pkg.key} detail={pkg.health === "Not installed" ? "Enabled but not installed" : pkg.health} />),
+    ...drifted.map((pkg) => <Action key={`drift-${pkg.key}`} to={link(`/packages/${encodeURIComponent(pkg.key)}`)} tone="warn" title={pkg.key} detail="Flux reports runtime drift" />),
+    ...(findingsUnavailable ? [] : severe.slice(0, 5).map((image) => <Action key={`img-${image.digest || image.ref}`} to={link(`/images/deployed/${encodeURIComponent(image.digest || image.ref)}`)} tone="danger" mono title={image.ref.split("/").at(-1) ?? image.ref} detail={<SeverityCounts critical={image.critical} high={image.high} />} />)),
+    ...(severe.length > 5 ? [<Action key="img-more" to={link("/images")} tone="muted" title={`${severe.length - 5} more images with Critical or High findings`} />] : []),
+    ...(podsRead && !findingsUnavailable && scanned < images.length ? [<Action key="unscanned" to={link("/images")} tone="muted" title={`${plural(images.length - scanned, "running image")} not scanned yet`} detail="Scan them from Images to complete coverage" />] : []),
+  ];
+
+  const headline = clusterPending && !cluster.observedAt ? "Reading the cluster…"
+    : [
+      packageRead ? (attention.length ? `${attention.length === 1 ? "1 package needs" : `${attention.length} packages need`} attention` : `All ${installed.length} installed packages are ready`) : "Package health not observed",
+      findingsUnavailable ? "scan findings unavailable" : severe.length ? `${plural(severe.length, "image")} with Critical or High findings` : scanned ? "no Critical or High findings in scanned images" : null,
+    ].filter(Boolean).join(" · ") + ".";
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Deployment overview</h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">Installed packages, live health, configuration differences, and image scan coverage.</p>
-        <p aria-label="Comparison summary" className="mt-2 text-sm text-[var(--muted)]" title={profileSummary(cluster, selection.profiles ?? "", useRecordedProfiles)}>
-          {comparisonReady ? `Comparison release: Genesis ${tag} + ${useRecordedProfiles && !cluster.observedAt ? "unconfirmed profiles" : `${profiles.length} profiles`}.` : clusterPending ? "Detecting the installed release for comparison…" : "Comparison release unavailable."}
-          {comparisonReady && cluster.tag && cluster.tag !== tag ? <span> Installed {cluster.tag}; release changes can explain differences.</span> : null}{" "}
-          <Link to={link("/packages")} className="text-[var(--primary)] underline underline-offset-2">Review comparison</Link>
-        </p>
-        {cluster.baselineError ? <p role="status" className="mt-2 text-sm text-[var(--amber)]">{cluster.baselineError}</p> : null}
+        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+        <p className="mt-1 text-[var(--muted)]">{headline}</p>
       </div>
-      {clusterPending ? <p role="status" className="text-sm text-[var(--muted)]">Reading deployment metadata and configuration…</p> : null}
-      <dl className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Fact label="Cluster context" value={cluster.context || "Unknown"} />
-        <Fact label="Namespace / release" value={cluster.namespace ? `${cluster.namespace} / ${cluster.releaseName}` : "Unknown"} />
-        <Fact label="Installed version" value={cluster.tag || "Not confirmed"} />
-        <Fact label="Helm state" value={cluster.deploymentState || "Not observed"} />
-      </dl>
-      <p className="text-sm text-[var(--muted)]">
-        {cluster.versionEvidence || "Installed version requires readable Helm metadata."}
-        {cluster.observedAt ? ` · Observed ${formatWhen(cluster.observedAt)}` : ""}
-        {cluster.revision ? ` · Fetched source: ${cluster.revision}` : ""}
-      </p>
-      <section className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm" aria-label="Installation provenance">
-        <p><strong>Installation provenance:</strong> {cluster.provenance?.status || "Not recorded"}</p>
-        <p className="mt-1 text-[var(--muted)]">Release edition: Genesis OSS · Public images. Installation records identify release inputs; they do not assess compliance.</p>
-        <p className="mt-1 text-[var(--muted)]">{cluster.provenance?.note || "Use the Genesis installer to record baseline and profile checksums."}</p>
-        {cluster.provenance?.baselineSha256 ? <p className="mt-2 break-all font-mono text-xs">Baseline SHA-256: {cluster.provenance.baselineSha256}</p> : null}
-        {cluster.provenance?.profiles.length ? <p className="mt-1">Recorded profiles: {cluster.provenance.profiles.join(" → ")}</p> : null}
-        {cluster.provenance?.customValues ? <p className="mt-1 text-[var(--muted)]">Additional custom values were supplied during installation.</p> : null}
-      </section>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Attention label="Packages needing attention" value={packageRead ? attention.length : "—"} note="Readiness and reconciliation" to={link("/packages", { state: "attention" })} hot={attention.length > 0} />
-        <Attention label="Packages with differences" value={comparisonReady && cluster.packages.length ? different.length : "—"} note={comparisonReady ? `Compared with Genesis ${tag} + comparison profiles · ${cluster.packages.filter((pkg) => pkg.comparison === "Unknown").length} unavailable` : "Comparison release not confirmed"} to={link("/packages", { state: "differences" })} hot={false} />
-        <Attention label="Flux runtime drift" value={packageRead ? drifted.length : "—"} note={`Live resources vs Flux intent · ${unchecked} packages not checked`} to={link("/packages", { state: "drift" })} hot={drifted.length > 0} />
-        <Attention label="Images with critical findings" value={podsRead && !findingsUnavailable ? critical : "—"} note={findingsUnavailable ? "Saved scan findings are unavailable" : `${scanned} of ${images.length} observed images have saved scans`} to={link("/images", { view: "deployed" })} hot={critical > 0} />
+        <Card to={link("/packages", { state: "attention" })} label="Package health" hot={attention.length > 0}
+          value={packageRead ? <>{ready}<span className="text-lg font-normal text-[var(--muted)]"> / {installed.length}</span></> : "—"}
+          note={packageRead ? (attention.length ? `${attention.length} not ready` : "Installed packages ready") : "Helm releases not read"} />
+        <Card to={link("/packages", { state: "drift" })} label="Flux runtime drift" hot={drifted.length > 0}
+          value={packageRead ? drifted.length : "—"}
+          note={drifted.length ? "Live resources differ from Flux intent" : `No drift detected${driftUnchecked ? ` · ${driftUnchecked} not checked` : ""}`} />
+        <Card to={link("/images")} label="Images with Critical or High" hot={severe.length > 0}
+          value={podsRead && !findingsUnavailable ? severe.length : "—"}
+          note={findingsUnavailable ? "Saved findings unavailable" : `${scanned} of ${images.length} running images scanned`}
+          meter={podsRead && !findingsUnavailable && images.length ? scanned / images.length : undefined} />
+        <Card to={link("/packages", { state: "differences" })} label={comparisonReady ? `Differences from Genesis ${tag}` : "Configuration differences"}
+          value={comparisonReady && cluster.packages.length ? different : "—"}
+          note={comparisonReady ? "Informational; not a health finding" : "Comparison release not confirmed"} />
       </div>
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Needs attention</h2>
-          <Link to={link("/packages")} className="text-sm text-[var(--primary)] underline underline-offset-2">View all packages</Link>
-        </div>
-        {attention.length ? <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--card)]">
-          {attention.map((pkg) => <li key={pkg.key} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-            <Link to={link(`/packages/${encodeURIComponent(pkg.key)}`)} className="font-medium text-[var(--primary)] underline underline-offset-2">{pkg.key}</Link>
-            <span className="text-sm text-[var(--amber)]">{pkg.health}</span>
-          </li>)}
-        </ul> : <p className="text-sm text-[var(--muted)]">{packageRead ? "No readiness issues were reported by the observed HelmReleases. Review coverage below for checks that are unavailable." : "Package health has not been observed."}</p>}
-      </section>
-      <details className="rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
-        <summary className="cursor-pointer font-medium">Observation coverage · {cluster.checks.filter((check) => check.checked).length}/{cluster.checks.length} sources read</summary>
-        <p className="mt-3 text-sm text-[var(--muted)]">Flux checks live resources against its declared configuration and honors its exclusions. Differences from the comparison release can reflect release changes, selected profiles, or intentional configuration. A difference is not a health or compliance finding and does not imply runtime drift.</p>
-        <ul className="mt-3 space-y-2 text-sm">
-          {cluster.checks.map((check) => <li key={check.name}><strong>{check.name}:</strong> {check.checked ? "Read successfully" : check.message}</li>)}
-        </ul>
-      </details>
+
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section aria-labelledby="attention-title" className="space-y-3">
+          <h2 id="attention-title" className="text-lg font-semibold">Needs attention</h2>
+          {actions.length ? <ul className="divide-y divide-[var(--border)] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)]">{actions}</ul>
+            : <p className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-6 text-sm">
+              <CheckCircle2 className="size-4 text-[var(--primary)]" aria-hidden />{packageRead ? "Nothing needs attention right now." : "Waiting for cluster observations."}
+            </p>}
+        </section>
+
+        <aside aria-label="Cluster" className="space-y-4 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+            <Row label="Cluster" value={cluster.context || "Unknown"} />
+            <Row label="Release" value={cluster.namespace ? `${cluster.namespace}/${cluster.releaseName}` : "Unknown"} />
+            <Row label="Installed" value={cluster.tag ? `Genesis ${cluster.tag}` : "Not confirmed"} />
+            <Row label="Helm state" value={cluster.deploymentState || "Not observed"} />
+            <Row label="Observed" value={cluster.observedAt ? <span title={formatWhen(cluster.observedAt)}>{formatAgo(cluster.observedAt)}</span> : clusterPending ? "Reading…" : "Not observed"} />
+          </dl>
+          <div className="space-y-1 border-t border-[var(--border)] pt-3">
+            <p className="font-medium">Comparison</p>
+            <p className="text-[var(--muted)]">{comparisonReady ? `Genesis ${tag} · ${profileSummary(cluster, selection.profiles ?? "", useRecordedProfiles)}` : clusterPending ? "Detecting the installed release…" : "No comparison release"}</p>
+            {cluster.baselineError ? <p role="status" className="text-[var(--amber)]">{cluster.baselineError}</p> : null}
+            <Link to={link("/packages", { tab: "settings" })} className="text-[var(--primary)] underline underline-offset-2">Change comparison</Link>
+          </div>
+          <div className="space-y-1 border-t border-[var(--border)] pt-3">
+            <p className="font-medium">Installation record · <span className="font-normal">{cluster.provenance?.status || "Not recorded"}</span></p>
+            <p className="text-[var(--muted)]">{cluster.provenance?.note || "Use the Genesis installer to record baseline and profile checksums."}</p>
+            {cluster.provenance?.profiles.length ? <p>Profiles: {cluster.provenance.profiles.join(" → ")}</p> : null}
+            {cluster.provenance?.baselineSha256 ? <p className="truncate font-mono text-xs" title={cluster.provenance.baselineSha256}>SHA-256 {cluster.provenance.baselineSha256}</p> : null}
+          </div>
+          <div className="border-t border-[var(--border)] pt-3">
+            {failedSources.length
+              ? <p className="flex items-center gap-2 text-[var(--amber)]"><AlertTriangle className="size-4 shrink-0" aria-hidden />{failedSources.length} of {cluster.checks.length} data sources unavailable; see Needs attention.</p>
+              : <p className="flex items-center gap-2 text-[var(--muted)]" title={cluster.checks.map((check) => check.name).join(", ")}><CheckCircle2 className="size-4 shrink-0 text-[var(--primary)]" aria-hidden />{cluster.checks.length ? `All ${cluster.checks.length} data sources read` : "No data sources read yet"}</p>}
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
 
-function Attention({ label, value, note, to, hot }: { label: string; value: number | string; note: string; to: string; hot: boolean }) {
-  return <Link to={to} className={`rounded-lg border p-4 hover:border-[var(--primary)] ${hot ? "border-[var(--amber)] bg-[var(--amber-bg)] text-[var(--amber)]" : "border-[var(--border)] bg-[var(--card)]"}`}>
-    <div className="text-sm">{label}</div>
-    <div className="mt-2 text-3xl font-semibold tabular-nums">{value}</div>
-    <p className="mt-2 text-xs text-[var(--muted)]">{note}</p>
+function Card({ to, label, value, note, hot = false, meter }: { to: string; label: string; value: ReactNode; note: string; hot?: boolean; meter?: number }) {
+  return <Link to={to} className={`flex flex-col rounded-lg border p-4 hover:border-[var(--primary)] ${hot ? "border-[var(--amber)] bg-[var(--amber-bg)]" : "border-[var(--border)] bg-[var(--card)]"}`}>
+    <span className={`text-sm ${hot ? "text-[var(--amber)]" : "text-[var(--muted)]"}`}>{label}</span>
+    <span className={`mt-2 text-3xl font-semibold tabular-nums ${hot ? "text-[var(--amber)]" : ""}`}>{value}</span>
+    {meter !== undefined ? <progress aria-label="Scan coverage" className="mt-3 h-1.5 w-full" value={meter} max={1} /> : null}
+    <span className="mt-2 text-xs text-[var(--muted)]">{note}</span>
   </Link>;
 }
-function Fact({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"><dt className="text-xs text-[var(--muted)]">{label}</dt><dd className="mt-1 break-words font-medium">{value}</dd></div>;
+
+function Action({ to, title, detail, tone, mono = false }: { to?: string; title: string; detail?: ReactNode; tone: "warn" | "danger" | "muted"; mono?: boolean }) {
+  const dot = { warn: "bg-[var(--amber)]", danger: "bg-[var(--danger)]", muted: "bg-[var(--border)]" }[tone];
+  const body = <>
+    <span className={`size-2 shrink-0 rounded-full ${dot}`} aria-hidden />
+    <span className={`min-w-0 flex-1 truncate ${mono ? "font-mono text-xs" : "font-medium"}`}>{title}</span>
+    {detail ? <span className="min-w-0 shrink text-right text-[var(--muted)]">{detail}</span> : null}
+    {to ? <ChevronRight className="size-4 shrink-0 text-[var(--muted)]" aria-hidden /> : null}
+  </>;
+  const row = "flex items-center gap-3 px-4 py-3 text-sm";
+  return <li>{to ? <Link to={to} className={`${row} hover:bg-[var(--off)]`}>{body}</Link> : <div className={row}>{body}</div>}</li>;
+}
+
+function SeverityCounts({ critical, high }: { critical: number; high: number }) {
+  return <span className="inline-flex flex-wrap justify-end gap-1 text-xs tabular-nums">
+    {critical ? <span className="severity-count rounded px-1.5 py-0.5" data-severity="CRITICAL" data-active>{critical} critical</span> : null}
+    {high ? <span className="severity-count rounded px-1.5 py-0.5" data-severity="HIGH" data-active>{high} high</span> : null}
+  </span>;
+}
+
+function Row({ label, value }: { label: string; value: ReactNode }) {
+  return <><dt className="text-[var(--muted)]">{label}</dt><dd className="min-w-0 truncate text-right font-medium">{value}</dd></>;
 }

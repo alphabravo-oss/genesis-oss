@@ -25,8 +25,9 @@ services:
       GENESIS_AUTH_PASSWORD_FILE: /run/secrets/console_password
       GENESIS_NAMESPACE: ${GENESIS_NAMESPACE:-bigbang}
       GENESIS_RELEASE: ${GENESIS_RELEASE:-bigbang}
+      GENESIS_CONNECTION_KEY_FILE: /run/secrets/connection_key
     ports: ['127.0.0.1:${GENESIS_PORT:-8090}:8080']
-    secrets: [database_url, console_password]
+    secrets: [database_url, console_password, connection_key]
     volumes: [scan-cache:/var/cache/genesis]
     tmpfs: ['/tmp:size=256m,mode=1777']
     read_only: true
@@ -37,6 +38,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
     stop_grace_period: 20s
+    extra_hosts:
+      - host.docker.internal:host-gateway
 secrets:
   postgres_password:
     file: .local/postgres-password
@@ -44,6 +47,8 @@ secrets:
     file: .local/database-url
   console_password:
     file: .local/console-password
+  connection_key:
+    file: .local/connection-key
 volumes:
   postgres:
   scan-cache:

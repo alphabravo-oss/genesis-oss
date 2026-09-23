@@ -5,13 +5,14 @@ umask 077
 mkdir -p .local
 if [ ! -s .local/postgres-password ]; then openssl rand -hex 32 > .local/postgres-password; fi
 if [ ! -s .local/console-password ]; then openssl rand -hex 32 > .local/console-password; fi
+if [ ! -s .local/connection-key ]; then openssl rand -base64 32 > .local/connection-key; fi
 if [ ! -s .local/database-url ]; then
   printf 'postgres://genesis:%s@postgres:5432/genesis_console?sslmode=disable\n' "$(cat .local/postgres-password)" > .local/database-url
 fi
 # Compose file-backed secrets retain source permissions; the container runs as 65532.
 # The containing directory stays owner-only on the host.
 chmod 700 .local
-chmod 644 .local/postgres-password .local/console-password .local/database-url
+chmod 644 .local/postgres-password .local/console-password .local/database-url .local/connection-key
 args=(-f compose.yaml)
 if [ -n "${GENESIS_KUBECONFIG:-}" ]; then
   if [ "$GENESIS_KUBECONFIG" != "$PWD/.local/kubeconfig-container" ]; then

@@ -63,6 +63,18 @@ const (
 	// ConsoleServiceCleanImagesProcedure is the fully-qualified name of the ConsoleService's
 	// CleanImages RPC.
 	ConsoleServiceCleanImagesProcedure = "/console.v1.ConsoleService/CleanImages"
+	// ConsoleServiceGetConnectionProcedure is the fully-qualified name of the ConsoleService's
+	// GetConnection RPC.
+	ConsoleServiceGetConnectionProcedure = "/console.v1.ConsoleService/GetConnection"
+	// ConsoleServiceTestConnectionProcedure is the fully-qualified name of the ConsoleService's
+	// TestConnection RPC.
+	ConsoleServiceTestConnectionProcedure = "/console.v1.ConsoleService/TestConnection"
+	// ConsoleServiceSaveConnectionProcedure is the fully-qualified name of the ConsoleService's
+	// SaveConnection RPC.
+	ConsoleServiceSaveConnectionProcedure = "/console.v1.ConsoleService/SaveConnection"
+	// ConsoleServiceDeleteConnectionProcedure is the fully-qualified name of the ConsoleService's
+	// DeleteConnection RPC.
+	ConsoleServiceDeleteConnectionProcedure = "/console.v1.ConsoleService/DeleteConnection"
 )
 
 // ConsoleServiceClient is a client for the console.v1.ConsoleService service.
@@ -77,6 +89,10 @@ type ConsoleServiceClient interface {
 	GetScanSettings(context.Context, *connect.Request[v1.GetScanSettingsRequest]) (*connect.Response[v1.ScanSettings], error)
 	SetScanSettings(context.Context, *connect.Request[v1.SetScanSettingsRequest]) (*connect.Response[v1.ScanSettings], error)
 	CleanImages(context.Context, *connect.Request[v1.CleanImagesRequest]) (*connect.Response[v1.CleanImagesResponse], error)
+	GetConnection(context.Context, *connect.Request[v1.GetConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error)
+	TestConnection(context.Context, *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionTest], error)
+	SaveConnection(context.Context, *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionInfo], error)
+	DeleteConnection(context.Context, *connect.Request[v1.DeleteConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error)
 }
 
 // NewConsoleServiceClient constructs a client for the console.v1.ConsoleService service. By
@@ -150,6 +166,30 @@ func NewConsoleServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(consoleServiceMethods.ByName("CleanImages")),
 			connect.WithClientOptions(opts...),
 		),
+		getConnection: connect.NewClient[v1.GetConnectionRequest, v1.ConnectionInfo](
+			httpClient,
+			baseURL+ConsoleServiceGetConnectionProcedure,
+			connect.WithSchema(consoleServiceMethods.ByName("GetConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		testConnection: connect.NewClient[v1.ConnectionInput, v1.ConnectionTest](
+			httpClient,
+			baseURL+ConsoleServiceTestConnectionProcedure,
+			connect.WithSchema(consoleServiceMethods.ByName("TestConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		saveConnection: connect.NewClient[v1.ConnectionInput, v1.ConnectionInfo](
+			httpClient,
+			baseURL+ConsoleServiceSaveConnectionProcedure,
+			connect.WithSchema(consoleServiceMethods.ByName("SaveConnection")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteConnection: connect.NewClient[v1.DeleteConnectionRequest, v1.ConnectionInfo](
+			httpClient,
+			baseURL+ConsoleServiceDeleteConnectionProcedure,
+			connect.WithSchema(consoleServiceMethods.ByName("DeleteConnection")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -165,6 +205,10 @@ type consoleServiceClient struct {
 	getScanSettings      *connect.Client[v1.GetScanSettingsRequest, v1.ScanSettings]
 	setScanSettings      *connect.Client[v1.SetScanSettingsRequest, v1.ScanSettings]
 	cleanImages          *connect.Client[v1.CleanImagesRequest, v1.CleanImagesResponse]
+	getConnection        *connect.Client[v1.GetConnectionRequest, v1.ConnectionInfo]
+	testConnection       *connect.Client[v1.ConnectionInput, v1.ConnectionTest]
+	saveConnection       *connect.Client[v1.ConnectionInput, v1.ConnectionInfo]
+	deleteConnection     *connect.Client[v1.DeleteConnectionRequest, v1.ConnectionInfo]
 }
 
 // ListReleases calls console.v1.ConsoleService.ListReleases.
@@ -217,6 +261,26 @@ func (c *consoleServiceClient) CleanImages(ctx context.Context, req *connect.Req
 	return c.cleanImages.CallUnary(ctx, req)
 }
 
+// GetConnection calls console.v1.ConsoleService.GetConnection.
+func (c *consoleServiceClient) GetConnection(ctx context.Context, req *connect.Request[v1.GetConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error) {
+	return c.getConnection.CallUnary(ctx, req)
+}
+
+// TestConnection calls console.v1.ConsoleService.TestConnection.
+func (c *consoleServiceClient) TestConnection(ctx context.Context, req *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionTest], error) {
+	return c.testConnection.CallUnary(ctx, req)
+}
+
+// SaveConnection calls console.v1.ConsoleService.SaveConnection.
+func (c *consoleServiceClient) SaveConnection(ctx context.Context, req *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionInfo], error) {
+	return c.saveConnection.CallUnary(ctx, req)
+}
+
+// DeleteConnection calls console.v1.ConsoleService.DeleteConnection.
+func (c *consoleServiceClient) DeleteConnection(ctx context.Context, req *connect.Request[v1.DeleteConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error) {
+	return c.deleteConnection.CallUnary(ctx, req)
+}
+
 // ConsoleServiceHandler is an implementation of the console.v1.ConsoleService service.
 type ConsoleServiceHandler interface {
 	ListReleases(context.Context, *connect.Request[v1.ListReleasesRequest]) (*connect.Response[v1.ListReleasesResponse], error)
@@ -229,6 +293,10 @@ type ConsoleServiceHandler interface {
 	GetScanSettings(context.Context, *connect.Request[v1.GetScanSettingsRequest]) (*connect.Response[v1.ScanSettings], error)
 	SetScanSettings(context.Context, *connect.Request[v1.SetScanSettingsRequest]) (*connect.Response[v1.ScanSettings], error)
 	CleanImages(context.Context, *connect.Request[v1.CleanImagesRequest]) (*connect.Response[v1.CleanImagesResponse], error)
+	GetConnection(context.Context, *connect.Request[v1.GetConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error)
+	TestConnection(context.Context, *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionTest], error)
+	SaveConnection(context.Context, *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionInfo], error)
+	DeleteConnection(context.Context, *connect.Request[v1.DeleteConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error)
 }
 
 // NewConsoleServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -298,6 +366,30 @@ func NewConsoleServiceHandler(svc ConsoleServiceHandler, opts ...connect.Handler
 		connect.WithSchema(consoleServiceMethods.ByName("CleanImages")),
 		connect.WithHandlerOptions(opts...),
 	)
+	consoleServiceGetConnectionHandler := connect.NewUnaryHandler(
+		ConsoleServiceGetConnectionProcedure,
+		svc.GetConnection,
+		connect.WithSchema(consoleServiceMethods.ByName("GetConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	consoleServiceTestConnectionHandler := connect.NewUnaryHandler(
+		ConsoleServiceTestConnectionProcedure,
+		svc.TestConnection,
+		connect.WithSchema(consoleServiceMethods.ByName("TestConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	consoleServiceSaveConnectionHandler := connect.NewUnaryHandler(
+		ConsoleServiceSaveConnectionProcedure,
+		svc.SaveConnection,
+		connect.WithSchema(consoleServiceMethods.ByName("SaveConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
+	consoleServiceDeleteConnectionHandler := connect.NewUnaryHandler(
+		ConsoleServiceDeleteConnectionProcedure,
+		svc.DeleteConnection,
+		connect.WithSchema(consoleServiceMethods.ByName("DeleteConnection")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/console.v1.ConsoleService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ConsoleServiceListReleasesProcedure:
@@ -320,6 +412,14 @@ func NewConsoleServiceHandler(svc ConsoleServiceHandler, opts ...connect.Handler
 			consoleServiceSetScanSettingsHandler.ServeHTTP(w, r)
 		case ConsoleServiceCleanImagesProcedure:
 			consoleServiceCleanImagesHandler.ServeHTTP(w, r)
+		case ConsoleServiceGetConnectionProcedure:
+			consoleServiceGetConnectionHandler.ServeHTTP(w, r)
+		case ConsoleServiceTestConnectionProcedure:
+			consoleServiceTestConnectionHandler.ServeHTTP(w, r)
+		case ConsoleServiceSaveConnectionProcedure:
+			consoleServiceSaveConnectionHandler.ServeHTTP(w, r)
+		case ConsoleServiceDeleteConnectionProcedure:
+			consoleServiceDeleteConnectionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -367,4 +467,20 @@ func (UnimplementedConsoleServiceHandler) SetScanSettings(context.Context, *conn
 
 func (UnimplementedConsoleServiceHandler) CleanImages(context.Context, *connect.Request[v1.CleanImagesRequest]) (*connect.Response[v1.CleanImagesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("console.v1.ConsoleService.CleanImages is not implemented"))
+}
+
+func (UnimplementedConsoleServiceHandler) GetConnection(context.Context, *connect.Request[v1.GetConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("console.v1.ConsoleService.GetConnection is not implemented"))
+}
+
+func (UnimplementedConsoleServiceHandler) TestConnection(context.Context, *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionTest], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("console.v1.ConsoleService.TestConnection is not implemented"))
+}
+
+func (UnimplementedConsoleServiceHandler) SaveConnection(context.Context, *connect.Request[v1.ConnectionInput]) (*connect.Response[v1.ConnectionInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("console.v1.ConsoleService.SaveConnection is not implemented"))
+}
+
+func (UnimplementedConsoleServiceHandler) DeleteConnection(context.Context, *connect.Request[v1.DeleteConnectionRequest]) (*connect.Response[v1.ConnectionInfo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("console.v1.ConsoleService.DeleteConnection is not implemented"))
 }

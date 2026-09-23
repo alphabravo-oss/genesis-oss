@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, UserRound } from "lucide-react";
+import { Link } from "react-router";
+import { LogOut, Server, UserRound } from "lucide-react";
 import { useTheme, type ThemePreference } from "@/providers/ThemeProvider";
 
 export function UserMenu({ authRequired }: { authRequired: boolean }) {
@@ -56,6 +57,7 @@ export function UserMenu({ authRequired }: { authRequired: boolean }) {
           <option value="dark">Dark</option>
         </select>
       </label>
+      <Link to="/settings/cluster" onClick={() => { if (menu.current) menu.current.open = false; }} className="flex min-h-9 items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-[var(--off)]"><Server className="size-4" aria-hidden />Cluster connection</Link>
       {authRequired ? <div className="border-t border-[var(--border)] pt-3">
         <button type="button" disabled={signingOut} onClick={() => void signOut()} className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-[var(--off)] disabled:opacity-50"><LogOut className="size-4" aria-hidden />{signingOut ? "Signing out…" : "Sign out"}</button>
         {error ? <p role="alert" className="mt-2 text-sm text-[var(--danger)]">{error}</p> : null}

@@ -39,6 +39,9 @@ if [ "$ready" -ne 1 ]; then
   exit 1
 fi
 
+mkdir -p .local && chmod 700 .local
+if [ ! -s .local/connection-key ]; then (umask 077; openssl rand -base64 32 > .local/connection-key); fi
+export GENESIS_CONNECTION_KEY_FILE="${GENESIS_CONNECTION_KEY_FILE:-$root/.local/connection-key}"
 api_port="$(free_port "${API_PORT:-8080}")"
 ui_port="$(free_port "${VITE_PORT:-5173}")"
 export DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@127.0.0.1:54329/genesis_console?sslmode=disable}"

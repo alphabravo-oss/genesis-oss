@@ -68,12 +68,17 @@ button:disabled { cursor: default; }
 summary::-webkit-details-marker { display: none; }
 input[type="checkbox"], progress { accent-color: var(--primary); }
 table, progress { font-variant-numeric: tabular-nums; }
+/* One severity palette for chips, badges, and legends. */
 .severity-count { background: var(--off); color: var(--muted); }
 .severity-count[data-active="true"][data-severity="CRITICAL"] { background: #8b2346; color: #fff; }
 .severity-count[data-active="true"][data-severity="HIGH"] { background: #c92d49; color: #fff; }
 .severity-count[data-active="true"][data-severity="MEDIUM"] { background: #ef971d; color: #241600; }
 .severity-count[data-active="true"][data-severity="LOW"] { background: #f8cc95; color: #38220a; }
 .severity-count[data-active="true"][data-severity="UNKNOWN"] { background: var(--border); color: var(--foreground); }
+progress { appearance: none; border: 0; border-radius: 999px; overflow: hidden; background: var(--off); }
+progress::-webkit-progress-bar { background: var(--off); }
+progress::-webkit-progress-value { background: var(--primary); }
+progress::-moz-progress-bar { background: var(--primary); }
 .difference-value { border-left: 3px solid var(--difference-border); border-radius: .25rem; background: var(--difference-bg); padding: .25rem .5rem; color: var(--difference-text); }
 .difference-summary { border: 1px solid var(--difference-border); border-radius: .375rem; background: var(--difference-bg); padding: .25rem .5rem; color: var(--difference-text); }
 .difference-setting { border-left: 3px solid var(--difference-border); padding-left: .5rem; }

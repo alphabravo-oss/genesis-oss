@@ -20,7 +20,7 @@ function readPreference(): ThemePreference {
   } catch {
     /* this page keeps the default */
   }
-  return "dark";
+  return "system";
 }
 
 function systemDark() {

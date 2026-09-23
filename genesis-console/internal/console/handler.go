@@ -3,6 +3,8 @@ package console
 import (
 	"context"
 	"errors"
+	"log"
+	"time"
 
 	"connectrpc.com/connect"
 	consolev1 "github.com/alphabravo/genesis-console/gen/console/v1"
@@ -10,11 +12,12 @@ import (
 )
 
 type Handler struct {
-	svc *Service
+	svc         *Service
+	connections *Connections
 }
 
-func NewHandler(svc *Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc *Service, connections *Connections) *Handler {
+	return &Handler{svc: svc, connections: connections}
 }
 
 func (h *Handler) ListReleases(ctx context.Context, _ *connect.Request[consolev1.ListReleasesRequest]) (*connect.Response[consolev1.ListReleasesResponse], error) {
@@ -119,4 +122,67 @@ func scanErr(err error) error {
 		}
 		return connect.NewError(connect.CodeInternal, err)
 	}
+}
+
+func (h *Handler) GetConnection(_ context.Context, _ *connect.Request[consolev1.GetConnectionRequest]) (*connect.Response[consolev1.ConnectionInfo], error) {
+	return connect.NewResponse(connectionInfoProto(h.connections.Info())), nil
+}
+
+func (h *Handler) TestConnection(ctx context.Context, req *connect.Request[consolev1.ConnectionInput]) (*connect.Response[consolev1.ConnectionTest], error) {
+	test, err := h.connections.Test(ctx, connectionInput(req.Msg))
+	if err != nil {
+		return nil, connectionErr(err)
+	}
+	return connect.NewResponse(&consolev1.ConnectionTest{
+		Contexts: test.Contexts, Context: test.Context, Server: test.Server, Loopback: test.Loopback,
+		KubernetesVersion: test.KubernetesVersion, Release: test.Release, GenesisVersion: test.GenesisVersion,
+		Warnings: test.Warnings, Error: test.Error,
+	}), nil
+}
+
+func (h *Handler) SaveConnection(ctx context.Context, req *connect.Request[consolev1.ConnectionInput]) (*connect.Response[consolev1.ConnectionInfo], error) {
+	info, err := h.connections.Save(ctx, connectionInput(req.Msg))
+	if err != nil {
+		return nil, connectionErr(err)
+	}
+	return connect.NewResponse(connectionInfoProto(info)), nil
+}
+
+func (h *Handler) DeleteConnection(ctx context.Context, _ *connect.Request[consolev1.DeleteConnectionRequest]) (*connect.Response[consolev1.ConnectionInfo], error) {
+	info, err := h.connections.Delete(ctx)
+	if err != nil {
+		return nil, internalErr(err, "The saved connection could not be removed. Try again.")
+	}
+	return connect.NewResponse(connectionInfoProto(info)), nil
+}
+
+func connectionInput(msg *consolev1.ConnectionInput) ConnectionInput {
+	return ConnectionInput{Name: msg.Name, Kubeconfig: msg.Kubeconfig, Context: msg.Context, RewriteLoopback: msg.RewriteLoopback}
+}
+
+func connectionInfoProto(info ConnectionInfo) *consolev1.ConnectionInfo {
+	out := &consolev1.ConnectionInfo{Name: info.Name, Source: info.Source, Server: info.Server, Context: info.Context, SavingEnabled: info.SavingEnabled, Warnings: info.Warnings, Error: info.Error}
+	if !info.SavedAt.IsZero() {
+		out.SavedAt = info.SavedAt.UTC().Format(time.RFC3339)
+	}
+	return out
+}
+
+func connectionErr(err error) error {
+	var user kubeconfigError
+	switch {
+	case errors.As(err, &user):
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, errNoConnectionKey):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	default:
+		return internalErr(err, "The connection could not be tested or saved. Check the console logs.")
+	}
+}
+
+// internalErr logs the cause for the operator and shows the user a fixed message.
+// Causes here come from the database, filesystem, or crypto, never kubeconfig content.
+func internalErr(err error, message string) error {
+	log.Printf("cluster connection: %v", err)
+	return connect.NewError(connect.CodeInternal, errors.New(message))
 }

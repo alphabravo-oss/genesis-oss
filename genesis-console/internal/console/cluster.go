@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	consolev1 "github.com/alphabravo/genesis-console/gen/console/v1"
@@ -43,7 +44,13 @@ func identity(o object) string {
 	return str(at(o, "metadata", "namespace")) + "/" + str(at(o, "metadata", "name"))
 }
 
+// activeKubeconfig holds the decrypted saved connection's file path, if any.
+var activeKubeconfig atomic.Pointer[string]
+
 func kubeconfig() string {
+	if saved := activeKubeconfig.Load(); saved != nil {
+		return *saved
+	}
 	if env := os.Getenv("KUBECONFIG"); env != "" {
 		return env
 	}
@@ -54,8 +61,11 @@ func kubeconfig() string {
 	return "" // kubectl/helm use their normal kubeconfig discovery.
 }
 func clusterCommand(ctx context.Context, binary string, args ...string) ([]byte, error) {
+	return clusterCommandWith(ctx, kubeconfig(), binary, args...)
+}
+func clusterCommandWith(ctx context.Context, config, binary string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, binary, args...)
-	if config := kubeconfig(); config != "" {
+	if config != "" {
 		cmd.Env = append(os.Environ(), "KUBECONFIG="+config)
 	}
 	cmd.WaitDelay = time.Second
