@@ -388,6 +388,8 @@ kyvernoPolicies:
           - ghcr.io
           - registry.k8s.io
           - registry.gitlab.com
+      disallow-deprecated-apis:
+        enabled: false
     bbtests:
       enabled: false
     waitJob:

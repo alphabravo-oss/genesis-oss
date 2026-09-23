@@ -463,11 +463,11 @@
     "umbrella/unittests/templates/kyverno-merged-policies_test.yaml": "02df333d0435ce399725475ac32672bce2e900186a962ac281135a369738332b",
     "umbrella/unittests/templates/namespace_test.yaml": "35faef10ffd9c345202584ffe34c29900bf8f16a24d7d33d8740d7dc450bd2a4",
     "umbrella/unittests/templates/wrapper-values_test.yaml": "43d7f48cdff3f55a986bcc582a0c66699f875b91705445a06ac7952919413628",
-    "umbrella/values-genesis.yaml": "7c2670696557916117c7418a88b2a0f76f085adceea06451c4a35261d91e3be0",
+    "umbrella/values-genesis.yaml": "f6b4496612e43a1568ab6877890fbf2f9751dd1f462d94acb1d78ac43005239d",
     "umbrella/values.schema.json": "0773ccd8bb5fd166c3afe6d654f030d19f9988c8eefc34cce48607002d24d4a6",
     "umbrella/values.yaml": "796060ab39879e11d7ae51ffe79cbcb8e4e2d23badd839830397f45e82035bc7"
   },
   "schemaVersion": 1,
-  "sha256": "fe6fb3799cb3827899f1b95b35293b1e22f4e084c85d01e75840bafca95f3ff1",
+  "sha256": "a357e429354320d697560823b4646127e445945ab5dab031b8b3ed85bd02691f",
   "tag": "3.33.0"
 }
