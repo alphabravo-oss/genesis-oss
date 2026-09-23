@@ -23,6 +23,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: genesis-console/go.mod
+          cache-dependency-path: genesis-console/go.sum
       - uses: actions/setup-node@v4
         with:
           node-version-file: genesis-console/web/.nvmrc
