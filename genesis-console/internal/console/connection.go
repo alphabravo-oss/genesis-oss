@@ -118,20 +118,36 @@ func (c *Connections) Load(ctx context.Context) {
 
 // activate writes the kubeconfig atomically with mode 0600 and switches to it.
 func (c *Connections) activate(kubeconfig []byte) error {
-	file, err := os.CreateTemp(c.dir, "kubeconfig-*")
+	staged, err := c.stage(kubeconfig)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(file.Name())
+	return c.commit(staged)
+}
+
+// stage writes a 0600 file next to the active one; commit renames it into place.
+// Splitting them lets Save write the database only once the file exists.
+func (c *Connections) stage(kubeconfig []byte) (string, error) {
+	file, err := os.CreateTemp(c.dir, "kubeconfig-*")
+	if err != nil {
+		return "", err
+	}
 	if _, err := file.Write(kubeconfig); err != nil {
 		file.Close()
-		return err
+		os.Remove(file.Name())
+		return "", err
 	}
 	if err := file.Close(); err != nil {
-		return err
+		os.Remove(file.Name())
+		return "", err
 	}
+	return file.Name(), nil
+}
+
+func (c *Connections) commit(staged string) error {
 	path := c.activePath()
-	if err := os.Rename(file.Name(), path); err != nil {
+	if err := os.Rename(staged, path); err != nil {
+		os.Remove(staged)
 		return err
 	}
 	activeKubeconfig.Store(&path)
@@ -214,10 +230,15 @@ func (c *Connections) Save(ctx context.Context, in ConnectionInput) (ConnectionI
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if err := c.store.SaveClusterConnection(ctx, db.SaveClusterConnectionParams{Name: in.Name, Context: prepared.Context, Server: prepared.Server, Kubeconfig: sealed}); err != nil {
+	staged, err := c.stage(prepared.Rendered)
+	if err != nil {
 		return ConnectionInfo{}, err
 	}
-	if err := c.activate(prepared.Rendered); err != nil {
+	if err := c.store.SaveClusterConnection(ctx, db.SaveClusterConnectionParams{Name: in.Name, Context: prepared.Context, Server: prepared.Server, Kubeconfig: sealed}); err != nil {
+		os.Remove(staged)
+		return ConnectionInfo{}, err
+	}
+	if err := c.commit(staged); err != nil {
 		return ConnectionInfo{}, err
 	}
 	c.saved, c.loadErr = &ConnectionInfo{Name: in.Name, Context: prepared.Context, Server: prepared.Server, SavedAt: time.Now(), Warnings: prepared.Warnings}, ""

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net"
 	"net/url"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -94,11 +95,14 @@ func prepareKubeconfig(raw []byte, context string, rewriteLoopback bool) (*prepa
 		return nil, kubeconfigError("The cluster's server address is not a valid URL.")
 	}
 	host, port := server.Hostname(), server.Port()
-	if ip := net.ParseIP(host); host == "localhost" || (ip != nil && (ip.IsLoopback() || ip.IsUnspecified())) {
+	if ip := net.ParseIP(host); strings.EqualFold(host, "localhost") || (ip != nil && (ip.IsLoopback() || ip.IsUnspecified())) {
 		out.Loopback = true
 		if rewriteLoopback {
 			if port == "" {
-				port = "443"
+				port = map[string]string{"http": "80"}[server.Scheme]
+				if port == "" {
+					port = "443"
+				}
 			}
 			if clusterBody["tls-server-name"] == nil {
 				clusterBody["tls-server-name"] = host

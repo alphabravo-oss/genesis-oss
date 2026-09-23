@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRevalidator } from "react-router";
+import { useOutletContext, useRevalidator } from "react-router";
+import type { ShellContext } from "@/pages/shell-context";
 import { create } from "@bufbuild/protobuf";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { ConnectionInputSchema, type ConnectionTest } from "@/gen/console/v1/console_pb";
 import { consoleClient } from "@/lib/connect";
 import { errorText } from "@/lib/errors";
 import { formatAgo, formatWhen } from "@/lib/cluster";
-import { sameInput, type FormInput } from "@/lib/connection";
+import { canDisconnect, sameInput, type FormInput } from "@/lib/connection";
 
 const sources: Record<string, string> = {
   saved: "Saved in the console",
@@ -19,6 +20,7 @@ const sources: Record<string, string> = {
 
 export function ConnectionPage() {
   const queryClient = useQueryClient();
+  const { cluster } = useOutletContext<ShellContext>();
   const revalidator = useRevalidator();
   const info = useQuery({ queryKey: ["connection"], queryFn: ({ signal }) => consoleClient.getConnection({}, { signal }) });
   const [form, setForm] = useState<FormInput>({ name: "", kubeconfig: "", context: "", rewrite: false });
@@ -66,10 +68,11 @@ export function ConnectionPage() {
           {current.server ? <><dt className="text-[var(--muted)]">API server</dt><dd className="break-all font-mono text-xs">{current.server}</dd></> : null}
           {current.context ? <><dt className="text-[var(--muted)]">Context</dt><dd>{current.context}</dd></> : null}
           {current.savedAt ? <><dt className="text-[var(--muted)]">Saved</dt><dd title={formatWhen(current.savedAt)}>{formatAgo(current.savedAt)}</dd></> : null}
+          <dt className="text-[var(--muted)]">Last observation</dt><dd>{cluster.observedAt ? <span title={formatWhen(cluster.observedAt)}>{formatAgo(cluster.observedAt)}{cluster.context ? ` · context ${cluster.context}` : ""}</span> : "The cluster has not been read yet"}</dd>
         </dl>
         {current.error ? <p role="alert" className="text-[var(--amber)]">{current.error}</p> : null}
         {current.warnings.map((warning) => <p key={warning} className="text-[var(--amber)]">{warning}</p>)}
-        {current.source === "saved" ? <div className="flex items-center gap-2">
+        {canDisconnect(current) ? <div className="flex items-center gap-2">
           {confirmDelete ? <>
             <button type="button" disabled={busy !== ""} onClick={() => void run("delete", async () => { await consoleClient.deleteConnection({}); setConfirmDelete(false); setNote("Disconnected. The console now uses the deployment's cluster settings."); await refresh(); })} className="rounded-md border border-[var(--danger)] px-3 py-1.5 text-[var(--danger)] disabled:opacity-50">{busy === "delete" ? "Disconnecting…" : "Confirm disconnect"}</button>
             <button type="button" onClick={() => setConfirmDelete(false)} className="px-2 py-1.5 text-[var(--muted)] underline">Cancel</button>
@@ -109,7 +112,7 @@ export function ConnectionPage() {
         <span>The console runs in Docker: reach this cluster through <code>host.docker.internal</code>. The certificate name is kept, so TLS verification still works.</span>
       </label> : null}
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" disabled={busy !== "" || !form.kubeconfig.trim()} onClick={() => void run("test", async () => { const snapshot = { ...form }; const next = await consoleClient.testConnection(input()); setTested({ input: snapshot, result: next }); })} className="rounded-md border border-[var(--border)] px-3 py-2 hover:bg-[var(--off)] disabled:opacity-50">{busy === "test" ? "Testing…" : "Test connection"}</button>
+        <button type="button" disabled={busy !== "" || !form.kubeconfig.trim()} onClick={() => void run("test", async () => { setTested(null); const snapshot = { ...form }; const next = await consoleClient.testConnection(input()); setTested({ input: snapshot, result: next }); })} className="rounded-md border border-[var(--border)] px-3 py-2 hover:bg-[var(--off)] disabled:opacity-50">{busy === "test" ? "Testing…" : "Test connection"}</button>
         <button type="button" disabled={busy !== "" || !canSave} onClick={() => void run("save", async () => { const saved = await consoleClient.saveConnection(input()); setForm({ name: "", kubeconfig: "", context: "", rewrite: false }); setTested(null); setNote(`Connected to ${saved.name}.`); await refresh(); })} className="rounded-md bg-[var(--primary)] px-3 py-2 text-[var(--primary-foreground)] disabled:opacity-50">{busy === "save" ? "Saving…" : "Save and connect"}</button>
         {tested && !sameInput(tested.input, form) ? <span className="text-xs text-[var(--muted)]">Input changed; test again before saving.</span> : null}
       </div>

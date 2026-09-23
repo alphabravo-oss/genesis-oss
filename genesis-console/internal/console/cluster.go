@@ -134,6 +134,8 @@ func decodeObjects(raw []byte) ([]object, error) {
 func readCluster(ctx context.Context) *clusterSnapshot {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	// Resolve the connection once so a switch mid-read cannot mix two clusters.
+	config := kubeconfig()
 	s := &clusterSnapshot{namespace: clusterNamespace(), release: clusterRelease(), objects: map[string][]object{}, refs: map[string]object{}}
 	jobs := []struct {
 		name, binary string
@@ -155,7 +157,7 @@ func readCluster(ctx context.Context) *clusterSnapshot {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			jobs[i].raw, jobs[i].err = clusterCommand(ctx, jobs[i].binary, jobs[i].args...)
+			jobs[i].raw, jobs[i].err = clusterCommandWith(ctx, config, jobs[i].binary, jobs[i].args...)
 		}()
 	}
 	wg.Wait()
@@ -206,7 +208,7 @@ func readCluster(ctx context.Context) *clusterSnapshot {
 			parts := strings.SplitN(key, "/", 2)
 			args := append([]string{"get", parts[0]}, unique(names)...)
 			args = append(args, "-n", parts[1], "--ignore-not-found", "-o", "json")
-			raw, err := kubectl(ctx, args...)
+			raw, err := clusterCommandWith(ctx, config, "kubectl", args...)
 			var docs []object
 			if err == nil {
 				docs, err = decodeObjects(raw)
@@ -220,7 +222,7 @@ func readCluster(ctx context.Context) *clusterSnapshot {
 			defer wg.Done()
 			// Pin values to the observed revision rather than racing an upgrade.
 			args := []string{"get", "values", s.release, "-n", s.namespace, "--all", "-o", "json", "--revision", fmt.Sprint(s.metadata["revision"])}
-			raw, err := clusterCommand(ctx, "helm", args...)
+			raw, err := clusterCommandWith(ctx, config, "helm", args...)
 			var values object
 			if err == nil {
 				err = json.Unmarshal(raw, &values)

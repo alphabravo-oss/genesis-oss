@@ -101,6 +101,9 @@ func TestPrepareKubeconfigLoopback(t *testing.T) {
 		"https://localhost:6443": "https://host.docker.internal:6443",
 		"https://[::1]:6443":     "https://host.docker.internal:6443",
 		"https://127.0.0.1":      "https://host.docker.internal:443",
+		"https://[::1]":          "https://host.docker.internal:443",
+		"http://127.0.0.1":       "http://host.docker.internal:80",
+		"https://LOCALHOST:6443": "https://host.docker.internal:6443",
 	} {
 		input := strings.Replace(sampleKubeconfig, "https://127.0.0.1:6443", server, 1)
 		got, err := prepareKubeconfig([]byte(input), "", true)

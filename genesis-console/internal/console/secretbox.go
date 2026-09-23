@@ -16,6 +16,8 @@ import (
 
 func LoadConnectionKey() ([]byte, error) {
 	text := os.Getenv("GENESIS_CONNECTION_KEY")
+	// kubectl, helm, and trivy inherit the environment; they never need the key.
+	os.Unsetenv("GENESIS_CONNECTION_KEY")
 	if file := os.Getenv("GENESIS_CONNECTION_KEY_FILE"); file != "" {
 		raw, err := os.ReadFile(file)
 		if err != nil {
