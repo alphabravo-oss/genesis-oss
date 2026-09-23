@@ -1,0 +1,16 @@
+# Optional GitLab. Off unless you pass this file. The install is large.
+# Public image sources for the 3.33.0 chart are the gitlab rows in
+# catalogs/3.33.0/public.md. They are registry.gitlab.com CNG images, including
+# the Enterprise Edition webservice, sidekiq, workhorse, and toolbox tags.
+# Those EE images still need a GitLab license to run.
+# Replace each chart repository that starts with registry1.dso.mil/gitlab/
+# with the matching registry.gitlab.com path and keep the chart tag.
+# Example:
+#   certificates.image.repository: registry.gitlab.com/gitlab-org/build/cng/certificates
+#   certificates.image.tag: v19.3.2-ubi
+addons:
+  gitlab:
+    enabled: true
+    values:
+      bbtests:
+        enabled: false

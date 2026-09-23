@@ -1,0 +1,55 @@
+{{- include "bigbang.normalizePackageAliases" . -}}
+{{- $fluxSettingsLoki := mergeOverwrite (deepCopy .Values.flux) .Values.loki.flux -}}
+{{- if .Values.loki.enabled }}
+{{- $istioEnabled := eq (include "istioEnabled" .) "true" }}
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/component: "core"
+    {{- include "commonLabels" . | nindent 4}}
+  annotations:
+    checksum/bigbang-values: {{ include (print $.Template.BasePath "/loki/values.yaml") . | sha256sum }}
+spec:
+  releaseName: {{ default "logging-loki" .Values.loki.releaseName }}
+  targetNamespace: logging
+  {{- include "bigbang.helmRelease.chartSpec" (dict "name" "loki" "package" .Values.loki "root" .) | nindent 2 }}
+
+  {{- toYaml $fluxSettingsLoki | nindent 2 }}
+
+  {{- if or .Values.loki.postRenderers (and $istioEnabled (eq .Values.loki.strategy "distributed")) }}
+  postRenderers:
+  {{- if and $istioEnabled (eq .Values.loki.strategy "distributed") }}
+  {{- include "loki.istioPostRenderers" . | nindent 2 }}
+  {{- end }}
+  {{- if .Values.loki.postRenderers }}
+  {{ toYaml .Values.loki.postRenderers | nindent 2 }}
+  {{- end }}
+  {{- end }}
+  {{- include "bigbang.helmRelease.valuesFrom" (dict "name" "loki" "root" .) | nindent 2 }}
+  {{- if or .Values.monitoring.enabled .Values.gatekeeper.enabled $istioEnabled .Values.kyvernoPolicies.enabled }}
+  dependsOn:
+    {{- if  .Values.monitoring.enabled }}
+    - name: monitoring
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if  .Values.gatekeeper.enabled }}
+    - name: gatekeeper
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if $istioEnabled }}
+    {{- include "istioHelmReleases" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.kyvernoPolicies.enabled }}
+    - name: kyverno-policies
+      namespace: {{ .Release.Namespace }}
+    {{- end }}
+    {{- if .Values.addons.minioOperator.enabled }}
+    - name: minio-operator
+      namespace: {{ $.Release.Namespace }}
+    {{- end }}
+  {{- end }}
+{{- end }}
