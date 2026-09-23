@@ -42,7 +42,7 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 
 The image includes catalogs and immutable comparison baselines. It needs outbound registry access for scans. It does not package the Kubernetes stack inside Docker; Genesis workloads still run on Kubernetes.
 
-To distribute a self-contained source bundle without dependency caches or credentials, run `python3 scripts/package.py`. `python3 scripts/package.py --sync ../genesis-oss/genesis-console` mirrors the same public files into the OSS repository; the engine's `hack/sync.py` runs it. Extract `dist/genesis-console.tar.gz` into an empty directory, then run `genesis-console/scripts/up.sh`. The bundle preserves the sibling data directory required by the Docker build. Release tags of `genesis-oss` publish the image (`ghcr.io/alphabravo-oss/genesis-console:<tag>`, amd64 and arm64) and the chart (`oci://ghcr.io/alphabravo-oss/charts/genesis-console`) under the Genesis version. For a private registry, build the image yourself and install `deploy/chart` with `--set image.repository=YOUR_REGISTRY/genesis-console --set image.tag=VERSION`.
+To distribute a self-contained source bundle without dependency caches or credentials, run `python3 scripts/package.py`. `python3 scripts/package.py --sync ../genesis-oss/genesis-console` mirrors the same public files into the OSS repository; the engine's `hack/sync.py` runs it. Extract `dist/genesis-console.tar.gz` into an empty directory, then run `genesis-console/scripts/up.sh`. The bundle preserves the sibling data directory required by the Docker build. Console releases are tagged `console-vX.Y.Z` in `genesis-oss`, independent of Genesis tags. Each publishes the image (`ghcr.io/alphabravo-oss/genesis-console:X.Y.Z`, amd64 and arm64) and the chart (`oci://ghcr.io/alphabravo-oss/charts/genesis-console`, version X.Y.Z). The chart's `version` in `deploy/chart/Chart.yaml` must match the tag. Any console release can observe any Genesis version it has catalogs for. For a private registry, build the image yourself and install `deploy/chart` with `--set image.repository=YOUR_REGISTRY/genesis-console --set image.tag=VERSION`.
 
 ## Kubernetes installation
 
@@ -53,7 +53,7 @@ kubectl create namespace genesis-console
 kubectl -n genesis-console create secret generic genesis-console \
   --from-file=database-url=/private/path/database-url \
   --from-file=console-password=/private/path/console-password
-helm upgrade --install console oci://ghcr.io/alphabravo-oss/charts/genesis-console --version 3.33.0 \
+helm upgrade --install console oci://ghcr.io/alphabravo-oss/charts/genesis-console --version 1.0.0 \
   --namespace genesis-console -f /private/path/console-values.yaml
 kubectl -n genesis-console port-forward svc/console 8090:8080
 ```
