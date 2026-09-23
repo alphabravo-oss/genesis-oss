@@ -372,7 +372,8 @@ func flatValues(prefix string, value any, out map[string]string) {
 		}
 		return
 	}
-	if category(prefix) == "" {
+	// Helm treats null as unset, so null and a missing key compare equal.
+	if value == nil || category(prefix) == "" {
 		return
 	}
 	if text, ok := value.(string); ok {
@@ -395,6 +396,28 @@ func valueText(values map[string]string, key string, known bool) string {
 	}
 	return "Not set"
 }
+
+// Each installation points packages at its own Git source, such as an air-gap
+// mirror. That location is shown but is not counted as a package difference.
+// ponytail: only git.repo; extend when other per-install source keys show up as noise.
+func installationSetting(path string) bool {
+	return path == "git.repo" || strings.HasSuffix(path, ".git.repo")
+}
+
+// Flux's API server fills these HelmRelease chart defaults, so an unset
+// baseline value and the defaulted cluster value mean the same thing.
+func fluxChartDefaults(chart any) object {
+	out := mergeValues(obj(chart), nil)
+	if spec := obj(out["spec"]); spec != nil {
+		for key, value := range map[string]any{"version": "*", "reconcileStrategy": "ChartVersion"} {
+			if _, set := spec[key]; !set {
+				spec[key] = value
+			}
+		}
+	}
+	return out
+}
+
 func compareValues(standard, configured, deployed object, source string) []*consolev1.ConfigurationChange {
 	a, b, c := map[string]string{}, map[string]string{}, map[string]string{}
 	flatValues("", standard, a)
@@ -418,6 +441,8 @@ func compareValues(standard, configured, deployed object, source string) []*cons
 			state = "Unknown"
 		} else if deployed != nil && actual != wanted {
 			state = "Not applied"
+		} else if installationSetting(key) {
+			state = "Installation"
 		}
 		out = append(out, &consolev1.ConfigurationChange{Path: key, Category: category(key), Standard: expected, Configured: wanted, Deployed: actual, Status: state, Source: source})
 	}

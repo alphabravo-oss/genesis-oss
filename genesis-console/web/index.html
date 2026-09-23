@@ -4,16 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Genesis Console</title>
-    <meta name="theme-color" content="#090909" />
+    <meta name="theme-color" content="#111111" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
     <script>
       try {
-        const preference = localStorage.getItem("genesis-console-theme") || "dark";
+        const preference = localStorage.getItem("genesis-console-theme") || "system";
         const systemDark = matchMedia("(prefers-color-scheme: dark)").matches;
         const dark = preference === "dark" || (preference !== "light" && systemDark);
         document.documentElement.dataset.theme = dark ? "dark" : "light";
-        document.querySelector('meta[name="theme-color"]').content = dark ? "#090909" : "#f4f7f5";
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#111111" : "#f4f7f5";
       } catch (_) {}
     </script>
   </head>

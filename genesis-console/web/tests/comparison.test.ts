@@ -83,3 +83,27 @@ test("setting explanations identify which comparison sides differ without claimi
   assert.deepEqual(explain("1", "Not checked", "Not checked", "Unknown"), { configured: false, installed: false, explanation: "Comparison incomplete; a release or cluster value could not be checked." });
   assert.deepEqual(explain("1.0", "Not checked", "2.0", "Different version"), { configured: false, installed: true, explanation: "The installed chart version differs from the comparison release." });
 });
+
+test("installation-specific sources are shown but not counted as differences", async () => {
+  const { versionText } = await import("../src/lib/comparison.ts");
+  const source = create(ConfigurationChangeSchema, { path: "alloy.git.repo", status: "Installation", standard: "\"a\"", configured: "\"b\"" });
+  assert.equal(hasComparisonDifference("Installation"), false);
+  assert.deepEqual(settingDifference(source), { configured: false, installed: false, explanation: "Installation-specific source location, such as a mirror. Not counted as a difference." });
+  const pkg = create(PackageComparisonSchema, { key: "alloy", comparison: "Standard", valuesChecked: true, changes: [source] });
+  assert.equal(packageDifferenceSummary(pkg), "Matches comparison release · own Git source");
+  assert.equal(versionText("*"), "any version");
+  assert.equal(versionText("1.2.3"), "1.2.3");
+});
+
+test("relative times and plurals read naturally", async () => {
+  const { formatAgo, plural, scopeLabel, stateLabel } = await import("../src/lib/cluster.ts");
+  const now = Date.parse("2026-09-22T12:00:00Z");
+  assert.equal(formatAgo("2026-09-22T11:59:30Z", now), "just now");
+  assert.match(formatAgo("2026-09-22T11:55:00Z", now), /5 minutes ago/);
+  assert.match(formatAgo("2026-09-21T12:00:00Z", now), /yesterday|1 day ago/);
+  assert.equal(formatAgo("", now), "not yet");
+  assert.equal(plural(1, "package"), "1 package");
+  assert.equal(plural(3, "package"), "3 packages");
+  assert.equal(scopeLabel("default-on"), "Catalog default-on images");
+  assert.equal(stateLabel("succeeded"), "Completed");
+});

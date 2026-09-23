@@ -84,3 +84,13 @@ CREATE TABLE auth_sessions (
     token_hash bytea PRIMARY KEY,
     expires_at timestamptz NOT NULL
 );
+
+CREATE TABLE cluster_connection (
+    id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    name text NOT NULL,
+    context text NOT NULL,
+    server text NOT NULL,
+    kubeconfig bytea NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);

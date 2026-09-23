@@ -15,6 +15,10 @@ service ConsoleService {
   rpc GetScanSettings(GetScanSettingsRequest) returns (ScanSettings);
   rpc SetScanSettings(SetScanSettingsRequest) returns (ScanSettings);
   rpc CleanImages(CleanImagesRequest) returns (CleanImagesResponse);
+  rpc GetConnection(GetConnectionRequest) returns (ConnectionInfo);
+  rpc TestConnection(ConnectionInput) returns (ConnectionTest);
+  rpc SaveConnection(ConnectionInput) returns (ConnectionInfo);
+  rpc DeleteConnection(DeleteConnectionRequest) returns (ConnectionInfo);
 }
 
 message ListReleasesRequest {}
@@ -281,4 +285,41 @@ message CleanImagesRequest {}
 
 message CleanImagesResponse {
   bool cleaned = 1;
+}
+
+message GetConnectionRequest {}
+
+message DeleteConnectionRequest {}
+
+// The kubeconfig is only ever sent from the browser, never returned.
+message ConnectionInput {
+  string name = 1;
+  string kubeconfig = 2;
+  string context = 3;
+  bool rewrite_loopback = 4;
+}
+
+message ConnectionInfo {
+  string name = 1;
+  // saved, environment, in-cluster, default, or none
+  string source = 2;
+  string server = 3;
+  string context = 4;
+  string saved_at = 5;
+  bool saving_enabled = 6;
+  repeated string warnings = 7;
+  string error = 8;
+}
+
+message ConnectionTest {
+  repeated string contexts = 1;
+  string context = 2;
+  string server = 3;
+  bool loopback = 4;
+  string kubernetes_version = 5;
+  string release = 6;
+  string genesis_version = 7;
+  repeated string warnings = 8;
+  // Set when the cluster could not be reached; the input itself was valid.
+  string error = 9;
 }

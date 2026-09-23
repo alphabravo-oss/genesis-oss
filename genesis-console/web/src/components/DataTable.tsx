@@ -11,7 +11,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { ChevronRight, Columns3, Download, Rows3, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Columns3, Download, Rows3, Search } from "lucide-react";
 import { downloadCSV } from "@/lib/csv";
 
 declare module "@tanstack/react-table" {
@@ -98,7 +98,7 @@ function TableCore<T>({
   search,
   facet,
   exportName,
-
+  urlKey,
   selectable,
   selected,
   onSelected,
@@ -121,7 +121,21 @@ function TableCore<T>({
   clearFilters: () => void;
 }) {
   const navigate = useNavigate();
-  const [visibility, setVisibility] = useState<VisibilityState>({});
+  const visibilityKey = `genesis-console-columns.${urlKey ?? noun}`;
+  const [visibility, setVisibility] = useState<VisibilityState>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(visibilityKey) ?? "{}");
+    } catch {
+      return {};
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(visibilityKey, JSON.stringify(visibility));
+    } catch {
+      /* column choice lasts for this page */
+    }
+  }, [visibilityKey, visibility]);
   const [compact, setCompact] = useState(() => {
     try {
       return localStorage.getItem("genesis-console-density") === "compact";
@@ -245,7 +259,7 @@ function TableCore<T>({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span role="status" className="mr-1 text-sm text-[var(--muted)]">
-            {q || facetValue ? `${shown.length} of ${data.length}` : data.length} {noun}
+            {q || facetValue ? `${shown.length} of ${data.length}` : data.length} {(q || facetValue ? shown.length : data.length) === 1 ? singular(noun) : noun}
           </span>
           {facet && counts.map(([name, count]) => (
             <button
@@ -261,15 +275,17 @@ function TableCore<T>({
           {q || facetValue ? <button type="button" className="px-2 py-1 text-xs text-[var(--primary)] underline underline-offset-2" onClick={clearFilters}>Clear filters</button> : null}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <label className="relative">
+          <label className="relative w-full sm:w-auto">
             <span className="sr-only">{search?.placeholder ?? `Search ${noun}`}</span>
             <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-[var(--muted)]" aria-hidden />
             <input
               type="search"
+              autoComplete="off"
+              spellCheck={false}
               value={q}
               onChange={(event) => setQ(event.target.value)}
               placeholder={search?.placeholder ?? `Search ${noun}`}
-              className="h-8 w-56 rounded-md border border-[var(--border)] bg-[var(--card)] pr-2 pl-7 text-sm"
+              className="h-8 w-full rounded-md sm:w-56 border border-[var(--border)] bg-[var(--card)] pr-2 pl-7 text-sm"
             />
           </label>
           {hideable.length > 1 && (
@@ -313,15 +329,17 @@ function TableCore<T>({
       </div>
       <div className="overflow-x-auto rounded-md border border-[var(--border)] bg-[var(--card)]">
         <table className="w-full min-w-[52rem] border-collapse text-left text-sm" data-density={compact ? "compact" : "comfortable"}>
-          <thead className="sticky top-0 border-b border-[var(--border)] bg-[var(--card)] text-[var(--muted)]">
+          <thead className="border-b border-[var(--border)] bg-[var(--card)] text-[var(--muted)]">
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
                 {group.headers.map((header) => (
                   <th key={header.id} scope="col" aria-sort={header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : undefined} className="px-3 py-2 font-medium">
                     {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                      <button type="button" className="inline-flex items-center gap-1" onClick={header.column.getToggleSortingHandler()}>
+                      <button type="button" className="group inline-flex items-center gap-1 text-left hover:text-[var(--foreground)]" onClick={header.column.getToggleSortingHandler()}>
                         {flexRender(header.column.columnDef.header, header.getContext())}
-                        {{ asc: " ↑", desc: " ↓" }[header.column.getIsSorted() as string] ?? ""}
+                        {header.column.getIsSorted() === "asc" ? <ArrowUp className="size-3.5 shrink-0 text-[var(--foreground)]" aria-hidden />
+                          : header.column.getIsSorted() === "desc" ? <ArrowDown className="size-3.5 shrink-0 text-[var(--foreground)]" aria-hidden />
+                          : <ArrowUpDown className="size-3.5 shrink-0 opacity-40 group-hover:opacity-100" aria-hidden />}
                       </button>
                     ) : flexRender(header.column.columnDef.header, header.getContext())}
                   </th>
@@ -380,6 +398,11 @@ function TableCore<T>({
       ) : null}
     </div>
   );
+}
+
+// ponytail: nouns here are all regular English plurals; pass a singular prop if one is not.
+function singular(noun: string) {
+  return noun.replace(/s$/, "");
 }
 
 function chip(active: boolean) {

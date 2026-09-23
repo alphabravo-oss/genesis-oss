@@ -1,9 +1,15 @@
 image:
-  repository: docker.io/library/genesis-console
-  tag: local
+  # Release tags publish this image; the tag defaults to the chart's appVersion.
+  repository: ghcr.io/alphabravo-oss/genesis-console
+  tag: ""
   pullPolicy: IfNotPresent
-# Existing Secret in the console namespace: keys database-url and console-password.
+# Existing Secret in the console namespace: keys database-url and console-password,
+# and optionally connection-key (openssl rand -base64 32) to save cluster connections from the UI.
 credentialsSecret: genesis-console
+# false installs only the read-only service account, its RBAC, and a token Secret,
+# for a console running outside this cluster (see scripts/service-account-kubeconfig.sh).
+console:
+  enabled: true
 username: admin
 cluster:
   namespace: bigbang

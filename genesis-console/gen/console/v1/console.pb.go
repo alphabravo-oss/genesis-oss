@@ -2511,6 +2511,357 @@ func (x *CleanImagesResponse) GetCleaned() bool {
 	return false
 }
 
+type GetConnectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetConnectionRequest) Reset() {
+	*x = GetConnectionRequest{}
+	mi := &file_console_v1_console_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetConnectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetConnectionRequest) ProtoMessage() {}
+
+func (x *GetConnectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_console_v1_console_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetConnectionRequest.ProtoReflect.Descriptor instead.
+func (*GetConnectionRequest) Descriptor() ([]byte, []int) {
+	return file_console_v1_console_proto_rawDescGZIP(), []int{31}
+}
+
+type DeleteConnectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteConnectionRequest) Reset() {
+	*x = DeleteConnectionRequest{}
+	mi := &file_console_v1_console_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteConnectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteConnectionRequest) ProtoMessage() {}
+
+func (x *DeleteConnectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_console_v1_console_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteConnectionRequest.ProtoReflect.Descriptor instead.
+func (*DeleteConnectionRequest) Descriptor() ([]byte, []int) {
+	return file_console_v1_console_proto_rawDescGZIP(), []int{32}
+}
+
+// The kubeconfig is only ever sent from the browser, never returned.
+type ConnectionInput struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Kubeconfig      string                 `protobuf:"bytes,2,opt,name=kubeconfig,proto3" json:"kubeconfig,omitempty"`
+	Context         string                 `protobuf:"bytes,3,opt,name=context,proto3" json:"context,omitempty"`
+	RewriteLoopback bool                   `protobuf:"varint,4,opt,name=rewrite_loopback,json=rewriteLoopback,proto3" json:"rewrite_loopback,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ConnectionInput) Reset() {
+	*x = ConnectionInput{}
+	mi := &file_console_v1_console_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionInput) ProtoMessage() {}
+
+func (x *ConnectionInput) ProtoReflect() protoreflect.Message {
+	mi := &file_console_v1_console_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionInput.ProtoReflect.Descriptor instead.
+func (*ConnectionInput) Descriptor() ([]byte, []int) {
+	return file_console_v1_console_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ConnectionInput) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ConnectionInput) GetKubeconfig() string {
+	if x != nil {
+		return x.Kubeconfig
+	}
+	return ""
+}
+
+func (x *ConnectionInput) GetContext() string {
+	if x != nil {
+		return x.Context
+	}
+	return ""
+}
+
+func (x *ConnectionInput) GetRewriteLoopback() bool {
+	if x != nil {
+		return x.RewriteLoopback
+	}
+	return false
+}
+
+type ConnectionInfo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// saved, environment, in-cluster, default, or none
+	Source        string   `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	Server        string   `protobuf:"bytes,3,opt,name=server,proto3" json:"server,omitempty"`
+	Context       string   `protobuf:"bytes,4,opt,name=context,proto3" json:"context,omitempty"`
+	SavedAt       string   `protobuf:"bytes,5,opt,name=saved_at,json=savedAt,proto3" json:"saved_at,omitempty"`
+	SavingEnabled bool     `protobuf:"varint,6,opt,name=saving_enabled,json=savingEnabled,proto3" json:"saving_enabled,omitempty"`
+	Warnings      []string `protobuf:"bytes,7,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	Error         string   `protobuf:"bytes,8,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionInfo) Reset() {
+	*x = ConnectionInfo{}
+	mi := &file_console_v1_console_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionInfo) ProtoMessage() {}
+
+func (x *ConnectionInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_console_v1_console_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionInfo.ProtoReflect.Descriptor instead.
+func (*ConnectionInfo) Descriptor() ([]byte, []int) {
+	return file_console_v1_console_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ConnectionInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetServer() string {
+	if x != nil {
+		return x.Server
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetContext() string {
+	if x != nil {
+		return x.Context
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetSavedAt() string {
+	if x != nil {
+		return x.SavedAt
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetSavingEnabled() bool {
+	if x != nil {
+		return x.SavingEnabled
+	}
+	return false
+}
+
+func (x *ConnectionInfo) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
+func (x *ConnectionInfo) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type ConnectionTest struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Contexts          []string               `protobuf:"bytes,1,rep,name=contexts,proto3" json:"contexts,omitempty"`
+	Context           string                 `protobuf:"bytes,2,opt,name=context,proto3" json:"context,omitempty"`
+	Server            string                 `protobuf:"bytes,3,opt,name=server,proto3" json:"server,omitempty"`
+	Loopback          bool                   `protobuf:"varint,4,opt,name=loopback,proto3" json:"loopback,omitempty"`
+	KubernetesVersion string                 `protobuf:"bytes,5,opt,name=kubernetes_version,json=kubernetesVersion,proto3" json:"kubernetes_version,omitempty"`
+	Release           string                 `protobuf:"bytes,6,opt,name=release,proto3" json:"release,omitempty"`
+	GenesisVersion    string                 `protobuf:"bytes,7,opt,name=genesis_version,json=genesisVersion,proto3" json:"genesis_version,omitempty"`
+	Warnings          []string               `protobuf:"bytes,8,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	// Set when the cluster could not be reached; the input itself was valid.
+	Error         string `protobuf:"bytes,9,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionTest) Reset() {
+	*x = ConnectionTest{}
+	mi := &file_console_v1_console_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionTest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionTest) ProtoMessage() {}
+
+func (x *ConnectionTest) ProtoReflect() protoreflect.Message {
+	mi := &file_console_v1_console_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionTest.ProtoReflect.Descriptor instead.
+func (*ConnectionTest) Descriptor() ([]byte, []int) {
+	return file_console_v1_console_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *ConnectionTest) GetContexts() []string {
+	if x != nil {
+		return x.Contexts
+	}
+	return nil
+}
+
+func (x *ConnectionTest) GetContext() string {
+	if x != nil {
+		return x.Context
+	}
+	return ""
+}
+
+func (x *ConnectionTest) GetServer() string {
+	if x != nil {
+		return x.Server
+	}
+	return ""
+}
+
+func (x *ConnectionTest) GetLoopback() bool {
+	if x != nil {
+		return x.Loopback
+	}
+	return false
+}
+
+func (x *ConnectionTest) GetKubernetesVersion() string {
+	if x != nil {
+		return x.KubernetesVersion
+	}
+	return ""
+}
+
+func (x *ConnectionTest) GetRelease() string {
+	if x != nil {
+		return x.Release
+	}
+	return ""
+}
+
+func (x *ConnectionTest) GetGenesisVersion() string {
+	if x != nil {
+		return x.GenesisVersion
+	}
+	return ""
+}
+
+func (x *ConnectionTest) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
+func (x *ConnectionTest) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_console_v1_console_proto protoreflect.FileDescriptor
 
 const file_console_v1_console_proto_rawDesc = "" +
@@ -2753,7 +3104,35 @@ const file_console_v1_console_proto_rawDesc = "" +
 	"auto_clean\x18\x01 \x01(\bR\tautoClean\"\x14\n" +
 	"\x12CleanImagesRequest\"/\n" +
 	"\x13CleanImagesResponse\x12\x18\n" +
-	"\acleaned\x18\x01 \x01(\bR\acleaned2\x9a\x06\n" +
+	"\acleaned\x18\x01 \x01(\bR\acleaned\"\x16\n" +
+	"\x14GetConnectionRequest\"\x19\n" +
+	"\x17DeleteConnectionRequest\"\x8a\x01\n" +
+	"\x0fConnectionInput\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1e\n" +
+	"\n" +
+	"kubeconfig\x18\x02 \x01(\tR\n" +
+	"kubeconfig\x12\x18\n" +
+	"\acontext\x18\x03 \x01(\tR\acontext\x12)\n" +
+	"\x10rewrite_loopback\x18\x04 \x01(\bR\x0frewriteLoopback\"\xe2\x01\n" +
+	"\x0eConnectionInfo\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
+	"\x06server\x18\x03 \x01(\tR\x06server\x12\x18\n" +
+	"\acontext\x18\x04 \x01(\tR\acontext\x12\x19\n" +
+	"\bsaved_at\x18\x05 \x01(\tR\asavedAt\x12%\n" +
+	"\x0esaving_enabled\x18\x06 \x01(\bR\rsavingEnabled\x12\x1a\n" +
+	"\bwarnings\x18\a \x03(\tR\bwarnings\x12\x14\n" +
+	"\x05error\x18\b \x01(\tR\x05error\"\x9e\x02\n" +
+	"\x0eConnectionTest\x12\x1a\n" +
+	"\bcontexts\x18\x01 \x03(\tR\bcontexts\x12\x18\n" +
+	"\acontext\x18\x02 \x01(\tR\acontext\x12\x16\n" +
+	"\x06server\x18\x03 \x01(\tR\x06server\x12\x1a\n" +
+	"\bloopback\x18\x04 \x01(\bR\bloopback\x12-\n" +
+	"\x12kubernetes_version\x18\x05 \x01(\tR\x11kubernetesVersion\x12\x18\n" +
+	"\arelease\x18\x06 \x01(\tR\arelease\x12'\n" +
+	"\x0fgenesis_version\x18\a \x01(\tR\x0egenesisVersion\x12\x1a\n" +
+	"\bwarnings\x18\b \x03(\tR\bwarnings\x12\x14\n" +
+	"\x05error\x18\t \x01(\tR\x05error2\xd4\b\n" +
 	"\x0eConsoleService\x12Q\n" +
 	"\fListReleases\x12\x1f.console.v1.ListReleasesRequest\x1a .console.v1.ListReleasesResponse\x12F\n" +
 	"\n" +
@@ -2767,7 +3146,11 @@ const file_console_v1_console_proto_rawDesc = "" +
 	"GetScanJob\x12\x1d.console.v1.GetScanJobRequest\x1a\x13.console.v1.ScanJob\x12O\n" +
 	"\x0fGetScanSettings\x12\".console.v1.GetScanSettingsRequest\x1a\x18.console.v1.ScanSettings\x12O\n" +
 	"\x0fSetScanSettings\x12\".console.v1.SetScanSettingsRequest\x1a\x18.console.v1.ScanSettings\x12N\n" +
-	"\vCleanImages\x12\x1e.console.v1.CleanImagesRequest\x1a\x1f.console.v1.CleanImagesResponseB@Z>github.com/alphabravo/genesis-console/gen/console/v1;consolev1b\x06proto3"
+	"\vCleanImages\x12\x1e.console.v1.CleanImagesRequest\x1a\x1f.console.v1.CleanImagesResponse\x12M\n" +
+	"\rGetConnection\x12 .console.v1.GetConnectionRequest\x1a\x1a.console.v1.ConnectionInfo\x12I\n" +
+	"\x0eTestConnection\x12\x1b.console.v1.ConnectionInput\x1a\x1a.console.v1.ConnectionTest\x12I\n" +
+	"\x0eSaveConnection\x12\x1b.console.v1.ConnectionInput\x1a\x1a.console.v1.ConnectionInfo\x12S\n" +
+	"\x10DeleteConnection\x12#.console.v1.DeleteConnectionRequest\x1a\x1a.console.v1.ConnectionInfoB@Z>github.com/alphabravo/genesis-console/gen/console/v1;consolev1b\x06proto3"
 
 var (
 	file_console_v1_console_proto_rawDescOnce sync.Once
@@ -2781,7 +3164,7 @@ func file_console_v1_console_proto_rawDescGZIP() []byte {
 	return file_console_v1_console_proto_rawDescData
 }
 
-var file_console_v1_console_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_console_v1_console_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_console_v1_console_proto_goTypes = []any{
 	(*ListReleasesRequest)(nil),         // 0: console.v1.ListReleasesRequest
 	(*ReleaseSummary)(nil),              // 1: console.v1.ReleaseSummary
@@ -2814,6 +3197,11 @@ var file_console_v1_console_proto_goTypes = []any{
 	(*ScanSettings)(nil),                // 28: console.v1.ScanSettings
 	(*CleanImagesRequest)(nil),          // 29: console.v1.CleanImagesRequest
 	(*CleanImagesResponse)(nil),         // 30: console.v1.CleanImagesResponse
+	(*GetConnectionRequest)(nil),        // 31: console.v1.GetConnectionRequest
+	(*DeleteConnectionRequest)(nil),     // 32: console.v1.DeleteConnectionRequest
+	(*ConnectionInput)(nil),             // 33: console.v1.ConnectionInput
+	(*ConnectionInfo)(nil),              // 34: console.v1.ConnectionInfo
+	(*ConnectionTest)(nil),              // 35: console.v1.ConnectionTest
 }
 var file_console_v1_console_proto_depIdxs = []int32{
 	1,  // 0: console.v1.ListReleasesResponse.releases:type_name -> console.v1.ReleaseSummary
@@ -2843,18 +3231,26 @@ var file_console_v1_console_proto_depIdxs = []int32{
 	26, // 24: console.v1.ConsoleService.GetScanSettings:input_type -> console.v1.GetScanSettingsRequest
 	27, // 25: console.v1.ConsoleService.SetScanSettings:input_type -> console.v1.SetScanSettingsRequest
 	29, // 26: console.v1.ConsoleService.CleanImages:input_type -> console.v1.CleanImagesRequest
-	2,  // 27: console.v1.ConsoleService.ListReleases:output_type -> console.v1.ListReleasesResponse
-	8,  // 28: console.v1.ConsoleService.GetRelease:output_type -> console.v1.ReleaseDetail
-	13, // 29: console.v1.ConsoleService.GetCluster:output_type -> console.v1.ClusterStatus
-	17, // 30: console.v1.ConsoleService.GetPackageComparison:output_type -> console.v1.PackageComparison
-	22, // 31: console.v1.ConsoleService.StartScan:output_type -> console.v1.ScanJob
-	24, // 32: console.v1.ConsoleService.ListScanJobs:output_type -> console.v1.ListScanJobsResponse
-	22, // 33: console.v1.ConsoleService.GetScanJob:output_type -> console.v1.ScanJob
-	28, // 34: console.v1.ConsoleService.GetScanSettings:output_type -> console.v1.ScanSettings
-	28, // 35: console.v1.ConsoleService.SetScanSettings:output_type -> console.v1.ScanSettings
-	30, // 36: console.v1.ConsoleService.CleanImages:output_type -> console.v1.CleanImagesResponse
-	27, // [27:37] is the sub-list for method output_type
-	17, // [17:27] is the sub-list for method input_type
+	31, // 27: console.v1.ConsoleService.GetConnection:input_type -> console.v1.GetConnectionRequest
+	33, // 28: console.v1.ConsoleService.TestConnection:input_type -> console.v1.ConnectionInput
+	33, // 29: console.v1.ConsoleService.SaveConnection:input_type -> console.v1.ConnectionInput
+	32, // 30: console.v1.ConsoleService.DeleteConnection:input_type -> console.v1.DeleteConnectionRequest
+	2,  // 31: console.v1.ConsoleService.ListReleases:output_type -> console.v1.ListReleasesResponse
+	8,  // 32: console.v1.ConsoleService.GetRelease:output_type -> console.v1.ReleaseDetail
+	13, // 33: console.v1.ConsoleService.GetCluster:output_type -> console.v1.ClusterStatus
+	17, // 34: console.v1.ConsoleService.GetPackageComparison:output_type -> console.v1.PackageComparison
+	22, // 35: console.v1.ConsoleService.StartScan:output_type -> console.v1.ScanJob
+	24, // 36: console.v1.ConsoleService.ListScanJobs:output_type -> console.v1.ListScanJobsResponse
+	22, // 37: console.v1.ConsoleService.GetScanJob:output_type -> console.v1.ScanJob
+	28, // 38: console.v1.ConsoleService.GetScanSettings:output_type -> console.v1.ScanSettings
+	28, // 39: console.v1.ConsoleService.SetScanSettings:output_type -> console.v1.ScanSettings
+	30, // 40: console.v1.ConsoleService.CleanImages:output_type -> console.v1.CleanImagesResponse
+	34, // 41: console.v1.ConsoleService.GetConnection:output_type -> console.v1.ConnectionInfo
+	35, // 42: console.v1.ConsoleService.TestConnection:output_type -> console.v1.ConnectionTest
+	34, // 43: console.v1.ConsoleService.SaveConnection:output_type -> console.v1.ConnectionInfo
+	34, // 44: console.v1.ConsoleService.DeleteConnection:output_type -> console.v1.ConnectionInfo
+	31, // [31:45] is the sub-list for method output_type
+	17, // [17:31] is the sub-list for method input_type
 	17, // [17:17] is the sub-list for extension type_name
 	17, // [17:17] is the sub-list for extension extendee
 	0,  // [0:17] is the sub-list for field type_name
@@ -2871,7 +3267,7 @@ func file_console_v1_console_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_console_v1_console_proto_rawDesc), len(file_console_v1_console_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   36,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

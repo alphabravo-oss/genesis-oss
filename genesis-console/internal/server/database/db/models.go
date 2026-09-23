@@ -13,6 +13,16 @@ type AuthSession struct {
 	ExpiresAt pgtype.Timestamptz
 }
 
+type ClusterConnection struct {
+	ID         int16
+	Name       string
+	Context    string
+	Server     string
+	Kubeconfig []byte
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
 type Finding struct {
 	ID            int64
 	Digest        string

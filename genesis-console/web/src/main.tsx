@@ -34,6 +34,7 @@ const router = createBrowserRouter([
       { path: "images/:source/:imageId", lazy: async () => ({ Component: (await import("@/pages/ImagesPage")).ImagesPage }) },
       { path: "scans", lazy: async () => ({ Component: (await import("@/pages/ScansPage")).ScansPage }) },
       { path: "services", Component: ServicesPage },
+      { path: "settings/cluster", lazy: async () => ({ Component: (await import("@/pages/ConnectionPage")).ConnectionPage }) },
     ],
   },
 ]);

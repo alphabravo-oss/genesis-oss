@@ -5,7 +5,7 @@ import type { ShellContext } from "@/pages/shell-context";
 import { FindingList } from "@/components/FindingList";
 import { ReleaseSelect } from "@/components/ReleaseSelect";
 import { consoleClient } from "@/lib/connect";
-import { formatWhen, jobActive } from "@/lib/cluster";
+import { formatAgo, formatWhen, jobActive, scopeLabel, stateLabel } from "@/lib/cluster";
 import { errorText } from "@/lib/errors";
 
 export function ScansPage() {
@@ -88,7 +88,7 @@ export function ScansPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Scans</h1>
         <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-          Review image scan progress and saved findings. Use Images → Deployed images to scan what is running in the cluster. Cleaning images keeps findings and SBOMs.
+          Review image scan progress and saved findings. To scan what is running in the cluster, use Images → Running in cluster.
         </p>
       </div>
       <section aria-label="Bulk catalog scans" className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
@@ -103,29 +103,37 @@ export function ScansPage() {
           </button>
         </div>
       </section>
-      <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm disabled:opacity-50" disabled={busy || scanning} onClick={() => void clean()}>Clean images</button>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={autoClean} disabled={savingSettings} onChange={(event) => void toggleClean(event.target.checked)} />
-        Auto cleanup after each successful image
-      </label>
+      <section aria-labelledby="scanner-storage" className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4">
+        <div>
+          <h2 id="scanner-storage" className="font-semibold">Scanner storage</h2>
+          <p className="mt-1 text-xs text-[var(--muted)]">Scanning downloads each image. Cleaning removes the downloaded data; findings and SBOMs stay saved, and the next scan downloads the image again.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          <button type="button" className="rounded-md border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm hover:bg-[var(--off)] disabled:opacity-50" disabled={busy || scanning} onClick={() => void clean()}>Clean downloaded images</button>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={autoClean} disabled={savingSettings} onChange={(event) => void toggleClean(event.target.checked)} />
+            Clean automatically after each scanned image
+          </label>
+        </div>
+      </section>
       {error || detailQuery.error ? <p role="alert" className="text-sm text-[var(--danger)]">{error || errorText(detailQuery.error)}</p> : null}
       {note ? <p role="status" className="text-sm">{note}</p> : null}
       {current ? (
         <section className="space-y-2 rounded-md border border-[var(--border)] bg-[var(--card)] p-4">
-          <h2 className="font-semibold">
-            {current.tag} · {current.scope} · {current.state}
+          <h2 className="flex flex-wrap items-center gap-2 font-semibold">
+            {scopeLabel(current.scope)} · Genesis {current.tag} <JobState state={current.state} />
           </h2>
           <p className="text-sm text-[var(--muted)]">
             {current.done} of {current.total} finished
             {current.failed ? ` · ${current.failed} failed` : ""}
             {current.skipped ? ` · ${current.skipped} skipped` : ""}
-            {current.startedAt ? ` · started ${formatWhen(current.startedAt)}` : ""}
+            {current.startedAt ? <> · <span title={formatWhen(current.startedAt)}>started {formatAgo(current.startedAt)}</span></> : ""}
           </p>
           <progress aria-label="Scan progress" className="h-2 w-full" value={current.done} max={Math.max(current.total, 1)} />
           {current.error ? <p className="text-sm text-[var(--amber)]">{current.error}</p> : null}
           <ul className="space-y-1 text-sm">
             {running.slice(0, 8).map((item) => (
-              <li key={item.imageId}>{item.state} · {item.ref || item.imageId}</li>
+              <li key={item.imageId} className="break-all">{stateLabel(item.state)} · <span className="font-mono text-xs">{item.ref || item.imageId}</span></li>
             ))}
             {failed.slice(0, 8).map((item) => (
               <li key={item.imageId} className="text-[var(--danger)]">{item.imageId}: {item.error || "failed"}</li>
@@ -146,8 +154,8 @@ export function ScansPage() {
                   className="flex w-full flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--off)]"
                   onClick={() => setOpenId(openId === job.id ? "" : job.id)}
                 >
-                  <span>{job.tag} · {job.scope} · {job.state}</span>
-                  <span className="text-[var(--muted)]">{job.done}/{job.total} · {formatWhen(job.startedAt)}</span>
+                  <span className="flex flex-wrap items-center gap-2">{scopeLabel(job.scope)} · Genesis {job.tag} <JobState state={job.state} />{job.failed ? <span className="text-xs text-[var(--danger)]">{job.failed} failed</span> : null}</span>
+                  <span className="text-[var(--muted)]"><span className="tabular-nums">{job.done}/{job.total} images</span> · <span title={formatWhen(job.startedAt)}>{formatAgo(job.startedAt)}</span></span>
                 </button>
                 {openId === job.id ? (
                   <div className="border-t border-[var(--border)] px-3 py-3">
@@ -190,4 +198,9 @@ function ScanDrilldown({ jobId }: { jobId: string }) {
       ))}
     </div>
   );
+}
+
+function JobState({ state }: { state: string }) {
+  const tone = state === "failed" ? "border-[var(--danger)] text-[var(--danger)]" : jobActive(state) ? "border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border)] text-[var(--muted)]";
+  return <span className={`rounded-full border px-2 py-0.5 text-xs font-normal ${tone}`}>{stateLabel(state)}</span>;
 }

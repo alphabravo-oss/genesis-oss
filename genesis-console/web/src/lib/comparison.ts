@@ -26,11 +26,14 @@ export function packageDifferenceSummary(pkg: PackageComparison) {
   const settings = new Set(changes.filter((change) => change.status !== "Different version" && !enablement.has(change)).map((change) => `${change.source}/${change.path}`)).size;
   if (settings) reasons.push(`${settings} configuration ${settings === 1 ? "difference" : "differences"}`);
   if (reasons.length) return reasons.join(" · ");
-  return pkg.comparison === "Standard" && !pkg.valuesChecked ? "Comparison incomplete" : comparisonLabel(pkg.comparison);
+  if (pkg.comparison === "Standard" && !pkg.valuesChecked) return "Comparison incomplete";
+  const installation = pkg.comparison === "Standard" && pkg.changes.some((change) => change.status === "Installation");
+  return comparisonLabel(pkg.comparison) + (installation ? " · own Git source" : "");
 }
 
 export function settingDifference(change: ConfigurationChange) {
   if (change.status === "Unknown") return { configured: false, installed: false, explanation: "Comparison incomplete; a release or cluster value could not be checked." };
+  if (change.status === "Installation") return { configured: false, installed: false, explanation: "Installation-specific source location, such as a mirror. Not counted as a difference." };
   if (change.status === "Different version") return { configured: false, installed: true, explanation: "The installed chart version differs from the comparison release." };
   const configured = change.standard !== change.configured;
   const installed = change.status === "Not applied";
@@ -48,6 +51,12 @@ export function comparisonReady(tag: string, installed: string, following: boole
 export function packageHref(key: string, search: URLSearchParams) {
   const params = new URLSearchParams(search);
   params.delete("pkg");
+  params.delete("tab");
   for (const name of [...params.keys()]) if (name.startsWith("settings.")) params.delete(name);
   return `/packages${key ? `/${encodeURIComponent(key)}` : ""}${params.size ? `?${params}` : ""}`;
+}
+
+// Flux reports an unpinned chart as "*".
+export function versionText(version: string) {
+  return version === "*" ? "any version" : version;
 }

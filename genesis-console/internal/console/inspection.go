@@ -156,7 +156,7 @@ func inspectSnapshot(s *clusterSnapshot, b *comparisonBaseline, tag string, prof
 				} else {
 					p.Changes = append(p.Changes, compareValues(standard, wanted, nil, state.Name+" values")...)
 					if expected := b.releases[identity(hr)]; expected != nil {
-						p.Changes = append(p.Changes, compareValues(object{"chart": at(expected, "spec", "chart"), "sourceRef": at(expected, "spec", "chartRef")}, object{"chart": at(hr, "spec", "chart"), "sourceRef": at(hr, "spec", "chartRef")}, nil, state.Name+" source")...)
+						p.Changes = append(p.Changes, compareValues(object{"chart": fluxChartDefaults(at(expected, "spec", "chart")), "sourceRef": at(expected, "spec", "chartRef")}, object{"chart": fluxChartDefaults(at(hr, "spec", "chart")), "sourceRef": at(hr, "spec", "chartRef")}, nil, state.Name+" source")...)
 					}
 				}
 			}
@@ -186,7 +186,7 @@ func inspectSnapshot(s *clusterSnapshot, b *comparisonBaseline, tag string, prof
 			p.Comparison = "Standard"
 		}
 		for _, change := range p.Changes {
-			if change.Status != "Unknown" {
+			if change.Status != "Unknown" && change.Status != "Installation" {
 				p.Comparison = "Customized"
 				break
 			}

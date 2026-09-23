@@ -1,0 +1,9 @@
+{{- if not .Values.console.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-token
+  annotations:
+    kubernetes.io/service-account.name: {{ .Release.Name }}
+type: kubernetes.io/service-account-token
+{{- end }}

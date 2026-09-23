@@ -96,13 +96,30 @@ func run() error {
 	go func() { defer close(workerDone); scanner.Loop(ctx) }()
 	defer func() { stop(); <-workerDone }()
 	svc := console.NewService(store, scanner)
+	connectionKey, err := console.LoadConnectionKey()
+	if err != nil {
+		return err
+	}
+	connectionDir, err := console.ConnectionDir()
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(connectionDir)
+	connections := console.NewConnections(db.New(pool), connectionKey, connectionDir, svc.ResetCluster)
+	connections.Load(ctx)
+	defer connections.Close()
+	if info := connections.Info(); info.Error != "" {
+		log.Printf("cluster connection: %s", info.Error)
+	} else if connectionKey == nil {
+		log.Printf("cluster connection: saving is disabled; set GENESIS_CONNECTION_KEY_FILE to enable it")
+	}
 	loaded, err := svc.Reload(ctx)
 	if err != nil {
 		return err
 	}
 	log.Printf("loaded %d catalog releases", loaded)
 
-	path, handler := consolev1connect.NewConsoleServiceHandler(console.NewHandler(svc))
+	path, handler := consolev1connect.NewConsoleServiceHandler(console.NewHandler(svc, connections))
 	mux := httpserver.Handler(path, handler, os.DirFS(uiRoot), pool.Ping, env("GENESIS_AUTH_USERNAME", "admin"), password, db.New(pool), scanner.Changes)
 
 	server := &http.Server{

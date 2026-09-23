@@ -13,7 +13,7 @@ import { consoleClient } from "@/lib/connect";
 import { formatWhen, jobActive } from "@/lib/cluster";
 import { errorText } from "@/lib/errors";
 import { fixableCount, scanSeverityCounts, severities } from "@/lib/findings";
-import { VulnerabilitySummary } from "@/components/VulnerabilitySummary";
+import { SeverityLegend, VulnerabilitySummary } from "@/components/VulnerabilitySummary";
 import { applyScanResult, groupDeployedImages, imageHref, imageScan, type DeployedImage } from "@/lib/images";
 
 const vulnerabilityColumn = {
@@ -29,8 +29,17 @@ const vulnerabilityColumn = {
     }
     return 0;
   },
-  cell: ({ row, getValue }: { row: { original: ImageRow | DeployedImage }; getValue: () => (number | null)[] }) => row.original.scanned ? <div className="space-y-1"><VulnerabilitySummary counts={getValue()} />{!row.original.allSeverities ? <span className="block text-xs text-[var(--muted)]">Limited scan · rescan for all severities</span> : null}</div> : <span className="text-[var(--muted)]">Not scanned</span>,
+  cell: ({ row, getValue }: { row: { original: ImageRow | DeployedImage }; getValue: () => (number | null)[] }) => row.original.scanned ? <VulnerabilitySummary counts={getValue()} /> : <span className="text-[var(--muted)]">Not scanned</span>,
 };
+
+// Scan progress replaces the counts only while it says something new: queued, running, or failed.
+function withScanState<T extends ImageRow | DeployedImage>(column: ColumnDef<T, any>, item: (row: T) => ScanItem | undefined, starting: (row: T) => boolean): ColumnDef<T, any> {
+  return { ...column, cell: (context: any) => {
+    const row: T = context.row.original, scan = item(row);
+    if (starting(row) || (scan && (jobActive(scan.state) || scan.state === "failed"))) return <ScanStatus item={scan} scanned={row.scanned} starting={starting(row)} />;
+    return (column.cell as (context: any) => unknown)(context);
+  } } as ColumnDef<T, any>;
+}
 
 const columns = createColumnHelper<ImageRow>();
 const defaultSort = [{ id: "critical", desc: true }];
@@ -42,7 +51,7 @@ const facet = { label: "Registry", value: (row: ImageRow) => row.registry || "No
 const runtimeColumns: ColumnDef<DeployedImage, any>[] = [
   { id: "ref", accessorFn: (row) => row.references.join("\n"), header: "Image" },
   vulnerabilityColumn,
-  { id: "fixable", accessorFn: (row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, header: "Fixable", cell: ({ row }) => row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{fixableCount(row.original.vulnerabilities)}</span> : "Not scanned" },
+  { id: "fixable", accessorFn: (row) => row.scanned ? fixableCount(row.vulnerabilities) : -1, header: "Fixable", cell: ({ row }) => row.original.scanned ? <span title="Distinct vulnerabilities with a fix reported for at least one affected package">{fixableCount(row.original.vulnerabilities)}</span> : "—" },
   { accessorKey: "digest", header: "Observed digest", cell: ({ getValue }) => <span className="block max-w-36 truncate font-mono text-xs" title={getValue()}>{getValue() || "Not observed"}</span> },
   { id: "packageKey", accessorFn: (row) => row.packages.join(", "), header: "Packages", cell: ({ getValue }) => <span className="line-clamp-2 max-w-44" title={getValue()}>{getValue()}</span> },
   { id: "namespace", accessorFn: (row) => row.namespaces.join(", "), header: "Namespaces", cell: ({ getValue }) => <span className="line-clamp-2 max-w-44" title={getValue()}>{getValue()}</span> },
@@ -130,14 +139,13 @@ export function ImagesPage() {
   const currentScan = scanQuery.data;
   const findingsUnavailable = cluster.checks.some((check) => check.name === "Saved image findings" && !check.checked);
   const deployedImages = useMemo(() => groupDeployedImages(cluster.images, cluster.imageFindings).map((image) => applyScanResult(image, imageScan(image, currentScan))), [cluster.images, cluster.imageFindings, currentScan]);
-  const observedColumns = useMemo(() => [{ ...runtimeColumns[0], cell: ({ row }: { row: { original: DeployedImage } }) => <Link to={imageHref("deployed", row.original.id, params)} className="block min-w-48 max-w-sm space-y-1 break-all font-mono text-xs text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.references.map((ref) => <div key={ref}>{ref}</div>)}</Link> }, {
-    id: "scan", header: "Scan status", accessorFn: (row: DeployedImage) => scanLabel(imageScan(row, currentScan), row.scanned, busy && selected.includes(row.id)),
-    cell: ({ row }: { row: { original: DeployedImage } }) => <ScanStatus item={imageScan(row.original, currentScan)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
-  }, ...runtimeColumns.slice(1).map((column) => findingsUnavailable && ["critical", "fixable"].includes(column.id ?? "") ? { ...column, cell: () => "Not checked" } : column)], [findingsUnavailable, currentScan, busy, selected, params]);
-  const catalogColumns = useMemo(() => [imageColumns[0], { ...imageColumns[1], cell: ({ row }: { row: { original: ImageRow } }) => <Link to={imageHref("catalog", row.original.id, params)} className="block text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.name}</Link> }, {
-    id: "scan", header: "Scan status", accessorFn: (row: ImageRow) => scanLabel(imageScan(row, currentScan, tag), row.scanned, busy && selected.includes(row.id)),
-    cell: ({ row }: { row: { original: ImageRow } }) => <ScanStatus item={imageScan(row.original, currentScan, tag)} scanned={row.original.scanned} starting={busy && selected.includes(row.original.id)} />,
-  }, ...imageColumns.slice(2)], [currentScan, tag, busy, selected, params]);
+  const starting = (row: { id: string }) => busy && selected.includes(row.id);
+  const observedColumns = useMemo(() => [{ ...runtimeColumns[0], cell: ({ row }: { row: { original: DeployedImage } }) => <Link to={imageHref("deployed", row.original.id, params)} className="block min-w-48 max-w-sm space-y-1 break-all font-mono text-xs text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.references.map((ref) => <div key={ref}>{ref}</div>)}</Link> },
+    ...runtimeColumns.slice(1).map((column) => findingsUnavailable && ["critical", "fixable"].includes(column.id ?? "") ? { ...column, cell: () => "Not checked" } : column.id === "critical" ? withScanState<DeployedImage>(column, (row) => imageScan(row, currentScan), starting) : column)],
+  [findingsUnavailable, currentScan, busy, selected, params]);
+  const catalogColumns = useMemo(() => [imageColumns[0], { ...imageColumns[1], cell: ({ row }: { row: { original: ImageRow } }) => <Link to={imageHref("catalog", row.original.id, params)} className="block text-[var(--primary)] underline decoration-[var(--primary)]/40 underline-offset-2">{row.original.name}</Link> },
+    withScanState<ImageRow>(imageColumns[2], (row) => imageScan(row, currentScan, tag), starting), ...imageColumns.slice(3)],
+  [currentScan, tag, busy, selected, params]);
 
   const rows = useMemo(() => {
     if (!detail) return [];
@@ -149,6 +157,8 @@ export function ImagesPage() {
       return true;
     });
   }, [detail, view, currentScan, tag]);
+
+  const limited = (view === "deployed" ? deployedImages : rows).filter((image) => image.scanned && !image.allSeverities && image.ref).map((image) => image.id);
 
   if (!detail) return null;
 
@@ -170,6 +180,16 @@ export function ImagesPage() {
     }
   }
 
+  function showView(value: string) {
+    setSelected([]);
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value === "deployed") next.delete("view");
+      else next.set("view", value);
+      return next;
+    });
+  }
+
   if (imageId) {
     const image = source === "deployed" ? deployedImages.find((image) => image.id === imageId) : source === "catalog" ? rows.find((image) => image.id === imageId) : undefined;
     return <div className="space-y-5">
@@ -189,55 +209,40 @@ export function ImagesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Images</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">{view === "deployed" ? `${deployedImages.length} unique images across ${cluster.images.length} observed containers. Open an image for findings and the containers using it.` : `Images listed in the Genesis ${tag} catalog, and their latest saved scans. This is the catalog inventory, not the list of running containers.`}</p>
         </div>
-        <button
-          type="button"
-          className="rounded-md bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-foreground)] disabled:opacity-50"
-          disabled={busy || scanning || selected.length === 0}
-          onClick={() => void scanSelected()}
-        >
-          {busy ? "Starting scan…" : `Scan selected (${selected.length})`}
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {[
-          ["deployed", "Deployed images"],
-          ["default-on", "Catalog: default-on"],
-          ["all", "Catalog: all images"],
-          ["unscanned", "Unscanned"],
-          ["critical", "Critical"],
-          ["missing", "No public source"],
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={view === value}
-            className={`rounded-md border px-3 py-1 text-sm ${view === value ? "border-[var(--primary)] bg-[var(--accent)]" : "border-[var(--border)] bg-[var(--card)]"}`}
-            onClick={() => {
-              setSelected([]);
-              setParams((current) => {
-                const next = new URLSearchParams(current);
-                if (value === "deployed") next.delete("view");
-                else next.set("view", value);
-                return next;
-              });
-            }}
-          >
-            {label}
+        {selected.length ? <div className="flex items-center gap-3">
+          <button type="button" className="text-sm text-[var(--primary)] underline underline-offset-2" onClick={() => setSelected([])}>Clear</button>
+          <button type="button" className="rounded-md bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-foreground)] disabled:opacity-50" disabled={busy || scanning} onClick={() => void scanSelected()}>
+            {busy ? "Starting scan…" : `Scan ${selected.length} selected`}
           </button>
-        ))}
+        </div> : null}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <div role="group" aria-label="Image source" className="inline-flex rounded-md border border-[var(--border)] bg-[var(--card)] p-0.5">
+          {[["deployed", "Running in cluster"], ["all", "Release catalog"]].map(([value, label]) => {
+            const active = value === "deployed" ? view === "deployed" : view !== "deployed";
+            return <button key={value} type="button" aria-pressed={active} className={`rounded px-3 py-1.5 text-sm ${active ? "bg-[var(--accent)] font-medium text-[var(--primary)]" : "text-[var(--muted)] hover:text-[var(--foreground)]"}`} onClick={() => showView(value)}>{label}</button>;
+          })}
+        </div>
+        {view !== "deployed" ? <div role="group" aria-label="Catalog filter" className="flex flex-wrap gap-1.5">
+          {[["all", "All"], ["default-on", "Default-on"], ["unscanned", "Unscanned"], ["critical", "Critical"], ["missing", "No public source"]].map(([value, label]) =>
+            <button key={value} type="button" aria-pressed={view === value} className={`rounded-full border px-2.5 py-1 text-xs ${view === value ? "border-[var(--primary)] bg-[var(--accent)]" : "border-[var(--border)] bg-[var(--card)]"}`} onClick={() => showView(value)}>{label}</button>)}
+        </div> : null}
       </div>
       {view !== "deployed" ? <ReleaseSelect label="Catalog version" /> : null}
-      {selected.length ? <button type="button" className="text-sm text-[var(--primary)] underline underline-offset-2" onClick={() => setSelected([])}>Clear selection ({selected.length})</button> : null}
       {currentScan && (jobActive(currentScan.state) || currentScan.id === lastJobId) ? <div className="space-y-1" role="status">
         <p className="text-sm text-[var(--muted)]">{currentScan.done} of {currentScan.total} images finished{currentScan.failed ? ` · ${currentScan.failed} failed` : ""}. Progress and results update in the rows below.</p>
         <progress aria-label="Scan progress" className="h-1.5 w-full" value={currentScan.done} max={Math.max(currentScan.total, 1)} />
       </div> : null}
       {scanQuery.error ? <p role="alert" className="text-sm text-[var(--danger)]">Scan progress is temporarily unavailable: {errorText(scanQuery.error)}</p> : null}
       {error ? <p role="alert" className="text-sm text-[var(--danger)]">{error}</p> : null}
+      {limited.length ? <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--amber)] bg-[var(--amber-bg)] px-3 py-2 text-sm text-[var(--amber)]">
+        <span>{limited.length === 1 ? "1 image has" : `${limited.length} images have`} an older scan with only High and Critical findings.</span>
+        <button type="button" className="rounded-md border border-[var(--amber)] px-2.5 py-1 text-xs font-medium disabled:opacity-50" disabled={busy || scanning} onClick={() => void scanSelected(limited)}>Rescan {limited.length === 1 ? "it" : `all ${limited.length}`} for every severity</button>
+      </div> : null}
+      <SeverityLegend />
       {view === "deployed" ? <>
-        <p className="text-sm text-[var(--muted)]">Select images to scan once per digest, regardless of replica count. Images without an observed digest are grouped and scanned by configured reference.</p>
         {findingsUnavailable ? <p role="status" className="text-sm text-[var(--amber)]">Saved scan findings could not be read. Scan coverage and finding counts are unknown.</p> : null}
-        <p className="text-xs text-[var(--muted)]">“Unassigned” means package ownership could not be determined.</p>
+        <p className="text-xs text-[var(--muted)]">Each digest is scanned once, whatever its replica count. “Unassigned” means package ownership could not be determined.</p>
         {clusterPending ? <p role="status">Reading running containers…</p> : !cluster.checks.some((check) => check.name === "Pods" && check.checked) ? <p role="status" className="text-sm text-[var(--amber)]">Pod inventory could not be read. Use the catalog tabs to browse release images.</p> : null}
         <DataTable key="runtime" columns={observedColumns} data={deployedImages} getRowId={(row) => row.id} rowHref={(row) => imageHref("deployed", row.id, params)} noun="images" defaultSort={defaultSort} selectable selected={selected} onSelected={setSelected} search={runtimeSearch} facet={runtimeFacet} exportName={`genesis-${tag}-deployed-images`} urlKey="liveimg" />
       </> : <DataTable
@@ -270,8 +275,8 @@ function ImageDetails({ image, tag, item, busy, scanning, findingsUnavailable, o
   const title = deployed ? (deployed.references[0]?.split("/").at(-1) || "Image") : catalog?.name;
   const facts = [
     { label: "Scan status", value: <ScanStatus item={item} scanned={image.scanned} starting={busy} /> },
-    { label: image.allSeverities ? "Vulnerabilities" : "Known vulnerabilities", value: findingsUnavailable ? "Not checked" : image.scanned ? new Set(image.vulnerabilities.map((finding) => finding.id)).size : "Not scanned" },
-    { label: "Fixable vulnerabilities", value: findingsUnavailable ? "Not checked" : image.scanned ? fixableCount(image.vulnerabilities) : "Not scanned" },
+    { label: image.allSeverities ? "CVEs" : "CVEs · High and Critical only", value: findingsUnavailable ? "Not checked" : image.scanned ? new Set(image.vulnerabilities.map((finding) => finding.id)).size : "Not scanned", note: image.scanned && !findingsUnavailable ? `Across ${image.vulnerabilities.length} affected ${image.vulnerabilities.length === 1 ? "package" : "packages"}` : "" },
+    { label: "CVEs with a fix", value: findingsUnavailable ? "Not checked" : image.scanned ? fixableCount(image.vulnerabilities) : "Not scanned" },
     { label: deployed ? "Containers" : "Signature", value: deployed ? deployed.containers.length : catalog?.signature || "Not checked" },
   ];
   return <>
@@ -283,7 +288,7 @@ function ImageDetails({ image, tag, item, busy, scanning, findingsUnavailable, o
       <button type="button" onClick={onScan} disabled={busy || scanning || !image.ref} className="shrink-0 rounded-md bg-[var(--primary)] px-3 py-2 text-sm text-[var(--primary-foreground)] disabled:opacity-50">{busy ? "Starting scan…" : image.scanned ? "Rescan image" : "Scan image"}</button>
     </div>
     <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {facts.map(({ label, value }) => <div key={label} className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"><dt className="text-xs text-[var(--muted)]">{label}</dt><dd className="mt-2 text-lg font-semibold tabular-nums">{value}</dd></div>)}
+      {facts.map(({ label, value, note }) => <div key={label} className="min-w-0 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4"><dt className="text-xs text-[var(--muted)]">{label}</dt><dd className="mt-2 text-lg font-semibold tabular-nums">{value}</dd>{note ? <dd className="mt-1 text-xs text-[var(--muted)]">{note}</dd> : null}</div>)}
     </dl>
     <dl className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 text-sm">
       <div><dt className="text-xs text-[var(--muted)]">{deployed ? "References" : "Public reference"}</dt><dd className="mt-1 space-y-1 break-all font-mono text-xs">{(deployed?.references ?? [image.ref || "No public source"]).map((ref) => <div key={ref}>{ref}</div>)}</dd></div>

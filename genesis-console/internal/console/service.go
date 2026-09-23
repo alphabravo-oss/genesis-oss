@@ -125,3 +125,10 @@ func (s *Service) Get(ctx context.Context, tag string) (*consolev1.ReleaseDetail
 	}
 	return detail, nil
 }
+
+// ResetCluster drops the cached observation so the next read uses the current connection.
+func (s *Service) ResetCluster() {
+	s.clusterMu.Lock()
+	defer s.clusterMu.Unlock()
+	s.clusterCache = nil
+}
