@@ -14,7 +14,7 @@ args = parser.parse_args()
 # Explicit inputs exclude local credentials, build output and dependency caches.
 inputs = ['cmd','gen','internal','proto','deploy','scripts','web/src','web/public','web/tests',
           'Dockerfile','Dockerfile.dockerignore','compose.yaml','compose.cluster.yaml',
-          'go.mod','go.sum','buf.yaml','buf.gen.yaml','sqlc.yaml','README.md','LICENSE','.gitignore']
+          'go.mod','go.sum','buf.yaml','buf.gen.yaml','sqlc.yaml','README.md','LICENSE','.gitignore','web/.nvmrc']
 inputs += [str(p.relative_to(root)) for p in (root/'web').iterdir()
            if p.is_file() and p.suffix in {'.json','.yaml','.ts','.html'} and not p.name.endswith('.tsbuildinfo')]
 private = {'.git','.local','__pycache__'}

@@ -18,6 +18,8 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run([sys.executable, root/'scripts/package.py', '--sync', target], check=True, capture_output=True)
     synced = {p.relative_to(target) for p in target.rglob('*') if p.is_file()} - {Path('web/node_modules/keep')}
     assert synced == expected, (sorted(synced - expected)[:5], sorted(expected - synced)[:5])
+    for required in ['web/.nvmrc', 'web/package.json', 'web/pnpm-lock.yaml', 'Dockerfile', 'go.mod', 'deploy/chart/Chart.yaml']:
+        assert Path(required) in synced, f'{required} missing from the public files'
     assert (target/'web'/'node_modules'/'keep').exists(), 'ignored build output must be left alone'
     assert not any(part in {'.local', '.git'} for p in synced for part in p.parts), 'private files synced'
 print('package sync ok')
